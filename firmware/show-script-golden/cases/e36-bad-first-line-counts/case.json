@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-R1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 2,
+        "message": "line 2: there is no trig7 on this board. The inputs are trig1, trig2 and user1 to user3."
+      }
+    ],
+    "warnings": []
+  }
+}

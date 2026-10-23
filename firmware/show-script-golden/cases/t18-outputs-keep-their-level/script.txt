@@ -1,0 +1,7 @@
+effect a:
+wait for trig1
+out1 = 50%
+sleep 0.5
+rly1 = on
+sleep 0.5
+rly1 = off

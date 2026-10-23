@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 1,
+        "message": "line 1: the effect name is longer than 32 characters."
+      }
+    ],
+    "warnings": []
+  }
+}

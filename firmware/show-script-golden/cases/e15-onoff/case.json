@@ -1,0 +1,23 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {
+    "cc2_role": "shows"
+  },
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: rly1 can only be on or off, not 50%. Dimming works on out1 to out4."
+      },
+      {
+        "line": 4,
+        "message": "line 4: cc2 can only be on or off, not 100%. Dimming works on out1 to out4."
+      }
+    ],
+    "warnings": []
+  }
+}

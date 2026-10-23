@@ -1,0 +1,24 @@
+{"v":1,"seq":1,"event":"shows_changed"}
+{"v":1,"seq":2,"event":"log","data":"sound player online"}
+{"v":1,"seq":3,"event":"shows_changed"}
+{"v":1,"seq":4,"event":"params_changed"}
+{"v":1,"seq":5,"event":"notice","data":{"notice":"started","show":1,"cause":{"by":"api"}}}
+{"v":1,"seq":6,"event":"notice","data":{"notice":"started","show":4,"cause":{"by":"boot"}}}
+{"v":1,"seq":7,"event":"run","data":{"source":"api","kind":"show","show":1,"name":"Example show: door knock","runs_since_power_on":1,"runs_lifetime":1,"uptime_ms":4610}}
+{"v":1,"seq":8,"event":"run","data":{"source":"boot","kind":"show","show":4,"name":"Fog","runs_since_power_on":2,"runs_lifetime":2,"uptime_ms":4610}}
+{"v":1,"seq":9,"event":"notice","data":{"notice":"ended","show":1,"reason":"paused"}}
+{"v":1,"seq":10,"event":"notice","data":{"notice":"ended","show":4,"reason":"paused"}}
+{"v":1,"seq":11,"event":"notice","data":{"notice":"paused","paused":true}}
+{"v":1,"seq":12,"event":"params_changed"}
+{"v":1,"seq":13,"event":"params_changed"}
+{"v":1,"seq":14,"event":"shows_changed"}
+{"v":1,"seq":15,"event":"shows_changed"}
+{"v":1,"seq":16,"event":"params_changed"}
+{"v":1,"seq":17,"event":"notice","data":{"notice":"paused","paused":false}}
+{"v":1,"seq":18,"event":"log","data":"remote trigger refused: the remote trigger is not enabled (Settings → Effect → Remote trigger; it is off after every restart)"}
+{"v":1,"seq":19,"event":"log","data":"run #1 (TRIG1)"}
+{"v":1,"seq":20,"event":"run","data":{"source":"input","kind":"effect","name":"pulse_and_recover","detail":"TRIG1","runs_since_power_on":3,"runs_lifetime":3,"uptime_ms":8301}}
+{"v":1,"seq":21,"event":"log","data":"recovery 1000 ms"}
+{"v":1,"seq":22,"event":"params_changed"}
+{"v":1,"seq":23,"event":"params_changed"}
+{"v":1,"seq":24,"event":"log","data":"remote trigger refused: the remote trigger is not enabled (Settings → Effect → Remote trigger; it is off after every restart)"}

@@ -1,0 +1,27 @@
+{
+ "id": 3,
+ "name": "Spooky pixels",
+ "enabled": true,
+ "priority": 2,
+ "looping": false,
+ "retrigger": "ignore",
+ "triggers": [
+  {
+   "on": "input",
+   "input": "TRIG2"
+  }
+ ],
+ "length_ms": 6000,
+ "tracks": [
+  {
+   "target": "PIXEL",
+   "cues": [
+    {
+     "at": 0,
+     "do": "flicker",
+     "color": "#ff0000"
+    }
+   ]
+  }
+ ]
+}

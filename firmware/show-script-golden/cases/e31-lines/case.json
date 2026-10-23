@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C3"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 0,
+        "message": "the script has 257 lines. A board takes at most 256."
+      }
+    ],
+    "warnings": []
+  }
+}

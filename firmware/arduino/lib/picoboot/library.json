@@ -1,0 +1,9 @@
+{
+  "name": "picoboot",
+  "version": "0.1.0",
+  "description": "Boot decision of the Spectre Proptroller Pico bootloader (swap, revert, state sector), shared by the bootloader, the firmware's update target and the host tests.",
+  "license": "MIT",
+  "frameworks": "*",
+  "platforms": "*",
+  "build": { "srcDir": "src", "includeDir": "src" }
+}

@@ -1,0 +1,65 @@
+{
+  "spec": [
+    "SS-L"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 5000,
+    "expect": {
+      "samples": [
+        {
+          "t": 1050,
+          "out": "OUT1",
+          "level": 0,
+          "within": 0
+        },
+        {
+          "t": 1150,
+          "out": "OUT1",
+          "level": 975,
+          "within": 30
+        },
+        {
+          "t": 2100,
+          "out": "OUT1",
+          "level": 500,
+          "within": 30
+        },
+        {
+          "t": 3200,
+          "out": "OUT1",
+          "level": 0,
+          "within": 0
+        }
+      ],
+      "edges": {
+        "OUT2": [
+          [
+            3100,
+            1000
+          ],
+          [
+            3600,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

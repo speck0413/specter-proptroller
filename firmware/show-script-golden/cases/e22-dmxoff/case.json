@@ -1,0 +1,19 @@
+{
+  "spec": [
+    "SS-D8"
+  ],
+  "sounds": {},
+  "settings": {
+    "dmx_port": "off"
+  },
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: dmx1 needs the DMX add-on, and it is not turned on. Turn it on with the setting dmx_port = s4."
+      }
+    ],
+    "warnings": []
+  }
+}

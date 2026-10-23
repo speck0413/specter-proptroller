@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C3"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 0,
+        "message": "the script has 9 effects. A board runs at most 8."
+      }
+    ],
+    "warnings": []
+  }
+}

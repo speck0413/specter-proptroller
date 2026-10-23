@@ -1,0 +1,4 @@
+effect a:
+wait for trig7
+out1 = on
+out1 = off

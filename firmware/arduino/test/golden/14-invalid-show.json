@@ -1,0 +1,1 @@
+{"v":1,"id":7,"ok":false,"error":{"code":"invalid","message":"RLY1 cannot do that at 0.00 s: dimming and fades work on OUT1-OUT4 only, sounds on SOUND, colours on PIXEL","show_error":{"problem":"wrong_target","track":0,"cue":0}}}

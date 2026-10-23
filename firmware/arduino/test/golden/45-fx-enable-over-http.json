@@ -1,0 +1,1 @@
+{"v":1,"ok":false,"error":{"code":"bad_request","message":"turn the remote trigger on from the phone page, MQTT or the serial console; from a page it stays on only while that page is open"}}

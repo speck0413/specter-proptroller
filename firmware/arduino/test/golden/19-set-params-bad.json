@@ -1,0 +1,1 @@
+{"v":1,"ok":false,"error":{"code":"bad_request","message":"Trigger debounce is set to 5000 ms but the board allows 10-1000 ms; lower it in Settings → Inputs"}}

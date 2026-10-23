@@ -1,0 +1,48 @@
+# The starter kit: one big button, one motion sensor, a lamp, a fan,
+# a pixel strip and a speaker, all on one desk.
+#
+# Wiring:
+#   big arcade button                -> TRIG1 jack (tip and sleeve)
+#   mini 3-pin motion sensor         -> TRIG2 jack: VCC to ring (3.3 V), OUT to tip, GND to sleeve
+#     (Settings > Inputs > TRIG2 input type = sensor_high, then Save settings)
+#   12 V LED strip or lamp           -> OUT1 + and -
+#   small 12 V fan                   -> OUT2 + and -
+#   short pixel strip (15 LEDs)      -> PIXEL 5V, DATA, GND, a 1000 uF capacitor at the strip (the pixels run from the three show-*.json shows)
+#   speaker                          -> SPK (neither wire to ground)
+#   SD card: the big sound as /01/001.mp3 (sound 1), the spooky sound as /02/001.mp3 (sound 2)
+#
+#   [button]--TRIG1   OUT1--[LED strip]   OUT2--[fan]   PIXEL--[strip]
+#   [motion]--TRIG2   SPK--[speaker]
+#
+# Press the button: the big sound plays, the lamp flashes, the fan puffs, the pixels chase.
+# Walk past: a spooky sound plays and the pixels flicker red.
+# The checker warns that both effects play sound. That is fine here: there is one speaker,
+# so the newest sound wins.
+
+effect big moment:
+  wait for trig1
+  audio_single = 1     # the big sound
+  out2 = on            # fan puff
+  out1 = on
+  sleep 0.15
+  out1 = off
+  sleep 0.15
+  out1 = on
+  sleep 0.15
+  out1 = off
+  sleep 0.15
+  out1 = on
+  sleep 0.15
+  out1 = off
+  sleep 0.15
+  out1 = on            # then the lamp stays bright
+  sleep 1
+  out2 = off           # the fan stops
+  sleep 2
+  fade out1 to 0% over 2
+  sleep 1              # a short rest before the next press
+
+effect spooky:
+  wait for trig2
+  audio_single = 2     # the spooky sound
+  sleep 20             # rest: walking past again within 20 s does nothing

@@ -1,0 +1,8 @@
+effect a:
+  wait for trig1
+  play sound 1
+  wait 3
+  delay 3
+  pause 2 s
+  pixel = red
+  wait 0.5

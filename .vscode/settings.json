@@ -1,0 +1,49 @@
+{
+  // C/C++ (cpptools is PlatformIO's IntelliSense: it reads the c_cpp_properties.json PlatformIO writes in
+  // firmware/arduino/.vscode when the workspace opens).
+  "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+  "C_Cpp.codeAnalysis.clangTidy.useBuildPath": false,
+  "C_Cpp.codeAnalysis.runAutomatically": true,
+  // clang-tidy reads the nearest .clang-tidy above each file; clang-format the nearest .clang-format. Without a
+  // .clang-format nothing is reformatted (no fallback style), so saving never rewrites a file's style.
+  "C_Cpp.formatting": "clangFormat",
+  "C_Cpp.clang_format_style": "file",
+  "C_Cpp.clang_format_fallbackStyle": "none",
+  "[cpp]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "modifications",
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
+  "[c]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "modifications",
+    "editor.defaultFormatter": "ms-vscode.cpptools"
+  },
+  "files.associations": {
+    "*.ino": "cpp",
+    "*.inc": "cpp"
+  },
+  // build output, fetched packages and generated files stay out of the explorer and searches
+  "files.exclude": {
+    "**/.pio": true,
+    "**/node_modules": true
+  },
+  "search.exclude": {
+    "**/.pio": true,
+    "**/node_modules": true,
+    "firmware/arduino/lib/proptroller/src/proptroller/web_assets.h": true
+  },
+  "files.watcherExclude": {
+    "**/.pio/**": true,
+    "**/node_modules/**": true
+  },
+  "markdownlint.config": {
+    "MD013": false,
+    "MD033": false,
+    "MD041": false
+  },
+  "cSpell.words": [
+    "arduino", "Proptroller", "proptroller", "platformio", "LittleFS", "DFPlayer", "WS2812", "RP2040", "RP2350",
+    "otadata", "esptool", "picotool", "mDNS", "MQTT", "pixels", "retrigger", "debounce", "cooldown", "ptclient"
+  ]
+}

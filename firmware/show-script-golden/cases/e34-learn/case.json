@@ -1,0 +1,23 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {
+    "buttons": "learn"
+  },
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 2,
+        "message": "line 2: user1 is a learn-mode button (buttons = learn). Set buttons to triggers to use it in a script."
+      },
+      {
+        "line": 6,
+        "message": "line 6: user3 is a learn-mode button (buttons = learn). Set buttons to triggers to use it in a script."
+      }
+    ],
+    "warnings": []
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": []
+    }
+  }
+}

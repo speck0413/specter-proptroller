@@ -1,0 +1,1 @@
+{"v":1,"ok":false,"error":{"code":"bad_request","message":"rest_s: Rest is set to 90 s but the board allows 0-60 s; lower it in Settings → Effect"}}

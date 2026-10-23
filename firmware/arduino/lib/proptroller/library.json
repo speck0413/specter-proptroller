@@ -1,0 +1,18 @@
+{
+  "name": "Proptroller",
+  "version": "0.1.0-rc.2",
+  "description": "Show controller for the Spectre Proptroller board: outputs, triggers, sound, pixels, phone UI and MQTT. Friendly API for first projects, full access for experts.",
+  "keywords": "prop, show, controller, relay, mosfet, dfplayer, ws2812, mqtt",
+  "license": "MIT",
+  "authors": [{ "name": "speck0413", "url": "https://github.com/speck0413", "maintainer": true }],
+  "homepage": "https://github.com/speck0413/specter-proptroller",
+  "repository": { "type": "git", "url": "https://github.com/speck0413/specter-proptroller.git" },
+  "frameworks": "arduino",
+  "platforms": "*",
+  "dependencies": [
+    { "owner": "bblanchon", "name": "ArduinoJson", "version": "7.4.2" },
+    { "owner": "knolleary", "name": "PubSubClient", "version": "2.8", "platforms": ["raspberrypi"] }
+  ],
+  "build": { "srcDir": "src", "includeDir": "src", "libCompatMode": "off" },
+  "export": { "exclude": ["test", ".pio"] }
+}

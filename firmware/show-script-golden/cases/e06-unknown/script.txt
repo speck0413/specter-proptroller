@@ -1,0 +1,3 @@
+effect a:
+wait for trig1
+Jump Around  # no such line

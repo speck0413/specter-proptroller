@@ -1,0 +1,1 @@
+error: pixel_count: not a number

@@ -1,0 +1,6 @@
+effect lamp:
+wait for trig1
+out1 = 40%
+rly1 = on
+sleep 1
+rly1 = off

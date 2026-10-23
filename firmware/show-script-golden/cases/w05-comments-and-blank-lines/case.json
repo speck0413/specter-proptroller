@@ -1,0 +1,38 @@
+{
+  "spec": [
+    "SS-W5"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      {
+        "line": 2,
+        "message": "line 2: effect \"porch light\" ends with out1 still on. It may stay on until the next trigger."
+      }
+    ],
+    "table": {
+      "effects": [
+        {
+          "name": "porch light",
+          "line": 2,
+          "steps": [
+            {
+              "line": 4,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 5,
+              "op": "set",
+              "target": "OUT1",
+              "level": 1000
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

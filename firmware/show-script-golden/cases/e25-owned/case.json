@@ -1,0 +1,27 @@
+{
+  "spec": [
+    "SS-R11"
+  ],
+  "sounds": {},
+  "settings": {
+    "effect": "pulse_and_recover"
+  },
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 2,
+        "message": "line 2: trig1 belongs to the built-in pulse-and-recover effect. Turn the effect off (setting effect = none) or use another terminal."
+      },
+      {
+        "line": 3,
+        "message": "line 3: out1 belongs to the built-in pulse-and-recover effect. Turn the effect off (setting effect = none) or use another terminal."
+      },
+      {
+        "line": 6,
+        "message": "line 6: out1 belongs to the built-in pulse-and-recover effect. Turn the effect off (setting effect = none) or use another terminal."
+      }
+    ],
+    "warnings": []
+  }
+}

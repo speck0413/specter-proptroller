@@ -1,0 +1,6 @@
+effect a:
+wait for user1
+out1 = on
+out1 = off
+effect b:
+wait for user3

@@ -1,0 +1,11 @@
+menu "LittleFS (the Arduino core's prebuilt library)"
+config LITTLEFS_PAGE_SIZE
+    int "page size (as the core was built)"
+    default 256
+config LITTLEFS_MAX_PARTITIONS
+    int "partitions"
+    default 3
+config LITTLEFS_OBJ_NAME_LEN
+    int "name length"
+    default 64
+endmenu

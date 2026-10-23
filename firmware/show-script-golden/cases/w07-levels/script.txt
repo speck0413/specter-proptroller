@@ -1,0 +1,15 @@
+effect l:
+wait for trig1
+out1 = on
+out1 = off
+out2 = 50%
+out3 = 12.5 %
+out4 = 0%
+out4 = 100%
+dmx1 = 50%
+dmx2 = on
+dmx3 = 1%
+rly1 = on
+rly1 = off
+cc1 = on
+cc1 = off

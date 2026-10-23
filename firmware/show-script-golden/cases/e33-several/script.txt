@@ -1,0 +1,6 @@
+out1 = on
+effect fog
+wait for trig9
+rly1 = 50%
+sleep later
+fade cc1 to 0% over 1

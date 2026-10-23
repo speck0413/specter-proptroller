@@ -1,0 +1,18 @@
+{
+  "name": "Power loss mid-show; trigger held through the boot",
+  "shows": [{
+    "id": 1, "name": "Lamp", "triggers": [{"on": "input", "input": "TRIG1"}],
+    "tracks": [{"target": "OUT4", "cues": [{"at": 0, "do": "pulse", "ms": 5000}]}]
+  }],
+  "steps": [
+    {"at": 3000, "do": "set", "input": "TRIG1", "active": true},
+    {"at": 3200, "do": "expect", "levels": {"OUT4": 1000}},
+    {"at": 4000, "do": "power_cycle", "off_ms": 300},
+    {"at": 4400, "do": "expect", "levels": {"OUT4": 0}},
+    {"at": 9000, "do": "expect", "levels": {"OUT4": 0}},
+    {"at": 9100, "do": "set", "input": "TRIG1", "active": false},
+    {"at": 9500, "do": "press", "input": "TRIG1", "ms": 150},
+    {"at": 9700, "do": "expect", "levels": {"OUT4": 1000}}
+  ],
+  "until": 10000
+}

@@ -1,0 +1,54 @@
+{
+  "spec": [
+    "SM-B3",
+    "SS-R9"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 950,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1000,
+        "power_on": true
+      },
+      {
+        "t": 6000,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 7000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 7150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 9000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            7100,
+            1000
+          ],
+          [
+            8100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proptroller Build Guide</title>
+<link rel="stylesheet" href="print.css">
+</head>
+<body>
+<header>
+  <h1>Specter Proptroller Build Guide: the board in its 3D-printed case</h1>
+  <div class="meta">Board rev A &middot; enclosure as in <code>enclosure/design.toml</code> &middot; 2026-10-20<br>
+  <b>Name:</b> the product is the <b>Specter</b> Proptroller. The rev A board's silkscreen reads "SPECTRE PROPTROLLER"; file and repository names keep their current spelling.<br>
+  <b>Status:</b> the rev A board has not been built or tested yet, and the case has not been printed yet. Every box marked
+  "First build: check" is something the first builder must confirm and report back. All sizes come from
+  <code>enclosure/design.toml</code>, <code>enclosure/README.md</code> and <code>hardware/README.md</code>.</div>
+</header>
+
+<figure class="two">
+  <img src="img/assembly.jpg" alt="Model of the closed case from the front: the front faceplate with TRIG1, RLY1, RLY2 and OUT1 to OUT4, the lid with its push button and four latches">
+  <img src="img/assembly-back.jpg" alt="Model of the closed case from the back: the back faceplate with LINE, SPK, PWR, CC1, CC2, USB and TRIG2, and the two lid hinges">
+</figure>
+<p style="text-align:center;font-size:8.4pt;margin-top:0">The case model (OpenSCAD), front and back. The board sits inside on four standoffs.</p>
+
+<div class="box warn">
+<b>Safety.</b> The board is for <b>low-voltage DC only</b> (9-24 V DC in). Nothing on it is rated for mains (wall power).
+It has <b>no fuses and no reverse-polarity protection</b>: use a listed DC power supply with its own over-current protection, rated 10 A or less.
+The relays switch DC up to 30 V only. Switch any mains device with a separate, listed relay module.
+</div>
+
+<h2>1. What you need</h2>
+<h3>1a. Electronics</h3>
+<table>
+  <tr><th>Item</th><th>Qty</th><th>Notes</th></tr>
+  <tr><td>Specter Proptroller board, rev A</td><td>1</td><td>134 x 80 mm. The surface-mount parts, the 3.5 mm jacks, the barrel jack, the relays and the USER buttons come fitted from the board maker.</td></tr>
+  <tr><td>Plug-in controller module</td><td>1</td><td>A <b>30-pin ESP32 DevKit</b> <i>or</i> a <b>Raspberry Pi Pico, Pico W, Pico 2 or Pico 2 W</b>. Never fit both. The phone page needs Wi-Fi: a DevKit, Pico W or Pico 2 W.</td></tr>
+  <tr><td>DFPlayer Mini sound module</td><td>1</td><td>Plus a microSD card for the sound files.</td></tr>
+  <tr><td>Passive speaker</td><td>optional</td><td>4 &Omega; or more. The amplifier gives 3 W at most into 4 &Omega;.</td></tr>
+  <tr><td>DC power supply</td><td>1</td><td>9-24 V DC, listed, with over-current protection, 10 A or less. Use the voltage your loads need.</td></tr>
+</table>
+
+<h3>1b. Parts you solder onto the board yourself</h3>
+<p>These are not fitted by the board maker (the design calls them "DNP"). The names are the board's reference designators, printed on the board.</p>
+<table>
+  <tr><th>Part</th><th>Qty</th><th>Where (board reference)</th></tr>
+  <tr><td>1x15 female socket, 2.54 mm pitch, 8.5 mm tall</td><td>2</td><td>J_DKN, J_DKS: <b>only for an ESP32 DevKit</b> (the two outer rows)</td></tr>
+  <tr><td>1x20 female socket, 2.54 mm pitch, 8.5 mm tall</td><td>2</td><td>J_PIN, J_PIS: <b>only for a Pico</b> (the two inner rows)</td></tr>
+  <tr><td>1x8 female socket, 2.54 mm pitch, 8.5 mm tall</td><td>2</td><td>J_DFA, J_DFB: the DFPlayer</td></tr>
+  <tr><td>5.08 mm screw terminal block, 2-pole</td><td>6</td><td>J_IN (power in), J_O1-J_O4 (OUT1-OUT4), J_SPK</td></tr>
+  <tr><td>5.08 mm screw terminal block, 3-pole</td><td>3</td><td>J_R1, J_R2 (RLY1, RLY2), J_PX (PIXEL)</td></tr>
+  <tr><td>5.08 mm screw terminal block, 5-pole</td><td>optional</td><td>J_RAIL (power out to a small accessory)</td></tr>
+  <tr><td>1x11 male pin header, 2.54 mm</td><td>optional, 3</td><td>J_XS, J_XV, J_XG: the S / V / G expansion rows (sensors and add-ons)</td></tr>
+</table>
+<p>The terminal holes are 1.6 mm. A 5.08 mm terminal block fits, or you can solder a 16 AWG stranded wire straight into the holes.</p>
+
+<h3>1c. Case hardware (from the enclosure README and <code>design.toml</code>)</h3>
+<table>
+  <tr><th>Item</th><th>Qty</th><th>For</th></tr>
+  <tr><td>M3 heat-set insert, M3 x 5.7 short (4.0 mm hole)</td><td>4</td><td>the board standoffs</td></tr>
+  <tr><td>M3 x 6 pan-head screw</td><td>4</td><td>the board onto the standoffs</td></tr>
+  <tr><td>M3 x 20 pan-head screw, or #4 x 3/4 in pan head</td><td>2</td><td>hinge pins (no nuts: each threads into the far knuckle)</td></tr>
+  <tr><td>M3 x 20 pan-head screw, or #4 x 3/4 in pan head</td><td>8</td><td>latch pivots and keepers (no nuts)</td></tr>
+  <tr><td>M4 heat-set insert, M4 x 8.1 (5.6 mm hole)</td><td>2</td><td>one stop screw per faceplate</td></tr>
+  <tr><td>M4 x 10 flat head, 90° countersunk, stainless</td><td>2</td><td>the faceplate stop screws</td></tr>
+  <tr><td>Screw-on rubber foot, with M3 x 6-8 self-tapping (or #4) screw</td><td>4</td><td>one in each corner under the floor</td></tr>
+  <tr><td>Panel-mount female DC barrel jack, 12 mm cutout</td><td>7</td><td>OUT1-OUT4, RLY1, RLY2, PWR</td></tr>
+  <tr><td>Panel-mount 3.5 mm jack, 7.8-8 mm cutout</td><td>6</td><td>TRIG1, LINE, SPK, CC1, CC2, TRIG2</td></tr>
+  <tr><td>Panel-mount USB-C extension with nut (12 mm thread)</td><td>1</td><td>USB on the back plate</td></tr>
+  <tr><td>10 mm metal momentary push button, IP65, pre-wired</td><td>1</td><td>TRIG2 on the lid (10.4 mm hole, nut underneath)</td></tr>
+  <tr><td>Neutral-cure silicone, clear, outdoor</td><td>1 tube</td><td>the lid seal bead, sealing the jacks</td></tr>
+  <tr><td>Hook-up wire, heat-shrink, short 3.5 mm plug leads</td><td>as needed</td><td>panel jacks to the board (section 5)</td></tr>
+</table>
+<div class="check">the faceplate gasket. The README says it is not decided yet (a cured bead, cord or tubing in the 2 x 1 mm groove on the back of each plate). Try it on the rail coupon first.</div>
+<div class="check">the values <code>design.toml</code> lists as <b>assumed</b>: the USB-C extension's nut across corners (wall window 16 mm), and the lid button's head diameter (12 mm) and depth (20 mm).</div>
+
+<h3>1d. Tools</h3>
+<ul>
+  <li>Soldering iron, solder, side cutters, wire strippers. An M3 and an M4 heat-set insert tip (about 220 °C for PLA).</li>
+  <li>Multimeter. A bench power supply with a current limit is strongly recommended for the first power-on.</li>
+  <li>A 3D printer and Bambu Studio (the projects are set up for a Bambu Lab X1C with an AMS, for the two-colour labels).</li>
+  <li>OpenSCAD and Python 3, to build the print files (section 2).</li>
+</ul>
+
+<h2>2. Print the case</h2>
+<ol>
+  <li><b>Build the print files.</b> The STL and project files are not stored in git. In the repository, run <code>enclosure/tools/print_build.sh</code>.
+  It writes every STL into <code>enclosure/stl/</code> and the two Bambu Studio projects <code>specter-case.3mf</code> (printed hinge pin) and
+  <code>specter-case-everbilt.3mf</code> (pads for metal utility hinges, not measured yet). It also checks each part: closed, manifold, and sitting at z = 0.</li>
+  <li><b>Material.</b> PLA or PLA-CF while you try the fit. PETG or ASA for a case that lives outdoors: PLA softens in a sun-warmed box.</li>
+  <li><b>Print the two test coupons first</b> (<code>stl/coupon_seal.stl</code> and <code>stl/coupon_rail.stl</code>). The seal coupon tries one latch, its two screws and the bead.
+  The rail coupon tries the faceplate slide and its play (<code>rail_clr</code> 0.2 mm). Do this before the tub, which is the long print.</li>
+  <li><b>Open a project</b> in Bambu Studio (File → Open Project). It holds three plates: (1) both faceplates and the four latches, each latch with its own outer brim; (2) the tub; (3) the lid.
+  The labels are on filament 2: pick your real second filament (or sync the AMS) before slicing.</li>
+  <li><b>No supports anywhere.</b> Every overhang is 45° or a short bridge.</li>
+</ol>
+<table>
+  <tr><th>Part</th><th>File</th><th>On the bed</th><th>Size (from the README)</th></tr>
+  <tr><td>Tub</td><td><code>stl/tub.stl</code></td><td>floor down</td><td>199.8 x 160.8 x 52 mm (223 x 173 mm with the latch ears, rails and knuckles)</td></tr>
+  <tr><td>Lid</td><td><code>stl/lid.3mf</code></td><td>top face down</td><td>title and "TRIG2" inlaid 0.4 mm, on filament 2</td></tr>
+  <tr><td>Front plate</td><td><code>stl/plate_front.3mf</code></td><td>show face down</td><td>154.2 x 30.5 mm, 3 mm thick: TRIG1 (8 mm), RLY1, RLY2, OUT1-OUT4 (12 mm)</td></tr>
+  <tr><td>Back plate</td><td><code>stl/plate_back.3mf</code></td><td>show face down</td><td>159.7 x 31.9 mm: LINE, SPK, CC1, CC2, TRIG2 (8 mm), PWR (12 mm), USB (12.4 mm)</td></tr>
+  <tr><td>Latch lever</td><td><code>stl/latch.stl</code> x 4</td><td>on its side</td><td>give each an outer brim</td></tr>
+</table>
+<p><b>Print settings.</b> The README gives two sets. Follow the one for the route you take:</p>
+<ul>
+  <li><b>The project files</b> carry their own settings: X1C 0.4 mm nozzle, 0.20 mm "Strength" profile, PLA-CF, textured PEI plate, auto brim 5 mm, 6 walls, 25 % grid infill.</li>
+  <li><b>Your own plates from the single parts:</b> 0.2 mm layers; brim 5-8 mm on the tub (a 200 mm footprint: ASA lifts without it); 4 walls (the 2.4 mm walls are 6 lines of 0.42 mm); 15 % gyroid; no supports.
+  Plates and lid on textured PEI, so the bottom-layer text comes out crisp.</li>
+</ul>
+<div class="check">which print settings give the better tub. The README's two sets differ (6 walls and 25 % grid in the project, 4 walls and 15 % gyroid for single parts). Report the one you used.</div>
+
+<h2>3. Solder the board</h2>
+<figure>
+  <img src="img/board-top.png" alt="Top silkscreen of the board, with every connector label: PIXEL, TRIG2, CONTACT1, CONTACT2, RAILS, power in and SPK along the back edge; TRIG1, RLY1, RLY2 and OUT1 to OUT4 along the front edge; the module sockets at the left, the DFPlayer at the right">
+  <figcaption>The board's top silkscreen (from the KiCad file). The rev A silkscreen spells the name "SPECTRE"; the correct spelling is Specter. Back edge at the top, front edge at the bottom. The module sockets are at the left (ANTENNA end), the DFPlayer at the right.</figcaption>
+</figure>
+<ol>
+  <li><b>Check the board first</b> (hardware README, "First-board checks"): look for solder bridges, especially between the RAILS +5V and +3V3 pads, the expansion header +5V and GND, and DFPlayer socket pins 3-5.</li>
+  <li><b>Module sockets.</b> Solder only the pair for your module:
+    <ul>
+      <li><b>ESP32 DevKit:</b> two 1x15 sockets in the two <b>outer</b> rows, J_DKN and J_DKS.</li>
+      <li><b>Pico:</b> two 1x20 sockets in the two <b>inner</b> rows, J_PIN and J_PIS.</li>
+    </ul>
+    Tip: plug the module into the loose sockets, set them in the board, and solder one pin at each end first. The sockets then stay straight and in line.</li>
+  <li><b>DFPlayer sockets.</b> Two 1x8 sockets at J_DFA and J_DFB (the right-hand end, marked DFPLAYER).</li>
+  <li><b>Screw terminals.</b> Fit each block with its wire entries facing the nearest board edge. Solder the 2-pole blocks at power in, OUT1-OUT4 and SPK, and the 3-pole blocks at RLY1, RLY2 and PIXEL.
+  Use solder generously on the power in and OUT terminals: they carry up to 10 A and 5 A.</li>
+  <li><b>Optional:</b> the RAILS 5-pole block and the three 1x11 expansion headers.</li>
+</ol>
+<div class="check">that a 30-pin DevKit fits the J_DKN / J_DKS rows. The rows are 25.4 mm apart, and the board's part library marks that DevKit row spacing as unverified. 30-pin DevKits differ between makers, so try your module in the sockets before you solder them.</div>
+<div class="check">the DevKit clears relay K1 (the hardware README expects about 2.8 mm), and the terminal blocks' pins fit the 1.6 mm holes (a typical terminal block's pin size is not verified).</div>
+
+<h2>4. Fit the module and the sound module</h2>
+<ol>
+  <li><b>Load the firmware onto the module first</b>, over its own USB lead, following the firmware's README.
+  <div class="check">the firmware instructions for your module. The firmware is not in the board repository yet, and it has run only in the simulator.</div></li>
+  <li><b>Power off.</b> Plug the module into its sockets:
+    <ul>
+      <li>the <b>antenna end</b> at the board's left edge, inside the box marked <b>ANTENNA</b>, and the USB end toward the middle of the board;</li>
+      <li>DevKit: its <b>EN</b> pin (pin 1) at the left end of the lower row, at the "1" mark;</li>
+      <li>Pico: its pin 1 (GP0) at the right end of the upper Pico row, at the "1" mark (the silkscreen reads "PICO: GP16 = pin 21 (W)").</li>
+    </ul></li>
+  <li><b>DFPlayer:</b> pin 1 (VCC) at the left end of the lower row, at its "1" mark, so the <b>microSD slot faces the right-hand board edge</b> ("SD CARD &gt;&gt;").</li>
+  <li><b>The SD card.</b> A microSD card formatted FAT32. The module plays files by number: a folder named <code>01</code> holding <code>001.mp3</code>, <code>002.mp3</code> … (any text may follow the digits).
+  The firmware's sound steps choose the folder and the track number.
+  <div class="check">the largest card size your DFPlayer (or clone) accepts. 32 GB or smaller is the usual safe choice.</div></li>
+</ol>
+
+<h2>5. Wire the panel jacks</h2>
+<p>The case's jacks sit in the two faceplates. Short wires join each one to the board. Wire them while there is room, before the board goes onto its standoffs.</p>
+<table>
+  <tr><th>Panel jack</th><th>Wire to the board</th></tr>
+  <tr><td>OUT1-OUT4 (DC barrel)</td><td>the OUT terminal. The silkscreen reads <b>+ OUT1 −</b>: + is the switched supply, − is ground.</td></tr>
+  <tr><td>RLY1, RLY2 (DC barrel)</td><td>two of the relay terminal's three contacts, marked <b>NO COM NC</b>. COM and NO close when the relay turns on.</td></tr>
+  <tr><td>PWR (DC barrel)</td><td>the power input terminal, marked <b>− 9-24V IN +</b>. That terminal is rated 10 A; the on-board barrel jack is rated 5 A.</td></tr>
+  <tr><td>TRIG1, TRIG2, CC1, CC2, LINE (3.5 mm)</td><td>the matching 3.5 mm jack on the board (TRIG1, TRIG2, CONTACT1, CONTACT2, LINE OUT), with a short lead that has a 3.5 mm stereo (TRS) plug at the board end.</td></tr>
+  <tr><td>SPK (3.5 mm)</td><td>the SPK terminal. Neither speaker wire is ground: <b>never join an SPK wire to ground</b>.</td></tr>
+  <tr><td>USB (USB-C extension)</td><td>the module's USB socket.</td></tr>
+  <tr><td>Lid push button</td><td>TRIG2 (the button closes TRIG2's tip to its sleeve).</td></tr>
+</table>
+<p>Use wire sized for the current: the hardware README sizes the board's own copper for 10 A on the power input and 5 A per OUT. A 16 AWG wire fits the terminal holes.
+The case has no openings for the PIXEL or RAILS terminals.</p>
+<div class="check">the barrel polarity: wire + to the centre pin of every DC barrel jack (the usual rule), and label it inside the lid.</div>
+<div class="check">which two relay contacts go to each RLY barrel jack (COM and NO, or COM and NC). The enclosure files do not say. Write your choice inside the lid.</div>
+<div class="check">how the panel 3.5 mm jacks join the board's on-board jacks, which tip, ring and sleeve contacts of the SPK panel jack carry the two speaker wires, and how the lid button joins TRIG2 alongside the back TRIG2 jack (in parallel).</div>
+<div class="check">the current rating of the panel barrel jacks against the 5 A OUT rating and the 10 A input. If a jack is rated lower, that jack is the limit.</div>
+<div class="check">the USB-C extension against your module's USB socket. Many DevKits have micro-USB, and Picos have micro-USB too: you may need an adapter lead.</div>
+
+<h2>6. Assemble the case</h2>
+<figure style="max-width:55%;margin:0 auto">
+  <img src="img/tub.jpg" alt="Model of the open tub, showing the rim groove, the standoffs and the faceplate rails">
+  <figcaption>The tub model: the standoffs, the rails for the faceplates, and the seal groove round the rim.</figcaption>
+</figure>
+<p>In this order (enclosure README, "Assembly order"):</p>
+<ol>
+  <li>Press the four <b>M3 heat-set inserts</b> into the board standoffs.</li>
+  <li>Set the two <b>M4 inserts</b> from outside with the soldering iron (M4 tip, about 220 °C for PLA), flush with the wall. Put the gasket in the plates' back grooves.</li>
+  <li><b>Slide each faceplate</b> in from the right-hand end of the box (seen from the front) until it meets the stop block, and fix it with one M4 x 10 flat-head screw near the open end.</li>
+  <li><b>Fit the jacks:</b> push each panel jack through its wall window and the plate's cutout <b>from inside</b> the box, and tighten its nut on the outside face.
+  The jacks go in after the plate: a plate with its jacks already in will not slide past the windows. Wire them (section 5).
+  Then put the board on the standoffs with four M3 x 6 screws, and wire it.</li>
+  <li><b>Lid:</b> fit the push button (its O-ring on top, the nut underneath). Pin the lid on: one M3 x 20 (or #4 x 3/4 in) pan-head screw through each hinge's three knuckles, threaded into the far one.</li>
+  <li><b>Latches:</b> on each of the four levers, one screw through the pair of tub ears and the lever (the pivot), and one across the pair of lid lugs (the keeper), each threaded into the far ear.</li>
+  <li><b>Seal:</b> fill the rim groove flush with neutral-cure silicone. Let it cure for <b>24 h with the lid open</b>. Silicone that cures against the lid's tongue glues the lid shut. Then close the lid: the tongue squeezes the cured bead.</li>
+  <li><b>Feet:</b> screw a rubber foot into each corner boss from underneath (blind 2.5 mm pilots, 7 mm deep).</li>
+</ol>
+<div class="check">the latch and seal fit on the seal coupon, and the faceplate slide on the rail coupon, before you print the tub. The inside depth in front of and behind the board is 38 mm, for the jacks and their wiring (the DC jacks are 30.7 mm long): check that your jacks and leads fit.</div>
+
+<h2>7. First power-on check</h2>
+<p>Do this on the bench, with the lid open, and with no loads plugged in.</p>
+<ol>
+  <li><b>Without the modules.</b> Leave the controller module and the DFPlayer out. Set the bench supply to 12 V with a low current limit. Connect it to the power input: <b>+ to +</b> (the board has no reverse-polarity protection).</li>
+  <li>Measure against <b>TP5</b> (GND): <b>TP1</b> = the supply voltage (+VIN), <b>TP2</b> = about 5 V (+5V). <b>TP3</b> (+3V3) stays near 0 V for now: the 3.3 V comes from the controller module.
+  If TP2 is not about 5 V, or the supply hits its current limit, switch off and look for a bridge.</li>
+  <li><b>Switch off.</b> Fit the controller module and the DFPlayer (section 4). Switch on again. TP3 should now read about 3.3 V.</li>
+  <li><b>Join its Wi-Fi.</b> The board always makes its own network <b>Proptroller-</b> plus 4 characters<!-- verify against final UI -->, password <code>password</code> (a simple default: change it under Settings &rarr; Wi-Fi &rarr; Setup hotspot password).
+  Join it with a phone and open <code>http://192.168.4.1/</code>. (A Pico or Pico 2 without W has no Wi-Fi: it talks over USB only.)</li>
+  <li><b>Live tab:</b> the page shows the board's status.
+  Plug a button into TRIG1 and press it: the TRIG1 input lights on the page<!-- verify against final UI -->.
+  Switch an output on from the <b>Outputs</b> test controls<!-- verify against final UI -->: its LED on the board lights, and a relay clicks.</li>
+  <li><b>Sound:</b> connect a passive speaker to SPK, then use <b>Play</b><!-- verify against final UI --> on the Live tab (folder 1, track 1).</li>
+  <li><b>Loads:</b> choose every load within the ratings (section 8): <b>5 A</b> continuous per output (7.5 A for 0.5 s), <b>10 A</b> at most for the whole board, relays <b>10 A at 30 V DC or less</b>. The board does not limit the current itself.</li>
+</ol>
+<figure style="max-width:40%;margin:0 auto">
+  <img src="img/phone-live.png" alt="The phone page's Live tab: status, shows, inputs TRIG1, TRIG2, USER1 to USER3, outputs">
+  <figcaption>The phone page, Live tab (from the simulator).</figcaption>
+</figure>
+<div class="check">every step above on the first real board, and report the readings: the hardware README's first-board checks also ask for the DFPlayer TX level (about 3.3 V on J_DFA pin 3),
+the 5 V drop at the PIXEL and RAILS terminals with about 2 A load, the buck converter's ripple, and the temperature of a 10 A output load path.</div>
+
+<h2>8. Ratings to remember</h2>
+<table>
+  <tr><th>Item</th><th>Rating (hardware README)</th></tr>
+  <tr><td>Power in</td><td>9-24 V DC. Barrel 5 A, screw terminal 10 A board total. TVS surge clamp only: no fuses.</td></tr>
+  <tr><td>OUT1-OUT4</td><td>switched +VIN, 5 A each continuous, 7.5 A for 0.5 s, all together 10 A or less. Dimming (PWM): 1 A at 24 V, 2 A at 12 V.</td></tr>
+  <tr><td>RLY1, RLY2</td><td>dry contacts COM / NO / NC, 10 A, 30 V DC or less only</td></tr>
+  <tr><td>CONTACT1, CONTACT2</td><td>isolated closures on 3.5 mm: tip +, sleeve −, 30 V DC and 50 mA at most</td></tr>
+  <tr><td>TRIG1, TRIG2</td><td>3.5 mm: tip = input (closes to sleeve), ring = 3.3 V through 220 &Omega;, sleeve = ground</td></tr>
+  <tr><td>SPK</td><td>3 W into 4 &Omega;, bridge-tied: never ground either wire</td></tr>
+  <tr><td>PIXEL</td><td>5 V, 1 A from the board. Fit a 470-1000 µF capacitor at the strip, and plug or unplug the strip only with power off.</td></tr>
+</table>
+
+</body>
+</html>

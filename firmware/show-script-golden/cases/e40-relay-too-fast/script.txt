@@ -1,0 +1,13 @@
+effect a:
+  wait for trig1
+  rly1 = on
+  rly1 = off
+  rly1 = on
+  sleep 0.05
+  rly1 = off
+  sleep 0.1
+  rly2 = on
+  sleep 0.02
+  rly2 = on
+  wait for trig2
+  rly2 = off

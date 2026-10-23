@@ -1,0 +1,3 @@
+effect a:
+wait for trig1
+dmx1 = on

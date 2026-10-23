@@ -1,0 +1,9 @@
+effect a:
+wait for trig1
+out1 = on
+sleep 200 ms
+out1 = off
+sleep 0.4
+out1 = on
+sleep 0.25 s
+out1 = off

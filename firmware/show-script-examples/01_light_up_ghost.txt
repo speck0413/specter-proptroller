@@ -1,0 +1,19 @@
+# 01 Light-up ghost: a motion sensor lights a ghost, which fades out again.
+#
+# Wiring:
+#   motion sensor (dry contact or open-collector output)   -> TRIG1 jack (tip and sleeve)
+#   12 V LED strip inside the ghost: + to OUT1 +, - to OUT1 -
+#   power the board from 12 V (OUT1 gives the board's supply voltage). Fading dims the strip: keep it to
+#   2 A or less (1 A on a 24 V supply).
+#
+#        [motion sensor]--TRIG1        OUT1--[12 V LED strip]
+#
+# The sensor holds its contact closed while it sees someone: the ghost lights once per visit,
+# and the 20 s sleep at the end is a rest before it can light again.
+
+effect ghost:
+  wait for trig1
+  fade out1 to 100% over 1.5
+  sleep 6
+  fade out1 to 0% over 3
+  sleep 20

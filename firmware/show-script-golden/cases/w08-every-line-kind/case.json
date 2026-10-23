@@ -1,0 +1,80 @@
+{
+  "spec": [
+    "SS-L"
+  ],
+  "sounds": {
+    "rain.mp3": 4
+  },
+  "settings": {
+    "buttons": "triggers"
+  },
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "all",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "wait_for",
+              "input": "USER2"
+            },
+            {
+              "line": 3,
+              "op": "set",
+              "target": "OUT2",
+              "level": 300
+            },
+            {
+              "line": 4,
+              "op": "fade",
+              "target": "OUT2",
+              "level": 800,
+              "ms": 1500
+            },
+            {
+              "line": 5,
+              "op": "flicker",
+              "target": "OUT2",
+              "ms": 3000
+            },
+            {
+              "line": 6,
+              "op": "audio_loop",
+              "sound": 4
+            },
+            {
+              "line": 7,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 8,
+              "op": "audio_stop"
+            },
+            {
+              "line": 9,
+              "op": "audio_single",
+              "sound": 7
+            },
+            {
+              "line": 10,
+              "op": "audio_single",
+              "sound": 12
+            },
+            {
+              "line": 11,
+              "op": "set",
+              "target": "OUT2",
+              "level": 0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

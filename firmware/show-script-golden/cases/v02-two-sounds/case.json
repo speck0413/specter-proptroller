@@ -1,0 +1,19 @@
+{
+  "spec": [
+    "SS-R7"
+  ],
+  "sounds": {},
+  "settings": {
+    "buttons": "triggers"
+  },
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      {
+        "line": 8,
+        "message": "line 8: effects \"a\" and \"c\" both play sound. There is one sound player: a new sound replaces the one playing."
+      }
+    ]
+  }
+}

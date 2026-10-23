@@ -1,0 +1,20 @@
+{
+  "spec": [
+    "SS-C4",
+    "SS-W1"
+  ],
+  "sounds": {
+    "chime.mp3": 1
+  },
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: there is no sound called \"Chime.mp3\". Use its number: \"audio_single = 1\" plays /01/001.mp3 (the desktop app copies named sounds to the card and lists them)."
+      }
+    ],
+    "warnings": []
+  }
+}

@@ -1,0 +1,8 @@
+POST /api/v1/update HTTP/1.1
+Content-Type: application/octet-stream
+Content-Length: 40
+X-Proptroller-Sha256: 0000000000000000000000000000000000000000000000000000000000000000
+
+PROPTROLLER-SIM-IMAGE
+{"mcu":"sim"}
+xxxx

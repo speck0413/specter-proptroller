@@ -1,0 +1,26 @@
+{
+  "name": "Ambient loop under a scene; a prop button pressed by a relay; pixels",
+  "settings": [{"key": "pixel_count", "value": 8}],
+  "shows": [
+    {"id": 9, "name": "Ambient", "priority": 0, "looping": true, "length_ms": 2000,
+     "triggers": [{"on": "boot"}],
+     "tracks": [
+       {"target": "OUT3", "cues": [{"at": 0, "do": "level", "level": 250}]},
+       {"target": "PIXEL", "cues": [{"at": 0, "do": "flicker", "color": "#ff6000"}]}
+     ]},
+    {"id": 1, "name": "Prop button", "cooldown_ms": 1000,
+     "triggers": [{"on": "input", "input": "TRIG2"}],
+     "tracks": [
+       {"target": "RLY2", "cues": [{"at": 0, "do": "pulse", "ms": 3000}]},
+       {"target": "OUT3", "cues": [{"at": 0, "do": "on"}, {"at": 2000, "do": "off"}]}
+     ]}
+  ],
+  "steps": [
+    {"at": 500, "do": "expect", "levels": {"OUT3": 250, "RLY2": 0}},
+    {"at": 1000, "do": "press", "input": "TRIG2", "ms": 150},
+    {"at": 1200, "do": "expect", "levels": {"OUT3": 1000, "RLY2": 1000}},
+    {"at": 3500, "do": "expect", "levels": {"OUT3": 0, "RLY2": 1000}},
+    {"at": 4300, "do": "expect", "levels": {"OUT3": 250, "RLY2": 0}}
+  ],
+  "until": 5000
+}

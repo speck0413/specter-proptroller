@@ -1,0 +1,20 @@
+# Lamp and prop for lab room 1: TRIG2 (motion) flickers the lamp on OUT3, TRIG1 presses a battery prop's
+# "try me" button through RLY1.
+# Wiring and safety notes: firmware/show-script-examples/03 and 04.
+
+effect lamp:
+  wait for trig2
+  out3 = 70%
+  audio_single = 1
+  flicker out3 for 4
+  out3 = 70%
+  sleep 10
+  fade out3 to 0% over 2
+  sleep 5
+
+effect prop:
+  wait for trig1
+  rly1 = on        # presses the prop's button
+  sleep 0.5
+  rly1 = off
+  sleep 60         # rest before the next scare

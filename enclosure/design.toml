@@ -1,0 +1,355 @@
+# Specter case: every number you'd want to change, in one place.
+#
+# Edit a value, then run   tools/print_build.sh
+# It rebuilds every STL, the Bambu Studio projects and the params files the model reads.
+#
+# The path runs top to bottom: the parts you measured set (through [fit]) every hole they pass through; the connectors,
+# box, plates, seal, lid, hinge and latches follow. Change one fit and every hole of that kind follows. Millimetres
+# throughout. The board's outline and mounting holes come from the board itself (../hardware/kicad/proptroller.ir.json).
+
+[case]
+ac = false         # false: the standard (DC) case. true: the AC case, ADVANCED and for rev B boards only (README: "AC case
+                   # (advanced)"), with the overrides in [ac] at the end. It only picks what params.scad (and so the
+                   # model opened in OpenSCAD) shows: tools/print_build.sh builds both cases every time.
+
+# ------------------------------------------------------------------ 1. your parts (caliper readings)
+# "assumed" lists the values not measured yet.
+
+[parts.j35p]       # panel-mount 3.5 mm jack: every 3.5 mm socket on both plates, the relay outputs included
+name = "Panel-mount 3.5 mm stereo (TRS) jack"   # three conductors: TRIG1/TRIG2 use tip, ring and sleeve, so the part is TRS
+hole_d = 8.0       # the cutout (the listing says 7.8): the width fits (owner 2026-10-21)
+behind_d = 9.8     # the widest part behind the plate, which the wall's window clears: the jack's round back, 9.8 mm (owner
+                   # 2026-10-22: it didn't pass the 9.2 mm window)
+rating_a = 0.3     # contact rating, A and V DC: the relay outputs through the case are limited to this, not to the relay's
+rating_v = 30.0    # rating. Yours isn't recorded: these are the lowest of comparable TRS jacks' listings (README: Relay outputs)
+assumed = ["rating_a", "rating_v"]
+
+[parts.dcp]        # panel-mount female DC barrel jack: every DC jack on both plates (the outputs and PWR)
+name = "Panel-mount female DC barrel jack (flange outside, nut inside)"
+hole_d = 12.0      # the cutout, per the listing
+thread_l = 9.0     # its thread, measured (owner 2026-10-21): 8.5 or more lets the nut tighten on the wall's inside face
+behind_d = 12.0    # its nut is INSIDE (owner 2026-10-20), tightened on the wall's inside face: the window only clears the
+                   # thread, and the nut clamps plate and wall together. Needs a thread of 8.5 mm or more (plate 3 + wall 2.4
+                   # + the nut). 17.5 would clear the nut (17.3 across its corners) in the window, but those windows push the
+                   # back plate's seal into its top screws (2026-10-22): it doesn't build as the plates stand
+nut_c = 17.3       # the nut across its corners (M12 x 0.75, 15 across flats): neighbouring DC jacks at least this + 1.5 apart
+assumed = ["nut_c"]
+
+[parts.usb]
+name = "Panel-mount USB-C extension (stock, nut)"
+hole_d = 12.0      # its thread
+window = 16.0      # the wall window behind it: must pass the nut
+assumed = ["window"]
+
+[parts.button]     # TRIG2 on the lid
+name = "APIELE 10 mm metal momentary push button, IP65"
+x = 137.0          # where it sits, over the board: board x, and y from the board's back edge (clear of the DFPlayer and the
+y = 6.0            # speaker jack below; an arcade button there was too tight)
+thread_d = 10.0
+head_d = 12.0
+body_d = 10.0
+depth = 20.0
+assumed = ["head_d", "depth"]
+
+[parts.hinge]      # only for the Everbilt version
+name = "Everbilt 1 in narrow utility hinge (1005694757)"
+leaf_l = 25.4
+leaf_w = 12.7
+holes = [-7, 7]    # screw holes along the knuckle, from the hinge's centre
+hole_inset = 6.0   # from the knuckle line
+pilot_d = 1.6
+assumed = ["leaf_l", "leaf_w", "holes", "hole_inset", "pilot_d"]
+
+[parts.outlet]     # AC case only: a standard duplex NEMA 5-15R receptacle (two round-ended faces, not the Decora kind), on its side
+name = "Duplex receptacle, NEMA 5-15R, 15 A 125 V, standard (not Decora), side-wired"
+face_w = 34.1      # each face across the strap: a standard duplex wallplate's opening, 1.343 in
+face_h = 28.6      # each face along the strap, 1.125 in
+face_pitch = 38.1  # face centre to face centre, 1.5 in (a duplex wallplate's)
+open_m = 0.25      # the plate's openings: this much round each face
+screw_pitch = 83.3 # the strap's two mounting slots, 3-9/32 in apart; the faceplate screw is tapped midway between the faces
+screw_d = 3.7      # #6-32 clearance, through the plate and the wall
+screw_head = 7.0   # #6-32 flat head, 82 degrees (0.262 in): countersunk flush in the plate
+strap_l = 98.0     # the strap end to end with its plaster ears snapped off
+strap_w = 24.0     # the strap's width at its ends
+body_w = 36.0      # the body behind the strap, across it
+body_l = 66.0      # and along it
+body_d = 31.0      # how far the body (and its side terminal screws) reaches in behind the strap
+face_proud = 5.65  # how far the faces stand in front of the strap's front face: MEASURE IT. The strap then sits so the faces
+                   # come out [ac] face_set proud of the plate (a recess in the wall's inside face, or pads on it)
+assumed = ["strap_l", "strap_w", "body_w", "body_l", "body_d", "face_proud"]
+
+[parts.gland]      # AC case only: the cord's way in, through the left wall into the mains bay
+name = "M20 x 1.5 nylon cable gland, IP68, with locknut, 6-12 mm cable"
+hole_d = 20.5      # its thread, plus play
+nut_d = 30.0       # the locknut across its corners, inside the wall
+cap_d = 27.0       # the dome nut and body hex across corners, outside
+y = 102.0          # its centre: y from the board's back edge (the wall's mains stretch runs from 83 to the front)
+z = 19.5           # its centre above the bed: the locknut clears the floor fillet, the cap the latch ears
+assumed = ["nut_d", "cap_d"]
+
+# ------------------------------------------------------------------ 2. fits
+[fit]
+hole_fit = 0.2     # added all round to the USB and button holes
+win_m = 0.6        # wall window margin round what sits behind a panel jack
+pin_clr = 0.15     # the faceplates' guide pins: play all round in their wall holes
+
+# ------------------------------------------------------------------ 3. holes (derived from 1 and 2; set one here to override it)
+[holes]
+# usb = 12.4            # default: usb.hole_d + 2 * hole_fit
+# button = 10.4         # default: button.thread_d + 2 * hole_fit
+screw = 3.4             # faceplate screws (mount = "screws"): M3 clearance
+screw_head = 6.3        # countersink at the show face for M3 flat heads (ISO 10642 / DIN 7991: 6.0 head, 90 degrees), so they sit flush
+screw_head_angle = 90.0
+screw_head_type = "flat"  # the faceplate screws' heads: "flat" (countersunk flush, as above) or "pan" (a plain hole; the head
+                        # sits on the show face, about 2 mm proud: most #4-40 machine screws are pan heads, owner 2026-10-22)
+plate_nut = "M3"        # mount = "screws": the faceplate screws go through the wall and the boss into a hex nut in a pocket on
+                        # the boss's inside end (owner 2026-10-22: nuts are easier to get than heat-set inserts): "M3" (5.5 mm
+                        # across flats; M3 x 12 flat heads) or "#4" (#4-40, 1/4 in across flats; #4-40 x 1/2 in flat heads; set
+                        # [box] boss_w = 11.0, boss_h = 9.2, boss_len = 4.3 with it: checked to build). The AC
+                        # case's front-plate bosses in the mains bay keep blind heat-set inserts (no nut or screw end in the bay)
+nut_clr = 0.2           # the nut pocket's play on each flat
+insert = 4.0            # M3 heat-set insert (M3 x 5.7, the same as the board standoffs')
+insert_depth = 6.5      # from the wall's outside face; blind, 0.8 mm closed behind
+standoff = 4.0          # board standoffs: 4.0 = M3 heat-set insert (M3 x 5.7), 2.6 = M3 self-tapping screw
+standoff_depth = 7.0
+pin = 3.3               # hinge and latch pins: 3.3 = M3 or #4 screw clearance, 1.9 = 1.75 mm filament
+pin_pilot = 2.5         # the knuckle / ear the screw threads into (the one nearer the middle): taps an M3, and a #4 (2.84 mm) well enough
+plate_pilot = 2.5       # the faceplate screws' hole through the wall and the boss: undersized, so the screw taps it (owner 2026-10-22);
+                        # the nut in the boss's pocket is optional
+
+# ------------------------------------------------------------------ 4. box
+[box]
+clear_front = 38.0      # inside, from the board's front edge to the front wall (the DC jacks are 30.7 long)
+clear_back = 38.0
+wall = 2.4              # 6 lines of 0.42
+floor_t = 2.0
+corner_r = 4.0
+row_v = 12.0            # connector centres above the board top
+clear_left = 31.0       # inside, from the board's left edge to the left wall (seen from the front)
+clear_right = 30.0
+standoff_h = 10.0       # board bottom above the floor top
+inner_h = 51.0          # floor top to the rim (51: the screwed plates' top screws clear the lid skirt)
+ribs = [-40.0, 40.0]    # the end walls' inside ribs: along the wall, from its middle
+
+# rubber feet: a boss inside each corner of the floor with a blind pilot hole from underneath, for a screw-on foot
+[feet]
+feet_in = 12.0          # boss centre from the inside corner, each way
+feet_boss_d = 9.0
+feet_boss_h = 6.0       # above the floor
+feet_pilot = 2.5        # 2.5 = M3 self-tapping (or a #4 wood screw)
+feet_depth = 7.0        # pilot depth from the bottom (blind: the boss stays closed on top)
+
+# ------------------------------------------------------------------ 5. connectors
+# every panel jack: its wall, its kind (j35 = 3.5 mm, parts.j35p; dc = DC barrel, parts.dcp; usb), its centre along the
+# wall as board x (mm from the board's left edge, the same for both walls; with [plates] center_conns the row is then centred
+# on its wall) and the label printed above it. Labels are
+# kept short enough to fit above each jack at the full label_h. CC = contact closure, the show-control name for an
+# output that closes a circuit to trigger another controller.
+[connectors]
+TRIG1 = { face = "front", kind = "j35", x = 12.55, label = "TRIG1" }
+RLY1 = { face = "front", kind = "j35", x = 38.37, label = "RLY1" }   # TRS: tip = NO, ring = NC, sleeve = COM (the note below)
+RLY2 = { face = "front", kind = "j35", x = 56.37, label = "RLY2" }
+OUT1 = { face = "front", kind = "dc", x = 74.37, label = "OUT1" }   # 20.2 apart: room for each nut (nut_c + 1.5 or more, asserted)
+OUT2 = { face = "front", kind = "dc", x = 94.57, label = "OUT2" }
+OUT3 = { face = "front", kind = "dc", x = 114.77, label = "OUT3" }
+OUT4 = { face = "front", kind = "dc", x = 134.97, label = "OUT4" }
+TRIG2 = { face = "back", kind = "j35", x = 20.72, label = "TRIG2" }
+USB = { face = "back", kind = "usb", x = 36.72, label = "USB", enabled = false }   # the panel USB-C extension: off by default
+                        # (the DevKit's / Pico's own USB is reached with the lid open); true puts it back. Any connector
+                        # takes enabled = false
+CC2 = { face = "back", kind = "j35", x = 52.72, label = "CC2" }
+CC1 = { face = "back", kind = "j35", x = 64.72, label = "CC1" }
+PWR = { face = "back", kind = "dc", x = 100.69, label = "PWR" }
+SPK = { face = "back", kind = "j35", x = 118.46, label = "SPK" }
+LINE = { face = "back", kind = "j35", x = 146.0, label = "LINE" }
+
+# ------------------------------------------------------------------ 6. faceplates
+[plates]
+# Each faceplate goes straight onto the outside of its wall, located by two guide pins printed on its back (into holes
+# through the wall), and is held one of two ways:
+#   "glue"    bonded flat to the wall: CA for tack, a sealing adhesive in the groove round its back (README: Faceplates)
+#   "screws"  six countersunk M3s into heat-set inserts in bosses behind the wall, sealed in the wider groove (sg_ below) along
+#             the screw rows (the default)
+# The plate only changes by its screw holes and, for "screws", a band above and below for them. tools/print_build.sh
+# builds both (stl/*_screws.*); the Bambu projects use this one.
+mount = "screws"        # the default since 2026-10-20 (owner): the plate comes off again
+plate_t = 3.0
+plate_margin = 16.0     # at least this past the outer connector at each end (room for its label)
+plate_r = 3.0
+plate_chamfer = 1.0     # 45-degree chamfer round the plate's back edge: a channel for the glue's squeeze-out and a
+                        # sealant fillet, and room under the hinge supports on the back wall
+center_conns = true     # centre each wall's row of connectors on the wall ([connectors] x then sets only their spacing)
+pin_d = 4.0             # guide pins: printed upright on the back (round, layer by layer), chamfered tips
+pin_l = 4.0             # through the 2.4 mm wall and 1.6 mm on into the box (inside the seal ring, so the holes are sealed)
+pin_wall = 1.2          # least wall between a pin hole and a window
+pins = { front = [[18.2, 0.0], [77.21, -5.5], [117.61, -5.5]] }   # board x, mm above the connector row (owner 2026-10-22):
+                        # the front's end pin beside OUT4 left too thin a web to that window, which printed out of shape onto
+                        # the jack's nut; now: between TRIG1 and RLY1 as before, and between OUT1/OUT2 and OUT3/OUT4, low,
+                        # clear of the DC nuts (asserted). The back's two are placed by the rule below
+ring_m = 1.0            # the seal ring's inside edge, this far round the windows and pin holes
+ring_edge = 3.5         # the plate's bottom and end edges, this far past the ring: a 2.5 mm flat outside it, past the chamfer
+pg_w = 2.0              # the glued plate's groove round its back, inside the screws' place: the sealing adhesive's bead
+pg_d = 1.0
+# the screwed plate's seal groove (owner 2026-10-20: wider, and run where the screws clamp): one loop round the windows and
+# pins, its top and bottom runs on the screw rows, bending inward round each screw past a solid land; for butyl tape (the
+# default seal), wet silicone, soft tubing or the printed TPU gasket below (README "Sealing a screwed plate")
+sg_w = 3.5              # its width: a 2 mm strip cut from 1/8 in (3.2 mm) butyl tape fills it squeezed (tools/plate_fea.py --fill)
+sg_d = 1.6              # its depth (1.4 mm of plate left; 1.0 under the inlaid labels)
+sg_m = 2.0              # its inner edge at least this far from a DC jack's window (ring_m from the others and the pin holes):
+                        # squeezed-out sealant stays off the DC jacks' nuts
+sg_land = 3.6           # the solid plate left round each screw: its countersunk head (6.3) and 0.45
+sg_edge = 1.75          # the plate past the groove: the 1 mm back chamfer and a 0.75 mm flat
+sg_round = 1.2          # the loop's corners rounded by this much (smooth enough that the TPU lip never pinches)
+screw_layout = "six"    # mount = "screws": "six" = left, middle and right along the top and the bottom (owner 2026-10-20);
+                        # "pitch" (advanced) = as many as keep every gap along a row within screw_pitch
+screw_pitch = 36.0      # screw_layout = "pitch" only: the most between neighbouring screws along a row (tools/plate_fea.py)
+boss_w = 10.0           # the plate screws' bosses behind the wall: the nut pocket (a flat up) with 1.5 mm beside it, 1.2 over and under
+boss_h = 8.5
+boss_len = 4.75         # the nut pocket and 1.95 mm in front of it; short enough that the top row's wedges clear the windows
+j35_seat = 1.75         # the plate left where each 3.5 mm jack seats: a counterbore from the plate's back, the window's width,
+                        # so more of the jack's short thread reaches its nut on the show face (owner 2026-10-21)
+label_h = 4.0
+label_base = 9.1        # row 1 baseline above the connector row
+label_gap = 1.0         # between label rows
+label_rows = 2          # 2: crowded labels may take a second row, below the connectors
+inlay = 0.4             # text depth (bottom layers, second AMS filament)
+# extra text on a plate: centred under (row 2) or over (row 1) the connectors it names
+notes = [ { face = "front", under = ["RLY1", "RLY2"], text = "T=NO R=NC S=COM", size = 3.0, row = 2 } ]
+
+# the printed TPU 95A gasket for a screwed plate (stl/gasket_*.stl, printed flat on its own in TPU: README "Sealing a screwed plate"): a base
+# strip in the plate's groove and one thin lip leaning outward from its inner edge, which bends as the plate goes down on the
+# wall (tools/plate_fea.py --tpu sized it: a solid or hollow ring is far too stiff for six screws)
+[gasket]
+gasket_clr = 0.1        # the gasket's base this much narrower than the groove (sg_w) each side (TPU prints a little wide)
+gasket_base = 0.4       # the base strip's thickness (2 layers)
+gasket_h = 2.4          # base to lip tip: sg_d less than this is the squeeze when the plate is screwed flat (0.8 mm)
+gasket_lip = 0.45       # the lip's width in each layer (one line of a 0.4 nozzle)
+gasket_tip = 0.6        # the tip's outer edge this far in from the base's outer edge: room for it to swing out as it bends
+
+# ------------------------------------------------------------------ 7. seal
+[seal]
+land_w = 7.0
+land_h = 6.0
+groove_w = 3.0
+groove_d = 2.0
+tongue_w = 1.6
+tongue_h = 0.7          # the lid's tongue (owner 2026-10-21: EPDM foam tape is the default seal): 1/8 in (3.2 mm) closed-cell
+                        # foam in the 3 x 2 mm groove stands 1.2 proud; the tongue, 0.4 mm gap above the rim, presses it 1.5 mm
+                        # (47 %) when the lid is latched (was 1.5, for a bead filled flush). The tub's groove is unchanged
+foam_t = 3.2            # the default seal: closed-cell EPDM foam tape, 1/8 in thick (lid and screwed plates; README: Seal)
+seal_gap = 0.4
+
+# ------------------------------------------------------------------ 8. lid
+[lid]
+lid_t = 2.4
+lid_gap = 1.0
+skirt_t = 2.0
+drip = 4.0
+lid_rib_h = 5.0
+lid_rib_pitch = 40.0
+
+# ------------------------------------------------------------------ 9. hinge (printed)
+[hinge]
+knuckle_d = 8.0
+knuckle_off = 1.25      # axis out from the back wall (more gives the lid more room past the rim; above ~1.3 the tub knuckles need supports)
+pin_span = 20.4         # three knuckles and their two gaps, end to end: an M3 x 20 ends 0.4 mm inside the far one, a #4 x 3/4 in
+                        # pan head (19.05 under the head) 1.35 mm inside. knuckle_l follows: (pin_span - 2 * knuckle_gap) / 3
+knuckle_gap = 0.6       # all round each knuckle, and between them
+hinge_at = [0.3333, 0.6667]   # the two hinges' centres along the back edge, as fractions of its outside length (owner 2026-10-21: 1/3, 2/3)
+
+# ------------------------------------------------------------------ 10. latches
+[latch]
+latch_w = 10.0
+latch_drop = 12.0
+latch_bite = 0.4        # how far closing the latch squeezes the lid down
+latch_in = 30.0         # two on each end wall, this far in from the inside corners
+latch_lead = 0.5        # the hook still catches the keeper with the lid sitting this much high
+latch_detent = 0.4      # the dip in the hook's cam just before closed (the keeper's own cut takes some: it rides over ~0.2)
+latch_dip = 6.0         # degrees before closed where the dip bottoms out
+latch_travel = 16.0     # degrees the lever turns from first catching the keeper to closed
+# the draw latch (owner 2026-10-22; being tried on stl/coupon_latch.*, the screwed cam latch above stays on the case until
+# it passes): all plastic, no screws. A lever turns on a pin through two ears on the tub; a hook (two plates, one each side)
+# turns on a second pin low on the lever and reaches up over the lid's top edge. Pushing the lever's foot in against the wall
+# carries the hook's pin past the line from the lever's pin to where the hook bears (over centre): the hook pulls the lid
+# down dl_squeeze and the lever stays shut. Pull the foot out (about 60 degrees) and lift the hook off. The pins are printed
+# rods, glued with CA in the ears and in the hook plates, turning in the lever.
+latch_style = "cam"     # "cam": the screwed cam latch above; "draw": the draw latch (the coupon builds it either way)
+dl_drop = 16.0          # the lever's pin this far under the rim's top
+dl_out = 9.5            # and this far out from the wall's outside face
+dl_r = 7.5              # the lever's pin to the hook's pin
+dl_over = 15.0          # degrees the hook's pin closes past centre (towards the wall): the lock
+dl_squeeze = 0.5        # how far closing pulls the lid down past seated
+dl_reach = 2.6          # the hook's tip over the lid's top, in from its outside face
+dl_tip_t = 2.8          # the tip's thickness
+dl_pin = 4.0            # the printed pins (a 3 mm pin bends where the hook's crosses the ears' gap)
+dl_lever_t = 8.0        # the lever's width
+dl_ear_t = 4.0          # each tub ear's
+dl_plate_t = 3.5        # each hook plate's
+dl_gap = 0.4            # side play between the parts
+dl_ear_r = 4.0          # the ears round the lever's pin
+dl_boss_r = 4.2         # the lever and hook round their pins
+ear_t = 3.6             # the tub ear / lid lug on the screw-head side; the far one, which the screw threads into, takes
+                        # the rest of [hinge] pin_span, so the same M3 x 20 or #4 x 3/4 does every pivot and keeper
+
+# ------------------------------------------------------------------ 11. text
+[text]
+title = "SPECTER PROPTROLLER"
+
+# ------------------------------------------------------------------ 12. AC case (advanced, rev B boards only)
+# [case] ac = true, or the stl/*_ac.* parts the build always makes: README "AC case (advanced)". Mains comes in on a
+# 3-prong cord through a gland in the left wall ([parts.gland]) and goes out on one duplex receptacle on the front plate
+# ([parts.outlet]), its hot tab split so RLY1 switches the left face and RLY2 the right one. A printed barrier keeps the
+# mains bay (the front left: cord, receptacle, relay terminals) apart from the low-voltage side; the relay wires reach the
+# board through a window in it at J_R1 / J_R2 only. The tables below override the sections above of the same name.
+[ac]
+barrier_t = 2.0         # the barrier walls' thickness
+bay_cap = 2.0           # the screwed front plate's insert bosses in the mains bay: at least this much plastic behind the insert
+barrier_gap = 1.0       # from the board's front edge
+pocket_d = 34.0         # the low-voltage pocket round the board's TRIG1 jack (J_T1) at the board edge, this deep: room for the
+                        # end of TRIG1's lead (the same as in the standard case, only longer) to turn up and back over the board
+pocket_m = 4.0          # and this much wider than J_T1 each side
+window_top = 2.0        # the relay window's top edge above the terminal blocks, at its ends (45-degree haunches, 4 mm)
+sill_gap = 1.0          # the sill under the window stops this far under the board
+overlap = 3.0           # the barrier's top stands this far up beside the lid's ribs (one each side of it, rib_gap away)
+rib_gap = 0.5
+tie = [8.0, 8.0, 14.0, 5.0, 2.0]   # the tie points in front of J_R1 and J_R2: block width, depth, height above the floor;
+                        # the cable-tie slot through it, width and height
+face_set = 0.25         # the receptacle's faces this far proud of the plate's show face (0 to 0.5)
+earth_point = [4.0, 76.0]   # H3, front left: the board's plated earth point, tied to GND (../hardware/README.md). The earth
+                        # wire's ring terminal goes under H3's screw (M3 x 8, a lock washer under the head); in the AC case it
+                        # is required. The wire comes through a hole in the barrier's edge wall west of it (README: Earth)
+earth_hole = 3.2        # that hole: an 18 AWG green wire (2.2-2.8 mm over its insulation), the ring terminal crimped on after
+earth_west = 17.5       # the ring terminal's crimp end this far west of H3: the terminal (15-20 mm) lies flat on H3, tongue west
+earth_bend = 6.0        # the wire's turn from the hole (heading north) to east, onto the crimp: about 2.5x an 18 AWG wire
+earth_niche = 6.0       # the low-voltage niche the edge wall steps forward round, for that turn (its inside depth)
+earth2_point = [130.0, 4.0]  # H2, back right: the board's second plated earth point, on GND (hardware 3ec6fe1). A second earth
+                        # lead to it is required whenever a relay carries mains (K2's side reaches H3 only through 1.9 mm)
+earth2_back = 8.0       # its hole in the barrier's right wall, this far in front of the edge wall
+
+[ac.box]
+clear_front = 80.0      # a deeper front: the receptacle's body (31 mm), its wire nuts or lever connectors and 14 AWG bends
+inner_h = 68.0          # taller: the receptacle on its side (36 mm across) with its labels and rating, its terminal screws
+                        # and wiring under the mains-bay cover, and the cover under the rim land
+clear_right = 40.0      # 10 mm wider on the right: TRIG1 and the four DC jacks (their nuts inside) right of the barrier
+ribs = [-60.0, 40.0]    # the left wall's front rib moved clear of the gland's locknut
+
+[ac.plates]
+center_conns = { front = false, back = true }   # the AC front row is placed as given: the receptacle in the mains bay,
+plate_margin = { front = 12.0, back = 16.0 }    # the jacks right of the barrier. The back plate is the DC case's
+pins = { front = [[79.4, 14.0], [160.4, 14.0]] }   # board x, mm above the connector row: right of the barrier, clear of the
+                        # receptacle's strap; turned round, the second lands on solid wall left of the receptacle
+notes = [ { face = "front", under = ["OUTLET"], text = "120VAC 5A (3A IND) per outlet", size = 3.0, row = 2 } ]   # the rating,
+                        # inlaid under the receptacle: permanent
+
+[ac.feet]
+feet_boss_h = 9.0       # the front left foot is under the mains bay: a 4 mm cap over its pilot (README: foot screws)
+
+[ac.connectors]
+RLY1 = { enabled = false }   # the relays come out on the receptacle instead
+RLY2 = { enabled = false }
+OUTLET = { face = "front", kind = "outlet", x = 22.0, y = 3.5, label = "RLY1 RLY2" }   # x: its centre; y: above the row
+TRIG1 = { face = "front", kind = "j35", x = 83.0, label = "TRIG1" }   # all right of the barrier, on the low-voltage side
+OUT1 = { face = "front", kind = "dc", x = 97.3, label = "OUT1" }   # 19.7 apart: room for each nut (asserted)
+OUT2 = { face = "front", kind = "dc", x = 117.0, label = "OUT2" }
+OUT3 = { face = "front", kind = "dc", x = 136.7, label = "OUT3" }
+OUT4 = { face = "front", kind = "dc", x = 156.4, label = "OUT4" }

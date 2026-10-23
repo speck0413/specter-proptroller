@@ -1,0 +1,67 @@
+{
+  "spec": [
+    "SS-R2"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 2000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 2150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 5000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 5150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 7000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            1600,
+            0
+          ],
+          [
+            5100,
+            1000
+          ],
+          [
+            5600,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

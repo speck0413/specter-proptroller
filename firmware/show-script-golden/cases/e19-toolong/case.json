@@ -1,0 +1,21 @@
+{
+  "spec": [
+    "SS-W6"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: that is longer than 24 hours."
+      },
+      {
+        "line": 4,
+        "message": "line 4: that is longer than 24 hours."
+      }
+    ],
+    "warnings": []
+  }
+}

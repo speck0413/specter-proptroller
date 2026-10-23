@@ -1,0 +1,4 @@
+effect a:
+wait for trig1
+audio_single =
+audio_loop:

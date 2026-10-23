@@ -1,0 +1,4 @@
+effect a:
+wait for trig1
+out5 = on
+Relay1 = on

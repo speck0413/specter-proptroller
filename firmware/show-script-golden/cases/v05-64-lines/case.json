@@ -1,0 +1,12 @@
+{
+  "spec": [
+    "SS-C3"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": []
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C3"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 0,
+        "message": "the script is 8193 bytes. A board takes at most 8192."
+      }
+    ],
+    "warnings": []
+  }
+}

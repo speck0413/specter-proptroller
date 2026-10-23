@@ -1,0 +1,4 @@
+effect a:
+wait for trig1
+rly2 = on
+rly2 = off

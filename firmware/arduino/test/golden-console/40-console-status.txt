@@ -1,0 +1,12 @@
+presses=0
+runs_left=3
+cooldown_remaining_ms=0
+pulsing=false
+recovering=false
+ready=true
+remote_trigger_enable=false
+remote_trigger_by=
+queued=false
+runs_since_power_on=1
+runs_lifetime=1
+last_run_uptime_ms=2110

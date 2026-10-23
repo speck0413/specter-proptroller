@@ -1,0 +1,5 @@
+effect a:
+wait for user1
+out3 = on
+sleep 1
+out3 = off

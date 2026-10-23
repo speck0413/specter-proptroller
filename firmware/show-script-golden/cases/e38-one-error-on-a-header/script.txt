@@ -1,0 +1,3 @@
+effect a
+out1 = on
+out1 = off

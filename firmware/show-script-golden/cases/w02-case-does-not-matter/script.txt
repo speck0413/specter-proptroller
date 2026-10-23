@@ -1,0 +1,13 @@
+EFFECT Porch Light:
+  WAIT FOR TRIG1
+  OUT1 = ON
+  AUDIO_SINGLE = chime.mp3
+  Sleep 30
+  FADE Out1 TO 0% OVER 2
+
+Effect FOG:
+  Wait For Trig2
+  RLY1 = On        # presses the fog machine's remote button
+  SLEEP 3
+  rly1 = OFF
+  sleep 60

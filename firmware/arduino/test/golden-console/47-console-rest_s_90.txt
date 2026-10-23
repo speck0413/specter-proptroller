@@ -1,0 +1,1 @@
+error: rest_s: Recovery time (OUT2) is set to 90 s but the board allows 0-60 s; lower it in Settings → Effect

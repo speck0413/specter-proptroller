@@ -1,0 +1,37 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: to play a sound, write \"audio_single = 1\"."
+      },
+      {
+        "line": 4,
+        "message": "line 4: to wait a time, write \"sleep 3\"; to wait for an input, write \"wait for trig1\"."
+      },
+      {
+        "line": 5,
+        "message": "line 5: to wait a time, write \"sleep 3\"."
+      },
+      {
+        "line": 6,
+        "message": "line 6: to wait a time, write \"sleep 2 s\"."
+      },
+      {
+        "line": 7,
+        "message": "line 7: the pixel strip is not in scripts yet: make a show for it on the Shows tab, or use a sketch."
+      },
+      {
+        "line": 8,
+        "message": "line 8: to wait a time, write \"sleep 0.5\"; to wait for an input, write \"wait for trig1\"."
+      }
+    ],
+    "warnings": []
+  }
+}

@@ -1,0 +1,1 @@
+proptroller/front-door/rpc/reply {"v":1,"id":5,"ok":true,"result":{"kind":"shows","shows":[{"id":1,"name":"Example show: door knock","enabled":true,"length_ms":2000,"tracks":2}]}}

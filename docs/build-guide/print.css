@@ -1,0 +1,33 @@
+/* US Letter, several pages, readable in black and white. */
+@page { size: Letter; margin: 0.5in 0.55in; }
+* { box-sizing: border-box; }
+html, body { background: #fff; color: #000; }
+body { font: 9.6pt/1.32 "Noto Sans", "DejaVu Sans", Arial, sans-serif; margin: 0; }
+header { border-bottom: 2pt solid #000; padding-bottom: 3pt; margin-bottom: 6pt; }
+header h1 { font-size: 18pt; margin: 0; }
+header .meta { font-size: 8.4pt; color: #333; }
+h2 { font-size: 12pt; margin: 9pt 0 3pt; padding: 1pt 4pt; background: #000; color: #fff; break-after: avoid; }
+h3 { font-size: 10.4pt; margin: 6pt 0 2pt; break-after: avoid; }
+p { margin: 2pt 0 4pt; }
+ol, ul { margin: 2pt 0 4pt; padding-left: 1.35em; }
+li { margin: 1pt 0; }
+code { font-family: "DejaVu Sans Mono", monospace; font-size: 8.8pt; }
+.ui { font-weight: 700; border: 0.6pt solid #000; border-radius: 2pt; padding: 0 2pt; white-space: nowrap; }
+table { border-collapse: collapse; width: 100%; margin: 3pt 0 6pt; }
+tr { break-inside: avoid; }
+td, th { border: 0.6pt solid #555; padding: 1.5pt 4pt; vertical-align: top; text-align: left; }
+th { background: #ddd; }
+.box { border: 1.4pt solid #000; padding: 3pt 6pt; margin: 5pt 0; break-inside: avoid; }
+.warn { border: 3pt double #000; }
+.check { border: 1.2pt dashed #000; padding: 2pt 5pt; margin: 4pt 0; break-inside: avoid; }
+.check::before { content: "First build: check. "; font-weight: 700; }
+.unknown::before { content: "Not known yet: "; font-weight: 700; }
+figure { margin: 5pt 0; break-inside: avoid; }
+figure img, figure svg { display: block; max-width: 100%; max-height: 3.7in; margin: 0 auto; }
+figcaption { font-size: 8.4pt; color: #333; text-align: center; margin-top: 2pt; }
+.gray img { filter: grayscale(1) contrast(1.1); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; }
+.tick { list-style: none; padding-left: 0.2em; }
+.tick li::before { content: "\2610  "; font-size: 11pt; }
+.page { break-before: page; }
+@media screen { body { max-width: 8.5in; margin: 0.3in auto; padding: 0.5in; box-shadow: 0 0 8px #888; } }

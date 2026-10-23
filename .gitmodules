@@ -1,0 +1,3 @@
+[submodule "aieda"]
+	path = aieda
+	url = https://github.com/speck0413/ai-native-eda.git

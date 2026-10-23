@@ -1,0 +1,42 @@
+{
+  "spec": [
+    "SS-R10"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 3000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            1600,
+            0
+          ]
+        ],
+        "CC1": [],
+        "CC2": []
+      },
+      "sound": []
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{"v":1,"seq":38,"event":"log","data":"firmware update: receiving 4096 bytes"}
+{"v":1,"seq":39,"event":"update","data":{"phase":"writing","done":0,"total":4096}}
+{"v":1,"seq":40,"event":"log","data":"firmware update stopped: not an image for sim"}
+{"v":1,"seq":41,"event":"update","data":{"phase":"failed","done":1024,"total":4096,"message":"not an image for sim"}}
+{"v":1,"seq":42,"event":"log","data":"firmware update: receiving 307298 bytes"}
+{"v":1,"seq":43,"event":"update","data":{"phase":"writing","done":0,"total":307298}}
+{"v":1,"seq":44,"event":"update","data":{"phase":"writing","done":131072,"total":307298}}
+{"v":1,"seq":45,"event":"update","data":{"phase":"writing","done":262144,"total":307298}}
+{"v":1,"seq":46,"event":"log","data":"firmware update stopped: the image's SHA-256 does not match X-Proptroller-Sha256"}
+{"v":1,"seq":47,"event":"update","data":{"phase":"failed","done":307298,"total":307298,"message":"the image's SHA-256 does not match X-Proptroller-Sha256"}}
+{"v":1,"seq":48,"event":"log","data":"firmware update: receiving 307298 bytes"}
+{"v":1,"seq":49,"event":"update","data":{"phase":"writing","done":0,"total":307298}}
+{"v":1,"seq":50,"event":"update","data":{"phase":"writing","done":204800,"total":307298}}
+{"v":1,"seq":51,"event":"log","data":"firmware update stopped: the connection ended before the whole image arrived"}
+{"v":1,"seq":52,"event":"update","data":{"phase":"failed","done":204800,"total":307298,"message":"the connection ended before the whole image arrived"}}

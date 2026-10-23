@@ -1,0 +1,25 @@
+{
+  "spec": [
+    "SS-W6"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: \"soon\" is not a time. Write seconds (sleep 2.5) or add a unit: ms, s or min."
+      },
+      {
+        "line": 4,
+        "message": "line 4: \"2 hours\" is not a time. Write seconds (sleep 2.5) or add a unit: ms, s or min."
+      },
+      {
+        "line": 5,
+        "message": "line 5: \"-1\" is not a time. Write seconds (sleep 2.5) or add a unit: ms, s or min."
+      }
+    ],
+    "warnings": []
+  }
+}

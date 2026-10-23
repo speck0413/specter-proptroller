@@ -1,0 +1,25 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: write it as \"out1 = on\"."
+      },
+      {
+        "line": 4,
+        "message": "line 4: to play a sound, write \"audio_single = scream.mp3\"."
+      },
+      {
+        "line": 5,
+        "message": "line 5: write it as three lines: \"out1 = on\", \"sleep 2\", \"out1 = off\"."
+      }
+    ],
+    "warnings": []
+  }
+}

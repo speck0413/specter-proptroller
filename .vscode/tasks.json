@@ -1,0 +1,181 @@
+{
+  // Firmware tasks (Terminal > Run Task). They run in firmware/arduino with PlatformIO's own Python on PATH
+  // (~/.platformio/penv/bin, where tools/setup.sh or the PlatformIO extension installs it). On native Windows they
+  // run in cmd.exe with %USERPROFILE%\.platformio\penv\Scripts on PATH; the tasks that are shell scripts need
+  // WSL 2 (README.md, "Windows").
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}/firmware/arduino",
+    "env": { "PATH": "${env:HOME}/.platformio/penv/bin:${env:HOME}/.local/bin:${env:PATH}" }
+  },
+  "windows": {
+    "options": {
+      "cwd": "${workspaceFolder}\\firmware\\arduino",
+      "env": { "PATH": "${env:USERPROFILE}\\.platformio\\penv\\Scripts;${env:PATH}" },
+      "shell": { "executable": "cmd.exe", "args": ["/d", "/c"] }
+    }
+  },
+  "tasks": [
+    {
+      "label": "Build all boards",
+      "detail": "pio run: esp32dev, pico, picow, pico2w (the stack check runs after each board)",
+      "type": "shell",
+      "command": "pio run",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Pico W / Pico 2 W first-flash file",
+      "detail": "the bootloader + firmware merged into flash.uf2 (copy it to the BOOTSEL drive; never `-t upload` on these envs)",
+      "type": "shell",
+      "command": "pio run -e boot_rp2040 -e picow -e boot_rp2350 -e pico2w && python3 tools/picoboot_image.py merge pico-w && python3 tools/picoboot_image.py merge pico2-w",
+      "windows": { "command": "pio run -e boot_rp2040 -e picow -e boot_rp2350 -e pico2w && python tools\\picoboot_image.py merge pico-w && python tools\\picoboot_image.py merge pico2-w" },
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Native unit tests",
+      "detail": "pio test -e native: every host test (Unity)",
+      "type": "shell",
+      "command": "pio test -e native",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Sanitizer tests",
+      "detail": "pio test -e native_asan: the host tests under AddressSanitizer, UBSan and LeakSanitizer",
+      "type": "shell",
+      "command": "pio test -e native_asan",
+      "group": "test",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Static check",
+      "detail": "tools/check-static.sh: clang-tidy 21 (tools/setup.sh puts it in PlatformIO's Python) and cppcheck",
+      "type": "shell",
+      "command": "tools/check-static.sh",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "test",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Fuzzers",
+      "detail": "tools/fuzz.sh [seconds] [targets]: every fuzz target (request, script, records, script_record, http, backup, image), 180 s each by default",
+      "type": "shell",
+      "command": "tools/fuzz.sh ${input:fuzzArgs}",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "test",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "ESP32 in QEMU",
+      "detail": "tools/qemu/run-esp32.sh: the esp32dev firmware in Espressif's QEMU, booted and tested over the emulated serial port (QEMU.md)",
+      "type": "shell",
+      "command": "tools/qemu/run-esp32.sh",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "ESP32 network in QEMU",
+      "detail": "tools/qemu/run-esp32.sh --net: the firmware on QEMU's emulated Ethernet: discovery, conformance, update over HTTP, MQTT, show-first with stalled clients (QEMU.md)",
+      "type": "shell",
+      "command": "tools/qemu/run-esp32.sh --net",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Host simulator",
+      "detail": "a simulated board on http://localhost:8080/ (phone UI, UDP discovery); stop with Ctrl+C",
+      "type": "shell",
+      "command": "pio run -e sim && .pio/build/sim/program",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "isBackground": false,
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Check host (browser tests)",
+      "detail": "tools/check-host.sh: ptclient.py conformance, an update, and the phone UI tests in Chromium",
+      "type": "shell",
+      "command": "CHROMIUM=${CHROMIUM:-$(command -v chromium || command -v chromium-browser || command -v google-chrome || command -v google-chrome-stable)} tools/check-host.sh",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Check effect scripts",
+      "detail": "the board's own checker (program --check, DMX add-on on) on every .txt in show-script-examples and workspace-template/effects: FILE:LINE:COL: error: message, in the Problems panel (click one to go to its line)",
+      "type": "shell",
+      "command": "pio run -s -e sim && .pio/build/sim/program --check --dmx ../show-script-examples/*.txt workspace-template/effects/*.txt",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "test",
+      "presentation": { "reveal": "silent", "revealProblems": "onProblem" },
+      "problemMatcher": [
+        {
+          "owner": "show-script",
+          "source": "show script",
+          "fileLocation": ["autodetect", "${workspaceFolder}/firmware/arduino"],
+          "pattern": { "regexp": "^(.+?):(\\d+):(\\d+): (error|warning): (.*)$", "file": 1, "line": 2, "column": 3, "severity": 4, "message": 5 }
+        }
+      ]
+    },
+    {
+      "label": "Check this effect script",
+      "detail": "the board's own checker on the file open in the editor (a show script, .txt): its problems in the Problems panel",
+      "type": "shell",
+      "command": "pio run -s -e sim && .pio/build/sim/program --check \"${file}\"",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "test",
+      "presentation": { "reveal": "silent", "revealProblems": "onProblem" },
+      "problemMatcher": [
+        {
+          "owner": "show-script",
+          "source": "show script",
+          "fileLocation": ["autodetect", "${workspaceFolder}/firmware/arduino"],
+          "pattern": { "regexp": "^(.+?):(\\d+):(\\d+): (error|warning): (.*)$", "file": 1, "line": 2, "column": 3, "severity": 4, "message": 5 }
+        }
+      ]
+    },
+    {
+      "label": "Stack check",
+      "detail": "tools/stack_check.py --report [--env picow]: the worst stack path of every task (each board build also runs the check)",
+      "type": "shell",
+      "command": "pio run && python3 tools/stack_check.py --report ${input:stackEnv}",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "test",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Build examples",
+      "detail": "tools/build-examples.sh: every example sketch for the ESP32 and the Pico W",
+      "type": "shell",
+      "command": "tools/build-examples.sh",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "group": "build",
+      "problemMatcher": ["$gcc"]
+    },
+    {
+      "label": "Regenerate golden files",
+      "detail": "tools/golden.sh: the protocol and console golden files from the C++ simulator (review the diff)",
+      "type": "shell",
+      "command": "tools/golden.sh",
+      "windows": { "command": "echo This task runs a shell script: use WSL 2 (README.md, Windows) && exit 1" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "fuzzArgs",
+      "type": "promptString",
+      "description": "tools/fuzz.sh arguments: [seconds] [target ...] (empty: every target, 180 s each)",
+      "default": "60"
+    },
+    {
+      "id": "stackEnv",
+      "type": "promptString",
+      "description": "tools/stack_check.py: empty for every board, or --env picow",
+      "default": ""
+    }
+  ]
+}

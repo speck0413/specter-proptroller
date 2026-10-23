@@ -1,0 +1,5 @@
+{
+  "extends": "./aieda/tsconfig.json",
+  "compilerOptions": { "noEmit": true, "typeRoots": ["./aieda/node_modules/@types"] },
+  "include": ["hardware/**/*.ts", "aieda/src/**/*.ts"]
+}

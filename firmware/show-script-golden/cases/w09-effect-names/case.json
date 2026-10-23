@@ -1,0 +1,38 @@
+{
+  "spec": [
+    "SS-L"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "effect1",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "wait_for",
+              "input": "TRIG1"
+            }
+          ]
+        },
+        {
+          "name": "big scary ghost",
+          "line": 3,
+          "steps": [
+            {
+              "line": 4,
+              "op": "wait_for",
+              "input": "TRIG2"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

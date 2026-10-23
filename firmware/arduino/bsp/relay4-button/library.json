@@ -1,0 +1,8 @@
+{
+  "name": "proptroller-bsp-relay4-button",
+  "version": "0.1.0",
+  "description": "Example board support package for the Proptroller library: a generic ESP32 board with four relay outputs, one trigger and one active-high button",
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": ["espressif32"]
+}

@@ -1,0 +1,18 @@
+# 06 12 V animatronic: a store-bought prop that runs from a 12 V adapter of 5 A or less.
+#
+# Wiring:
+#   a step mat                        -> TRIG1 jack
+#   the prop's 12 V power lead        -> OUT4 + and - (instead of its adapter)
+#   the board's own supply is 12 V and big enough for the prop and everything else
+#
+#        [step mat]--TRIG1        OUT4--[prop power in]
+#
+# A prop on a bigger or a mains adapter keeps it; then press its "try me" button with RLY2 or CC1
+# instead (SHOW-SCRIPT.md §7.5).
+
+effect animatronic:
+  wait for trig1
+  out4 = on
+  sleep 12         # the prop's own routine
+  out4 = off
+  sleep 30

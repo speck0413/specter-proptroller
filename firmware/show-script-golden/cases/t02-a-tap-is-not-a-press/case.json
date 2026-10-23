@@ -1,0 +1,40 @@
+{
+  "spec": [
+    "SS-R3"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1099,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 1300,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1360,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 3000,
+    "expect": {
+      "edges": {
+        "OUT1": []
+      }
+    }
+  }
+}

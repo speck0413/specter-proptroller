@@ -1,0 +1,25 @@
+{
+  "spec": [
+    "SS-R8",
+    "SS-D8"
+  ],
+  "sounds": {},
+  "settings": {
+    "dmx_port": "s4"
+  },
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 6,
+        "message": "line 6: dmx7 is already used by effect \"a\" (line 3). Each DMX channel belongs to one effect."
+      }
+    ],
+    "warnings": [
+      {
+        "line": 1,
+        "message": "line 1: effect \"a\" ends with dmx7 still on. It may stay on until the next trigger."
+      }
+    ]
+  }
+}

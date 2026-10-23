@@ -1,0 +1,4 @@
+effect a:
+wait for trig1
+dmx0 = on
+dmx513 = off

@@ -1,0 +1,1 @@
+{"v":1,"id":91,"ok":true,"result":{"kind":"wifi_scan","scanning":false,"age_ms":90,"networks":[{"ssid":"Office","rssi":-48,"secured":true},{"ssid":"Workshop 2.4","rssi":-55,"secured":true},{"ssid":"Guest Wi-Fi","rssi":-71,"secured":false},{"ssid":"Neighbour","rssi":-86,"secured":true}]}}

@@ -1,0 +1,11 @@
+effect all:
+wait for user2
+out2 = 30%
+fade out2 to 80% over 1.5
+flicker out2 for 3
+audio_loop = 'rain.mp3'
+sleep 1
+audio_stop
+audio_single = 007_thunder.mp3
+audio_single = 12
+out2 = off

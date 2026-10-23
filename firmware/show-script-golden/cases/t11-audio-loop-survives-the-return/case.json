@@ -1,0 +1,62 @@
+{
+  "spec": [
+    "SS-R7"
+  ],
+  "sounds": {
+    "rain.mp3": 2
+  },
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 4000,
+        "in": "TRIG2",
+        "closed": true
+      },
+      {
+        "t": 4150,
+        "in": "TRIG2",
+        "closed": false
+      }
+    ],
+    "until": 6000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            2100,
+            0
+          ]
+        ]
+      },
+      "sound": [
+        [
+          1100,
+          "loop",
+          2
+        ],
+        [
+          4100,
+          "stop"
+        ]
+      ]
+    }
+  }
+}

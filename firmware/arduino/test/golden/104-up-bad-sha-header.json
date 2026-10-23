@@ -1,0 +1,1 @@
+{"v":1,"ok":false,"error":{"code":"bad_request","message":"X-Proptroller-Sha256 must be the SHA-256 of the image as 64 hex digits"}}

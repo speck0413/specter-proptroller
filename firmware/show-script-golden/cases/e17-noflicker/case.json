@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: rly2 cannot flicker. Flickering works on out1 to out4."
+      }
+    ],
+    "warnings": []
+  }
+}

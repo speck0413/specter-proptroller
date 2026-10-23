@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C3"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 1,
+        "message": "line 1: effect \"long\" has 65 lines. An effect can have at most 64."
+      }
+    ],
+    "warnings": []
+  }
+}

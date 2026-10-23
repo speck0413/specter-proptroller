@@ -1,0 +1,2 @@
+effect xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx:
+wait for trig1

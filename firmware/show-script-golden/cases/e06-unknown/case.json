@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: I do not understand \"Jump Around\". A line is effect, wait for, an output = on/off/N%, sleep, fade, flicker, audio_single, audio_loop or audio_stop."
+      }
+    ],
+    "warnings": []
+  }
+}

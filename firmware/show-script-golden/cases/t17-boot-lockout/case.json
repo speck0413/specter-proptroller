@@ -1,0 +1,44 @@
+{
+  "spec": [
+    "SM-B2",
+    "SS-R9"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "power_on": true
+      },
+      {
+        "t": 1500,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 4000,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 6000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            3100,
+            1000
+          ],
+          [
+            4100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

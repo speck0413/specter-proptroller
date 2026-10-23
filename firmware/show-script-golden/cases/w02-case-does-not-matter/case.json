@@ -1,0 +1,85 @@
+{
+  "spec": [
+    "SS-W1"
+  ],
+  "sounds": {
+    "chime.mp3": 1
+  },
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "porch light",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 3,
+              "op": "set",
+              "target": "OUT1",
+              "level": 1000
+            },
+            {
+              "line": 4,
+              "op": "audio_single",
+              "sound": 1
+            },
+            {
+              "line": 5,
+              "op": "sleep",
+              "ms": 30000
+            },
+            {
+              "line": 6,
+              "op": "fade",
+              "target": "OUT1",
+              "level": 0,
+              "ms": 2000
+            }
+          ]
+        },
+        {
+          "name": "fog",
+          "line": 8,
+          "steps": [
+            {
+              "line": 9,
+              "op": "wait_for",
+              "input": "TRIG2"
+            },
+            {
+              "line": 10,
+              "op": "set",
+              "target": "RLY1",
+              "level": 1000
+            },
+            {
+              "line": 11,
+              "op": "sleep",
+              "ms": 3000
+            },
+            {
+              "line": 12,
+              "op": "set",
+              "target": "RLY1",
+              "level": 0
+            },
+            {
+              "line": 13,
+              "op": "sleep",
+              "ms": 60000
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

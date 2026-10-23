@@ -1,0 +1,10 @@
+effect a:
+wait for trig1
+audio_single = 1
+effect b:
+wait for trig2
+out1 = on
+out1 = off
+effect c:
+wait for user1
+audio_loop = 2

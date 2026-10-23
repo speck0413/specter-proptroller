@@ -1,0 +1,1 @@
+[{"topic":"myprop/front-door/script/result","payload":{"kind":"script_check","ok":false,"errors":[{"line":3,"message":"line 3: there is no out5 on this board. The outputs are out1 to out4, rly1, rly2, cc1 and cc2."}],"warnings":[]}}]

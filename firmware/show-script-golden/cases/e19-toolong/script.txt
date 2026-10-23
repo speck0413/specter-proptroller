@@ -1,0 +1,4 @@
+effect a:
+wait for trig1
+sleep 1441 min
+sleep 86401

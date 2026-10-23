@@ -1,0 +1,5 @@
+# the porch
+effect porch light:   # by the door
+
+  wait for trig1      # the mat
+  out1 = on

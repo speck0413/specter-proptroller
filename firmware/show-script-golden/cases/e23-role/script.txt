@@ -1,0 +1,6 @@
+effect a:
+wait for trig1
+cc1 = on
+cc2 = on
+cc1 = off
+cc2 = off

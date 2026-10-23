@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: \"bright\" is not a level. Use on, off or a percentage from 0% to 100%."
+      }
+    ],
+    "warnings": []
+  }
+}

@@ -1,0 +1,5 @@
+POST /api/v1/rpc HTTP/1.1
+Content-Type: application/json
+Content-Length: 27
+
+{"op":"run","show":1,"id":4}

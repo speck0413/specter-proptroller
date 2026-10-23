@@ -1,0 +1,11 @@
+effect t:
+wait for trig1
+sleep 0.4
+sleep 200 ms
+sleep 3 min
+sleep 2.5s
+sleep 1 second
+sleep 2 minutes
+sleep 1.0006
+sleep 10 secs
+sleep 1 mins

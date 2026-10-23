@@ -1,0 +1,16 @@
+effect e1:
+wait for trig1
+effect e2:
+wait for trig1
+effect e3:
+wait for trig1
+effect e4:
+wait for trig1
+effect e5:
+wait for trig1
+effect e6:
+wait for trig1
+effect e7:
+wait for trig1
+effect e8:
+wait for trig1

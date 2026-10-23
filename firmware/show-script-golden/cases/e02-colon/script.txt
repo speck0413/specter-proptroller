@@ -1,0 +1,2 @@
+effect fog
+wait for trig1

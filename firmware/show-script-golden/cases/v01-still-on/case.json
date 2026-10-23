@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-R6"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      {
+        "line": 1,
+        "message": "line 1: effect \"lamp\" ends with out1 still on. It may stay on until the next trigger."
+      }
+    ]
+  }
+}

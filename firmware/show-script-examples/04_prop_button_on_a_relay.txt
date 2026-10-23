@@ -1,0 +1,17 @@
+# 04 A store-bought prop on a relay: RLY1 presses the prop's "try me" button.
+#
+# Low voltage only: a battery-powered prop's button. Never a fog machine's wired remote (on many machines
+# it carries mains); a fog machine with DMX IN uses example 05 (SHOW-SCRIPT.md §7).
+#
+# Wiring:
+#   a push button or a sensor          -> TRIG1 jack
+#   the prop's "try me" button contacts -> RLY1 COM and NO
+#
+#        [button]--TRIG1        RLY1 COM/NO--[prop's try-me button]
+
+effect prop:
+  wait for trig1
+  rly1 = on        # presses the prop's button
+  sleep 0.5
+  rly1 = off
+  sleep 60         # rest before the next scare

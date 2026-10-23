@@ -1,0 +1,19 @@
+# 03 Flickering lamp: an old lamp that flickers when someone walks by, then settles.
+#
+# Wiring:
+#   motion sensor                 -> TRIG2 jack
+#   12 V lamp or LED bulb         -> OUT3 + and - (2 A or less: dimming and flicker are for small loads)
+#   power the board from 12 V (OUT3 gives the board's supply voltage)
+#   a speaker on the board's SPK terminals; the SD card has /01/001.mp3 (a buzz)
+#
+#        [motion sensor]--TRIG2        OUT3--[12 V lamp]
+
+effect lamp:
+  wait for trig2
+  out3 = 70%
+  audio_single = 1
+  flicker out3 for 4
+  out3 = 70%
+  sleep 10
+  fade out3 to 0% over 2
+  sleep 5

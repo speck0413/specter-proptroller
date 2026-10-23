@@ -1,0 +1,59 @@
+{
+  "spec": [
+    "SS-R5"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 500,
+        "in": "TRIG2",
+        "closed": true
+      },
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 3000,
+        "in": "TRIG2",
+        "closed": false
+      },
+      {
+        "t": 4000,
+        "in": "TRIG2",
+        "closed": true
+      },
+      {
+        "t": 4150,
+        "in": "TRIG2",
+        "closed": false
+      }
+    ],
+    "until": 6000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            4100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

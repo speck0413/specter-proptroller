@@ -1,0 +1,42 @@
+// Open this file (File > Open Workspace from File, or "Open Workspace" when VS Code offers it) so PlatformIO
+// finds the firmware project in firmware/arduino; the repository root keeps the tasks. The C/C++ settings are
+// repeated here because a workspace folder (firmware/arduino) does not see the root folder's .vscode settings.
+{
+  "folders": [
+    {
+      "path": ".",
+      "name": "spectre-proptroller"
+    },
+    {
+      "path": "firmware/arduino",
+      "name": "firmware (PlatformIO)"
+    }
+  ],
+  "settings": {
+    "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+    "C_Cpp.codeAnalysis.clangTidy.useBuildPath": false,
+    "C_Cpp.codeAnalysis.runAutomatically": true,
+    "C_Cpp.formatting": "clangFormat",
+    "C_Cpp.clang_format_style": "file",
+    "C_Cpp.clang_format_fallbackStyle": "none",
+    "[cpp]": {
+      "editor.formatOnSave": true,
+      "editor.formatOnSaveMode": "modifications",
+      "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "[c]": {
+      "editor.formatOnSave": true,
+      "editor.formatOnSaveMode": "modifications",
+      "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "files.associations": {
+      "*.ino": "cpp",
+      "*.inc": "cpp"
+    },
+    "files.exclude": {
+      "firmware/arduino": true,
+      "**/.pio": true,
+      "**/node_modules": true
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-R1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 1,
+        "message": "line 1: effect \"a\" has no lines."
+      }
+    ],
+    "warnings": []
+  }
+}

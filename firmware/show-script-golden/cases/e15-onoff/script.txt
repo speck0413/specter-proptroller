@@ -1,0 +1,4 @@
+effect a:
+wait for trig1
+rly1 = 50%
+cc2 = 100%

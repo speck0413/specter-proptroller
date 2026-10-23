@@ -1,0 +1,41 @@
+{
+  "spec": [
+    "SS-L"
+  ],
+  "sounds": {},
+  "settings": {
+    "buttons": "triggers"
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "USER1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "USER1",
+        "closed": false
+      }
+    ],
+    "until": 3000,
+    "expect": {
+      "edges": {
+        "OUT3": [
+          [
+            1100,
+            1000
+          ],
+          [
+            2100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

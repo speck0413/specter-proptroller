@@ -1,0 +1,9 @@
+proptroller/broadcast/getName
+proptroller/front-door/rpc
+proptroller/front-door/config/get/+
+proptroller/front-door/config/set/+
+proptroller/front-door/cue
+proptroller/front-door/control/+
+proptroller/front-door/status/get/+
+proptroller/front-door/script/set
+proptroller/front-door/script/check

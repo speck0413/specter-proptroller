@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 1,
+        "message": "line 1: put a colon after the effect name: \"effect a:\"."
+      }
+    ],
+    "warnings": []
+  }
+}

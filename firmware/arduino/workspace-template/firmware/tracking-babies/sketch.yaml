@@ -1,0 +1,12 @@
+# Arduino IDE / arduino-cli profile: the board and pinned versions (make_envs.py reads the fqbn).
+default_profile: picow
+profiles:
+  picow:
+    fqbn: rp2040:rp2040:rpipicow
+    platforms:
+      - platform: rp2040:rp2040 (6.1.0)
+        platform_index_url: https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+    libraries:
+      - ArduinoJson (7.4.2)
+      - PubSubClient (2.8)
+      - dir: ../../../lib/proptroller

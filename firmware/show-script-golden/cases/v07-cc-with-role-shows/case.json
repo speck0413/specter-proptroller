@@ -1,0 +1,14 @@
+{
+  "spec": [
+    "SS-D3"
+  ],
+  "sounds": {},
+  "settings": {
+    "cc1_role": "shows"
+  },
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": []
+  }
+}

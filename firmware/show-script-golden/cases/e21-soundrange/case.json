@@ -1,0 +1,21 @@
+{
+  "spec": [
+    "SS-C4"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: sound 100 is out of range. Sounds are numbered 1 to 99."
+      },
+      {
+        "line": 4,
+        "message": "line 4: sound 0 is out of range. Sounds are numbered 1 to 99."
+      }
+    ],
+    "warnings": []
+  }
+}

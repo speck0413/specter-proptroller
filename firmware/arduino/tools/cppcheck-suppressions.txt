@@ -1,0 +1,3 @@
+# cppcheck cannot expand ArduinoJson's namespace macros (a library, not our code)
+preprocessorErrorDirective:*/.pio/libdeps/*
+*:*/.pio/libdeps/*

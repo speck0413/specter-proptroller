@@ -1,0 +1,17 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: rly1 cannot fade. Fading works on out1 to out4."
+      }
+    ],
+    "warnings": []
+  }
+}

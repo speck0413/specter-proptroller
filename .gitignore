@@ -1,0 +1,16 @@
+# Generated but tracked (the routed layout takes minutes and Freerouting is not repeatable): the KiCad project, its build
+# record (ir/result/drc/erc json) and the order files. Ignored: router scratch, local KiCad UI state, loose gerbers (the zip is tracked).
+hardware/kicad/*.dsn
+hardware/kicad/*.ses
+hardware/kicad/*.freerouting.log
+hardware/kicad/*.kicad_prl
+hardware/kicad/last.json
+hardware/kicad/.orientation-*
+hardware/kicad/*-backups/
+hardware/kicad/fp-info-cache
+hardware/fab/gerbers/
+# editor / OS
+*~
+.DS_Store
+__pycache__/
+hardware/kicad/orientation/

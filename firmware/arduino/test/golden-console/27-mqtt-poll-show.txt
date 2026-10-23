@@ -1,0 +1,6 @@
+proptroller/front-door/event {"v":1,"seq":6,"event":"notice","data":{"notice":"started","show":1,"cause":{"by":"input","detail":"TRIG1"}}}
+proptroller/front-door/event {"v":1,"seq":7,"event":"run","data":{"source":"input","kind":"show","show":1,"name":"Example show: door knock","detail":"TRIG1","runs_since_power_on":1,"runs_lifetime":1,"uptime_ms":2110}}
+proptroller/front-door/event/run {"source":"input","kind":"show","show":1,"name":"Example show: door knock","detail":"TRIG1","runs_since_power_on":1,"runs_lifetime":1,"uptime_ms":2110}
+proptroller/front-door/status/runs_since_power_on [r] 1
+proptroller/front-door/status/runs_lifetime [r] 1
+proptroller/front-door/status/last_run_uptime_ms [r] 2110

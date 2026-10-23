@@ -1,0 +1,10 @@
+{"v":1,"seq":1,"event":"shows_changed"}
+{"v":1,"seq":2,"event":"shows_changed"}
+{"v":1,"seq":3,"event":"notice","data":{"notice":"started","show":1,"cause":{"by":"input","detail":"TRIG1"}}}
+{"v":1,"seq":4,"event":"notice","data":{"notice":"started","show":2,"cause":{"by":"input","detail":"TRIG1"}}}
+{"v":1,"seq":5,"event":"run","data":{"source":"input","kind":"show","show":1,"name":"Example show: door knock","detail":"TRIG1","runs_since_power_on":1,"runs_lifetime":1,"uptime_ms":610}}
+{"v":1,"seq":6,"event":"run","data":{"source":"input","kind":"show","show":2,"name":"Link: TRIG1 -> OUT2","detail":"TRIG1","runs_since_power_on":2,"runs_lifetime":2,"uptime_ms":610}}
+{"v":1,"seq":7,"event":"log","data":"sound player online"}
+{"v":1,"seq":8,"event":"notice","data":{"notice":"ended","show":2,"reason":"released"}}
+{"v":1,"seq":9,"event":"shows_changed"}
+{"v":1,"seq":10,"event":"shows_changed"}

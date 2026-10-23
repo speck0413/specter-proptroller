@@ -1,0 +1,5 @@
+effect a:
+wait for trig1
+cc1 = on
+sleep 0.2
+cc1 = off

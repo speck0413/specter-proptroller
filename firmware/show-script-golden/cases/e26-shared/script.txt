@@ -1,0 +1,8 @@
+effect a:
+wait for trig1
+out1 = on
+out1 = off
+effect b:
+wait for trig2
+out1 = on
+out1 = off

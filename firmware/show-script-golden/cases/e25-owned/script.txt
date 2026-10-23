@@ -1,0 +1,6 @@
+effect a:
+wait for trig1
+out1 = on
+out3 = on
+out3 = off
+out1 = off

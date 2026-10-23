@@ -1,0 +1,87 @@
+# Firmware release: on a tag v<firmware/VERSION> (for example v0.1.0, or v0.1.0-rc.1 for a pre-release), build the stock firmware for the ESP32 DevKit,
+# the Pico W and the Pico 2 W (with the Pico bootloaders), package it with firmware/arduino/tools/release.py, and
+#  - attach the update images, the first-flash images and proptroller-firmware.json to a draft GitHub Release
+#    (publish it by hand after a look: Specter Studio and the phone page only see published releases);
+#  - publish the browser flasher (ESP Web Tools) to GitHub Pages. Once, by the owner: Settings > Pages > Source:
+#    GitHub Actions, and Settings > Environments > github-pages > deployment branches and tags: add the tag rule
+#    v* (the environment allows only the default branch otherwise). Pages needs a public repository (or a paid plan).
+# The images are unsigned. Actions are pinned by commit SHA (the tag in the comment).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: firmware/arduino
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: The tag matches firmware/VERSION
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          want="v$(tr -d '[:space:]' < ../VERSION)"
+          if [ "$TAG" != "$want" ]; then
+            echo "::error::tag $TAG does not match firmware/VERSION ($want)"
+            exit 1
+          fi
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/arduino/platformio.ini') }}
+      - name: Install PlatformIO
+        run: python -m pip install platformio==6.2.0
+      - name: Build
+        run: pio run -e esp32dev -e picow -e pico2w -e boot_rp2040 -e boot_rp2350
+      - name: Pico W / Pico 2 W first-flash files
+        run: |
+          python tools/picoboot_image.py merge pico-w
+          python tools/picoboot_image.py merge pico2-w
+      - name: Package
+        run: python tools/release.py "$RUNNER_TEMP/release"
+      - name: Draft GitHub Release with the images
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # a version with a suffix (0.1.0-rc.1: firmware/VERSION and the tag alike) is a GitHub pre-release
+          pre=""
+          case "$TAG" in *-*) pre="--prerelease" ;; esac
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag $pre \
+            --title "Firmware $TAG" \
+            --notes "Stock firmware $TAG (unsigned). New board: GETTING-STARTED.md. Update a board: its page, Firmware tab, with the generic-<board> image, or Specter Studio." \
+            "$RUNNER_TEMP"/release/assets/*
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: ${{ runner.temp }}/release/flasher
+
+  flasher:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

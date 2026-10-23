@@ -1,0 +1,13 @@
+effect   porch    light :
+wait for trig1
+out1=on
+audio_single:chime.mp3
+	sleep	30
+fade out1 to 0 % over 2s
+
+effect fog:
+waitfor trig2
+   rly1 :on
+sleep 3 s
+rly1= off
+sleep 1 min

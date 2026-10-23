@@ -1,0 +1,40 @@
+{
+ "id": 2,
+ "name": "Big moment pixels",
+ "enabled": true,
+ "priority": 3,
+ "looping": false,
+ "retrigger": "ignore",
+ "triggers": [
+  {
+   "on": "input",
+   "input": "TRIG1"
+  }
+ ],
+ "length_ms": 5000,
+ "tracks": [
+  {
+   "target": "PIXEL",
+   "cues": [
+    {
+     "at": 0,
+     "do": "flash",
+     "color": "#ffffff",
+     "period_ms": 150
+    },
+    {
+     "at": 1000,
+     "do": "chase",
+     "color": "#ff4000",
+     "step_ms": 40,
+     "width": 4
+    },
+    {
+     "at": 3500,
+     "do": "rainbow",
+     "period_ms": 1500
+    }
+   ]
+  }
+ ]
+}

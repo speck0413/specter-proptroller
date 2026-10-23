@@ -1,0 +1,5 @@
+effect a:
+wait for trig1
+sleep soon
+sleep 2 hours
+fade out1 to 0% over -1

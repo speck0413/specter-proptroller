@@ -1,0 +1,23 @@
+{
+  "spec": [
+    "SS-D8"
+  ],
+  "sounds": {},
+  "settings": {
+    "dmx_port": "s4"
+  },
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: there is no DMX channel 0. DMX channels are 1 to 512."
+      },
+      {
+        "line": 4,
+        "message": "line 4: there is no DMX channel 513. DMX channels are 1 to 512."
+      }
+    ],
+    "warnings": []
+  }
+}

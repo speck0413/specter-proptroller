@@ -1,0 +1,1 @@
+{"v":1,"id":45,"ok":true,"result":{"kind":"script","text":"effect porch light:\n  wait for trig1\n  out1 = on\n  audio_single = chime.mp3\n  sleep 2\n  fade out1 to 0% over 1\n\neffect prop:\n  wait for trig2\n  rly1 = on   # the prop's try-me button\n  sleep 0.5\n  rly1 = off\n","sounds":{"chime.mp3":3},"check":{"ok":true,"errors":[],"warnings":[],"effects":2}}}

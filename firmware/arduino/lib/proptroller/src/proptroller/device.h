@@ -1,0 +1,469 @@
+// The generic controller, independent of the MCU: it owns the Board, the DFPlayer driver, the pixel port
+// and the settings store, runs the show Engine, and answers protocol requests.
+//
+//   inputs -> debounce / trigger arming -> engine events --+
+//   API requests ----------------------------> handle() ---+
+//                                                  Engine::tick (10 ms)
+//   outputs <- safety guard <- frame levels <--------------+
+//   DFPlayer <- frame sound;  PIXEL <- effect render;  status LED <- pattern
+//
+// The ESP32, Pico and simulator firmwares all build exactly this class with different BoardPins,
+// ByteStream, PixelOut and Storage implementations.
+#pragma once
+#include "board.h"
+#include "netapp.h"
+#include "script.h"
+#include "settings.h"
+#include "storage.h"
+#include "update.h"
+#include "password.h"
+#include "runs.h"
+#include <deque>
+#include <memory>
+
+namespace pt {
+
+// The example show (TRIG1 pulses OUT1 for 2 s with a pixel flash). A fresh board has no shows: the example is added
+// only when asked for (op add_example, Shows -> Add an example show), so wiring a board never starts one by surprise.
+extern const char* const EXAMPLE_SHOW;
+extern const char* const FACTORY_EXAMPLE_SHOW;  // what earlier firmware stored on a fresh board
+
+// What a show script may use on a board with these settings (roles, buttons, DMX port, the built-in effect,
+// the terminals' names).
+ScriptBoard scriptBoardFor(const Settings& s);
+// The terminal or name a checker error is about ("rly1", "lamp (out1)", "lamp"): for "the stored script uses <x>".
+std::string scriptSubject(const std::string& message);
+// The DFPlayer driver settings (boot: with the power-on delay).
+DfConfig dfConfig(const Settings& s, bool boot);
+
+class Controller : public Firmware {
+ public:
+  Controller(BoardPins& pins, ByteStream& uart, PixelOut& pixels, Storage* store, const Identity& id);
+  virtual ~Controller() {}
+
+  // One step (call every ~10 ms).
+  void tick(Millis now) override;
+  Millis now() const { return now_; }
+
+  const Settings& settings() const { return settings_; }
+  Engine& engine() { return engine_; }
+  const Engine& engine() const { return engine_; }
+  Board& board() { return board_; }
+  DfPlayer& player() { return df_; }
+  const Level* levels() const { return board_.levels(); }
+  bool rebootRequested() const override { return reboot_; }
+  void setNet(const NetState& n) { net_ = n; }
+  void log(const std::string& s) { events_.log(s); }
+  EventLog& events() { return events_; }
+  Pattern pattern() const;
+
+  // One raw sample of TRIG1 / TRIG2: call at least every 1 ms between ticks (tick() takes one too), so a
+  // bounce or a dropout between ticks restarts the debounce (SM-T1).
+  void sampleTriggers(Millis now);
+  void sample(Millis now) override { sampleTriggers(now); }
+  // The whole step on the board (the controller's tick, the sketch's tasks, the 1 ms samples): the lock is never
+  // given back inside it, and a change asked from it while another task's request has the lock given back is
+  // refused (window_lock.h). Nests; a null controller does nothing.
+  class StepScope {
+   public:
+    explicit StepScope(Controller* c) : c_(c), was_(c && c->in_tick_) { if (c_) c_->in_tick_ = true; }
+    ~StepScope() { if (c_) c_->in_tick_ = was_; }
+    StepScope(const StepScope&) = delete;
+    StepScope& operator=(const StepScope&) = delete;
+
+   private:
+    Controller* c_;
+    bool was_;
+  };
+  // Where a request comes from: some permissions belong to a live connection (a phone page's WebSocket).
+  enum class Origin : uint8_t { Http, Session, Mqtt, Serial };
+  std::string callFrom(uint32_t session, const char* body, size_t len) override;
+  void sessionClosed(uint32_t session) override;
+  // A request body in a project's names (the profile's aliases) turned into the generic names; false and the
+  // reason in plain words when an aliased value is out of range (SM-AL1, SM-AL3).
+  // `p` is the profile to use (call() passes its own copy, so the parse never reads the settings without the lock).
+  static bool aliasIn(const Profile& p, const char* body, size_t len, std::string& out, std::string& why);
+  // A terminal name or a terminal alias: the board terminal ("REFILL" -> "TRIG2"), or the name unchanged.
+  std::string terminalName(const std::string& n) const;
+  // How a terminal is shown: "REFILL (TRIG2)" with an alias, else its board name.
+  std::string terminalDisplay(const std::string& board_name) const;
+  // One line of the serial console: "key=value", "key", "trigger", "recover", "cancel", "restart".
+  std::string consoleLine(const std::string& line) override;
+  std::string callSerial(const char* body, size_t len) override;
+  // The pulse-and-recover effect, when it is on.
+  const EffectMachine* effect() const { return fx_.get(); }
+  void setOrigin(Origin o, uint32_t session = 0) { origin_ = o; session_ = session; }
+  // The sketch's own values (setup() runs at every boot): true when `value` differs from what the sketch applied
+  // last time under `slot`; sketchApplied() records it.
+  bool sketchChanged(const std::string& slot, const std::string& value) const {
+    auto it = settings_.sketch.find(slot);
+    return it == settings_.sketch.end() || it->second != value;
+  }
+  void sketchApplied(const std::string& slot, const std::string& value) { settings_.sketch[slot] = value; markDirty(); }
+  void sketchForget(const std::string& prefix) {
+    for (auto it = settings_.sketch.begin(); it != settings_.sketch.end();)
+      it = it->first.compare(0, prefix.size(), prefix) == 0 ? settings_.sketch.erase(it) : std::next(it);
+  }
+  // Answer one request (already parsed).
+  Response handle(Request& r);
+  // Change settings atomically (all checked first).
+  Response setParams(const Request& r, const std::vector<ParamValue>& values);
+  void saveNow();
+  void saveIfDirty() { if (dirty_) saveNow(); }
+  // The flash writes the step decided on (the settings when their save is due, a script record to write again),
+  // for the loop to do: the step never writes the flash itself. Call it after tick(), from the loop, holding the
+  // lock: it gives the lock back while the flash is written (setLockHooks), so the step keeps its 10 ms.
+  void background();
+  // Shows defined by the sketch: not stored (the sketch adds them again at every boot).
+  ShowError addCodeShow(const Show& s);
+
+  Info info() const;
+  // The page lock is on (and a page password is set).
+  bool locked() const { return settings_.page_lock && !settings_.pin_hash.empty(); }
+  // Is this the page password?
+  bool pinOk(const Request& r) const;
+  // The page password, throttled after a wrong one: "" when right, else the refusal.
+  std::string pinRefused(bool has, const std::string& pin);
+  std::vector<Terminal> terminals() const;
+  // the lowest show id not in use (the board gives new shows their ids: two phones never pick the same one)
+  uint16_t freeShowId() const;
+  void stateToJson(JsonObject o) const;
+
+  // NetApp
+  std::string call(const char* body, size_t len) override;
+  std::string infoJson() override;
+  std::string stateJson() override;
+  uint32_t eventsSince(uint32_t seq, std::vector<std::string>& out) override { return events_.since(seq, out); }
+  std::string announceJson(uint16_t port) override { return info().announce(port); }
+  std::vector<std::pair<std::string, std::string>> txt() override { return info().txt(); }
+  void netChanged(const NetState& n) override { net_ = n; }
+  NetConfig netConfig() override;
+  void wifiScanReady(bool scan_now) override { wifi_scan_.setAvailable(scan_now, now_); }
+  bool wifiScanWanted() override { return wifi_scan_.takeStart(now_); }
+  void wifiScanDone(const std::vector<WifiNetwork>& found, bool ok) override { wifi_scan_.finish(now_, found, ok); }
+  std::vector<std::string> takeCuesOut() override;
+  void cueIn(const std::string& name) override { if (!updating()) engine_.cue(now_, name); }  // nothing starts during an update
+  bool mqttTarget(std::string& host, uint16_t& port) override;
+  uint32_t mqttEpoch() override { return mqtt_.epoch; }
+  std::string mqttClientId() override { return "proptroller-" + identity_.id; }
+  MqttMsg mqttWill() override;
+  std::vector<MqttMsg> mqttOnConnect() override;
+  std::vector<std::string> mqttSubscriptions() override;
+  std::vector<MqttMsg> mqttOnMessage(const std::string& topic, const std::string& payload) override;
+  std::vector<MqttMsg> mqttPoll() override;
+  std::string mqttPrefix() const;
+  std::string mqttPrefixNow() const;
+
+  // The board's lock around the controller (the step takes it every 10 ms): a request gives it back while it does
+  // long work on its own data (parsing a body, checking a script), so the step keeps running. `release` gives up
+  // every level this thread holds and says how many (0: it held none); `retake` takes them again.
+  void setLockHooks(int (*release)(void*), void (*retake)(void*, int), void* user) {
+    lock_release_ = release;
+    lock_retake_ = retake;
+    lock_user_ = user;
+  }
+
+  // Advanced: answer extra request ops (custom protocol messages). Return true when handled.
+  typedef bool (*RequestHook)(Controller& c, Request& r, Response& out, void* user);
+  void setRequestHook(RequestHook h, void* user) { request_hook_ = h; request_hook_user_ = user; }
+  bool hasRequestHook() const { return request_hook_ != nullptr; }
+  // The board's memory report for the console's `mem` (Proptroller::memoryReport on the boards; none on the host).
+  void setMemProbe(std::string (*probe)()) { mem_probe_ = probe; }
+  // The free heap in all (the boards; none on the host) and the largest block it can give in one piece (the ESP32;
+  // the RP2040 has no such count): a big request that would not fit is refused in plain words instead of running
+  // out of memory. The whole need is compared with the free heap, the largest single allocation with the block.
+  void setHeapProbe(size_t (*probe)()) { heap_probe_ = probe; }
+  void setBlockProbe(size_t (*probe)()) { block_probe_ = probe; }
+  // The heap a request body of `len` bytes may need at its peak while it is parsed, checked and applied.
+  // test_heap_peak checks that it covers check_script, set_script and put_backup of the largest script as
+  // counted on the 64-bit host (put_backup of a 21 KB backup: 80 KB). Kept at the rule set from the board
+  // (QEMU.md finding 1, where the peak ran above the host's count) until a board measurement allows less.
+  static size_t requestHeapNeed(size_t len) { return 4 * len + 48 * 1024; }
+  // The largest single allocation of such a request: the body and the script text it carries are each one string
+  // (a string that grows can ask for twice its size), the parsed document's pools are small blocks.
+  static size_t requestBlockNeed(size_t len) { return 2 * len + 4 * 1024; }
+  // Answers longer than ANSWER_CHECK_BYTES are measured before they are written: refused when the free heap is not
+  // their length plus ANSWER_HEAP_SPARE, or the largest block not their length plus ANSWER_BLOCK_SPARE.
+  static const size_t ANSWER_CHECK_BYTES = 4 * 1024;
+  static const size_t ANSWER_HEAP_SPARE = 32 * 1024;
+  static const size_t ANSWER_BLOCK_SPARE = 1024;
+
+  uint32_t store_errors = 0, pixel_errors = 0;
+  uint32_t script_checks_at_boot = 0;  // stored scripts checked again from their text at power-on
+  // Accepted presses per input since power-on (TRIG: armed presses only; USER: every press). Sketches use
+  // these through Proptroller::wasPressed().
+  uint32_t presses[INPUT_COUNT] = {0, 0, 0, 0, 0};
+  bool isActive(Input i) const { return index(i) < 2 ? trig_[index(i)].isActive() : buttons_[index(i) - 2].isPressed(); }
+  // Show scripts (SHOW-SCRIPT.md). The script's own record (text and sound list) is kept in `store`; the
+  // stored script is checked again (a firmware update may have changed the rules) and runs only if it passes.
+  void setScriptStore(Storage* store);
+  // The run counters (runs.h): the lifetime count's own record is kept in `store` (nullptr: RAM only).
+  void setRunStore(Storage* store);
+  const RunCounter& runs() const { return runs_; }
+  void setDmx(DmxOut* dmx) { dmx_ = dmx; }
+  // Check a script against the board as it is set now; nothing changes.
+  ScriptCheck checkScript(const std::string& text, const SoundList& sounds, ScriptProgram& table) const;
+  // Check and, when it passes, store and run it (an empty script removes the stored one).
+  // `store_error`: set when it passed but could not be stored (the old script is loaded back).
+  ScriptCheck saveScript(const std::string& text, const SoundList& sounds, std::string* store_error = nullptr);
+  const std::string& scriptText() const { return script_text_; }
+  const ScriptProgram* scriptProgram() const { return script_prog_.get(); }
+  const ScriptRunner* scriptRunner() const { return script_run_.get(); }
+  uint32_t dmx_frames = 0;
+  // Over-the-air updates (update.h). The target is the board's (not owned); the board then has the `update`
+  // capability.
+  void setUpdateTarget(UpdateTarget* t) { update_target_ = t; }
+  // In update mode: receiving an image, or restarting into it (outputs off, changes refused).
+  bool updating() const { return upd_.active || upd_.restart_at_set; }
+  // POST /api/v1/update: false and `answer` (a response JSON) when refused; nothing was written.
+  [[nodiscard]] bool updateBegin(const UpdateRequest& req, std::string& answer) override;
+  // The next bytes of the body: false and `answer` when the update stopped (the running image untouched).
+  [[nodiscard]] bool updateWrite(const uint8_t* data, size_t n, std::string& answer) override;
+  // The body ended: check it and switch to the new image. The answer.
+  std::string updateFinish() override;
+  // The connection ended before the whole image arrived.
+  void updateAbort() override;
+  // The stored records were read at power-on (or there were none): a new image's self-check needs it.
+  bool recordsOk() const { return records_ok_; }
+  // Backups (PROTOCOL.md "Backups"): get_backup's document into `o`.
+  void backupJson(JsonObject o) const;
+  // Expert: let a trigger held at power-on start shows (the held-at-boot rule no longer applies to it).
+  void armNow(Input i) { if (index(i) < 2) trig_[index(i)].forceArm(); }
+
+ protected:
+  virtual bool handleExtra(Request& r, Response& out);
+  void applySettings();
+  void accepted(Millis now, const std::vector<uint16_t>& started);
+  void pulseRole(Millis now, OutputRole role, uint32_t ms = 0);
+  void ownedLevels(Millis now);
+  void readInputs(bool raw[INPUT_COUNT]);
+  bool sensor_high_[2] = {false, false};  // the input types the triggers were armed with
+  void stopOwned(Millis now);
+  // the effect
+  void effectSync();
+  void effectEvents(Millis now, const std::vector<EffectEvent>& evs);
+  void effectSample(Millis now, const bool raw[INPUT_COUNT]);
+  bool effectOwns(Channel c) const;
+  bool effectOwns(Input i) const;
+  std::string effectOwnsShow(const Show& s) const;
+  Response effectAction(const Request& r, const std::string& control);
+  std::string doTrigger();  // "" or why it was refused
+  std::string doRecover();
+  std::string refusedText(EffectRefused why) const;
+  void effectStatus(std::vector<ParamValue>& out, bool aliased = true) const;
+  // the run counters as status values (runs_since_power_on, runs_lifetime, last_run_uptime_ms when there was one)
+  void runStatus(std::vector<ParamValue>& out, bool aliased = true) const;
+  // a run started (runs.h): counted, and a "run" event (MQTT <p>/event/run) says what started it
+  void countRun(Millis now, const char* source, const char* kind, const std::string& name, const std::string& detail, int show = -1);
+  // the lifetime count to flash now (from the loop or a request, never from the step)
+  void runsSaveNow();
+  // nothing runs: no show, effect cycle or script effect (a flash write then delays nothing)
+  bool quietNow() const;
+  Storage* run_store_ = nullptr;
+  RunCounter runs_;
+  uint32_t script_runs_seen_[SCRIPT_MAX_EFFECTS] = {0};
+  std::string resolveControl(const std::string& name) const;
+  std::string resolveKey(const std::string& name) const;
+  bool statusRead(const std::string& name, Value& out) const;
+  bool getOut(const std::string& name, Value& out) const;
+  std::string consoleAnswer(const std::string& line);
+  std::string aliasFor(AliasEntry::Kind k, const std::string& target) const;
+  const AliasEntry* aliasNamed(const std::string& alias) const;
+  std::string topicRoot() const;
+  void noticeOut(const Notice& n);
+  std::string checkReserved(const Show& s, const Settings& roles_from) const;
+  void renderPixels(Millis now, const Frame& f);
+  void markDirty() {
+    if (!dirty_) dirty_since_ = now_;
+    dirty_ = true;
+    dirty_at_ = now_;
+  }
+  std::string storedJson(const Show* replace = nullptr) const;
+  // the settings record's size (storedJson's), without the string
+  size_t storedSize(const Show* replace = nullptr) const;
+  void storedDoc(JsonDocument& d, const Show* replace) const;
+  void outputState(int i, const BoardReport& snap, JsonObject o) const;
+  void soundState(JsonObject o) const;
+
+  Board board_;
+  ByteStream& uart_;
+  DfPlayer df_;
+  PixelOut& pixels_;
+  Storage* store_;
+  Settings settings_;
+  Engine engine_;
+  Trigger trig_[2];
+  Button buttons_[3];
+  Identity identity_;
+  NetState net_;
+  WifiScan wifi_scan_;  // the networks this board sees (op wifi_scan)
+  EventLog events_;
+  bool dirty_ = false;
+  bool save_due_ = false;  // the step says: save now (background() does)
+  Millis dirty_at_ = 0;
+  Millis dirty_since_ = 0;      // the first change not yet saved (saved at the latest SAVE_MAX_DELAY_MS after it)
+  Millis save_not_before_ = 0;  // flash wear: SAVE_MIN_GAP_MS between two settings writes
+  uint32_t stored_crc_ = 0;     // the record in flash (crc32), so an unchanged record is not written again
+  bool stored_crc_known_ = false;
+  bool reboot_ = false;
+  std::vector<std::pair<uint8_t, TriggerEvent>> trig_events_;  // from the samples since the last tick
+  // Since when each input reads closed / open without a break (1 ms samples); at power-on as if held, so a
+  // release must be seen first.
+  bool has_closed_[INPUT_COUNT] = {true, true, true, true, true};
+  Millis closed_since_[INPUT_COUNT] = {0, 0, 0, 0, 0};
+  bool has_opened_[INPUT_COUNT] = {false, false, false, false, false};
+  Millis opened_since_[INPUT_COUNT] = {0, 0, 0, 0, 0};
+  void sampleTriggersWith(Millis now, const bool raw[INPUT_COUNT]);
+  std::vector<Rgb> pixel_buf_;
+  bool pixel_have_last_ = false, pixel_last_has_ = false;
+  Effect pixel_last_;
+  Millis pixel_last_start_ = 0, pixel_last_at_ = 0;
+  std::vector<std::string> cues_out_;
+  SoundDirector sound_;
+  bool role_on_[CHANNEL_COUNT] = {false};
+  Millis manual_until_[CHANNEL_COUNT] = {0};      // a manual pulse ends at (0: held)
+  uint32_t manual_session_[CHANNEL_COUNT] = {0};  // the phone page holding a manual output (0: none)
+  uint32_t pixel_session_ = 0;
+  Millis pin_wait_ms_ = 0, pin_wait_until_ = 0;  // the page password's throttle
+  size_t (*heap_probe_)() = nullptr;
+  size_t (*block_probe_)() = nullptr;
+  int (*lock_release_)(void*) = nullptr;
+  void (*lock_retake_)(void*, int) = nullptr;
+  void* lock_user_ = nullptr;
+  bool in_tick_ = false;  // in the step (Controller::tick, or a StepScope): the lock is never given back there
+  // A window is open: a request has given the lock back for work on its own data (Unlocked). Only the step can
+  // run controller code meanwhile (the board's lock makes every other task wait: window_lock.h); a change asked
+  // from the step then is refused (BUSY_TEXT), so the window's reads (the profile, the stored script, the
+  // settings) never change under it. Written and read only with the lock held.
+  mutable bool window_open_ = false;
+  static constexpr const char* BUSY_TEXT = "the board is busy with a request: try again in a moment";
+  // the lock given back for this scope (work on data only this request touches, or the profile and stored script,
+  // which nothing changes meanwhile); nothing on the host without lock hooks, nothing in the step, and nothing
+  // while another window is open
+  class Unlocked {
+   public:
+    explicit Unlocked(const Controller& c) : c_(c) {
+      if (c.in_tick_ || !c.lock_release_ || c.window_open_) return;
+      c.window_open_ = true;  // before the lock goes: the step reads it with the lock
+      n_ = c.lock_release_(c.lock_user_);
+      if (!n_) c.window_open_ = false;
+    }
+    ~Unlocked() {
+      if (!n_) return;
+      c_.lock_retake_(c_.lock_user_, n_);
+      c_.window_open_ = false;
+    }
+    Unlocked(const Unlocked&) = delete;
+    Unlocked& operator=(const Unlocked&) = delete;
+
+   private:
+    const Controller& c_;
+    int n_ = 0;
+  };
+  Millis role_until_[CHANNEL_COUNT] = {0};
+  std::vector<uint16_t> code_shows_;
+  std::unique_ptr<EffectMachine> fx_;
+  Origin origin_ = Origin::Http;
+  uint32_t session_ = 0;
+  uint32_t fx_session_ = 0;     // the WebSocket session that gave the remote enable (SM-R2)
+  std::string fx_by_;           // who gave it: "web:<n>", "mqtt", "serial"
+  Millis sample_now_ = 0;  // the latest 1 ms input sample: a request between steps acts at that millisecond
+  Millis fxNow() const { return sample_now_ > now_ ? sample_now_ : now_; }
+  bool trig1_held_ = false;  // TRIG1's debounced press, for the safety hold ...
+  Millis trig1_since_ = 0;   // ... since
+  bool recover_lease_ = false;      // a held recover from the web, renewed by the page's repeats ...
+  Millis recover_lease_until_ = 0;  // ... until // the web Trigger button is held (down:true without down:false)
+  std::vector<std::pair<std::string, std::string>> status_published_;
+  Millis now_ = 0;
+  RequestHook request_hook_ = nullptr;
+  std::string (*mem_probe_)() = nullptr;
+  void* request_hook_user_ = nullptr;
+  struct MqttTrack {
+    std::string last_state;
+    Millis last_at = 0;
+    uint32_t seq = 0;
+    std::vector<std::pair<std::string, std::string>> published;
+    std::string prefix;
+    bool has_target = false;
+    std::string host;
+    uint16_t port = 0;
+    uint32_t epoch = 0;
+    Millis status_at = 0;
+  } mqtt_;
+  // every setting as MQTT messages, built from a copy without the lock
+  std::vector<MqttMsg> configMsgsUnlocked(const std::string& prefix, const std::vector<ParamValue>& status);
+  static const Millis MQTT_STATUS_PERIOD_MS = 1000;
+  // show scripts
+  Storage* script_store_ = nullptr;
+  std::string script_text_;
+  SoundList script_sounds_;
+  std::string script_error_;  // the stored script failed its re-check at boot
+  std::unique_ptr<ScriptProgram> script_prog_;
+  std::unique_ptr<ScriptRunner> script_run_;
+  DmxOut* dmx_ = nullptr;
+  bool dmx_on_ = false;
+  Millis dmx_at_ = 0;
+  bool booted_ = false;
+  Millis boot_ms_ = 0;
+  ScriptInputs scriptInputs() const;
+  void scriptInstall(std::unique_ptr<ScriptProgram> prog);
+  void scriptTick(Millis now);
+  bool scriptWaitsFor(int input) const { return script_prog_ && (script_prog_->inputs & (1u << input)); }
+  // the show is the factory example exactly as earlier firmware stored it on a fresh board (FACTORY_EXAMPLE_SHOW)
+  static bool isFactoryExample(const Show& s);
+  Response scriptOp(Request& r);
+  void scriptState(JsonObject o) const;
+  SoundConfig soundConfig() const;
+  // the script's record: written (or removed when empty); false and the reason when it could not be stored
+  // (the old script is loaded back from its store)
+  [[nodiscard]] bool scriptWrite(const std::string& text, const SoundList& sounds, const ScriptProgram* table, bool empty,
+                                 std::string& why);
+  // the record to store (script_record.h): the text packed, the checked table and what it was checked against;
+  // empty when it cannot be stored
+  std::string scriptRecord(const std::string& text, const SoundList& sounds, const ScriptProgram* table) const;
+  uint32_t scriptKey(const SoundList& sounds) const;
+  // a table checked with other settings does what the running one does (a name moved to another terminal
+  // passes the check but changes the table: SS-N)
+  bool scriptSameTable(const ScriptProgram& t) const;
+  // the stored record must be written again (a format-1 record, or a table checked again at power-on); held
+  // while a new image has not passed its self-check, so a rollback still finds a record it can read
+  bool script_rewrite_ = false;
+  void scriptRewrite();
+  [[nodiscard]] bool scriptLoad();  // from the store, checked again; false when a record is there but cannot be read
+  bool scriptEffectRunning() const;
+  // over-the-air updates
+  UpdateTarget* update_target_ = nullptr;
+  struct UpdateSession {
+    bool active = false;
+    uint32_t total = 0, done = 0, next_event = 0;
+    uint8_t expected[32]{};
+    Sha256 sha;
+    std::string head;  // the first bytes, held until the header is checked
+    bool header_checked = false;
+    bool restart_at_set = false;
+    Millis restart_at = 0;
+  } upd_;
+  bool records_ok_ = true;
+  bool self_check_done_ = false;
+  bool store_migrated_ = false;   // the settings record was converted from an older format (in RAM)
+  int store_newer_ = 0;           // the settings record's format when it is from a newer firmware (kept)
+  bool store_unreadable_ = false; // the settings record could not be read (kept until a factory reset)
+  bool wiped_ = false;             // a factory reset cleared the flash: nothing is written until the restart
+  int script_newer_ = 0;           // the script record's format when it is from a newer firmware (kept)
+  bool script_unreadable_ = false; // the script record could not be read (kept until a factory reset)
+  // the script record must not be written: "" or why (newer or unreadable, kept until a factory reset)
+  std::string scriptHeldText() const;
+  Millis save_retry_ms_ = 0;      // after a failed save
+  bool storeHeld() const;
+  const char* updateBusy() const;
+  std::string updateFailed(const UpdateError& e);
+  void updateEvent(const char* phase, uint32_t done, uint32_t total, const std::string* message);
+  void updateTick(Millis now);
+  bool self_check_due_ = false;  // the step says: the self-check's time has come (background() marks the image)
+  void selfCheckVerdict();
+  void updateStateJson(JsonObject o) const;
+  Response backupOp(Request& r);
+  std::string restore(Request& r, bool keep_name, std::vector<std::string>& skipped);
+};
+
+}  // namespace pt

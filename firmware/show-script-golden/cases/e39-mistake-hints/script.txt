@@ -1,0 +1,5 @@
+effect a:
+  wait for trig1
+  out1 on
+  play scream.mp3
+  turn on out2 for 2

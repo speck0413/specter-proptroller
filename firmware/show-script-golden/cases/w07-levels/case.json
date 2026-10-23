@@ -1,0 +1,133 @@
+{
+  "spec": [
+    "SS-W7"
+  ],
+  "sounds": {},
+  "settings": {
+    "dmx_port": "s4",
+    "cc1_role": "shows"
+  },
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      {
+        "line": 1,
+        "message": "line 1: effect \"l\" ends with out2 still on. It may stay on until the next trigger."
+      },
+      {
+        "line": 1,
+        "message": "line 1: effect \"l\" ends with out3 still on. It may stay on until the next trigger."
+      },
+      {
+        "line": 1,
+        "message": "line 1: effect \"l\" ends with out4 still on. It may stay on until the next trigger."
+      },
+      {
+        "line": 1,
+        "message": "line 1: effect \"l\" ends with dmx1 still on. It may stay on until the next trigger."
+      },
+      {
+        "line": 1,
+        "message": "line 1: effect \"l\" ends with dmx2 still on. It may stay on until the next trigger."
+      },
+      {
+        "line": 1,
+        "message": "line 1: effect \"l\" ends with dmx3 still on. It may stay on until the next trigger."
+      }
+    ],
+    "table": {
+      "effects": [
+        {
+          "name": "l",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 3,
+              "op": "set",
+              "target": "OUT1",
+              "level": 1000
+            },
+            {
+              "line": 4,
+              "op": "set",
+              "target": "OUT1",
+              "level": 0
+            },
+            {
+              "line": 5,
+              "op": "set",
+              "target": "OUT2",
+              "level": 500
+            },
+            {
+              "line": 6,
+              "op": "set",
+              "target": "OUT3",
+              "level": 125
+            },
+            {
+              "line": 7,
+              "op": "set",
+              "target": "OUT4",
+              "level": 0
+            },
+            {
+              "line": 8,
+              "op": "set",
+              "target": "OUT4",
+              "level": 1000
+            },
+            {
+              "line": 9,
+              "op": "set",
+              "target": "DMX1",
+              "level": 128
+            },
+            {
+              "line": 10,
+              "op": "set",
+              "target": "DMX2",
+              "level": 255
+            },
+            {
+              "line": 11,
+              "op": "set",
+              "target": "DMX3",
+              "level": 3
+            },
+            {
+              "line": 12,
+              "op": "set",
+              "target": "RLY1",
+              "level": 1000
+            },
+            {
+              "line": 13,
+              "op": "set",
+              "target": "RLY1",
+              "level": 0
+            },
+            {
+              "line": 14,
+              "op": "set",
+              "target": "CC1",
+              "level": 1000
+            },
+            {
+              "line": 15,
+              "op": "set",
+              "target": "CC1",
+              "level": 0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

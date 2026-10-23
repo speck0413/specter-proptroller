@@ -1,0 +1,1 @@
+{"v":1,"ok":true,"result":{"kind":"show","data":{"id":2,"name":"Link: TRIG1 -> OUT2","enabled":true,"triggers":[{"on":"input","input":"TRIG1","until_release":true}],"cooldown_ms":0,"retrigger":"ignore","looping":false,"priority":1,"length_ms":60000,"stop_sound":true,"tracks":[{"target":"OUT2","cues":[{"at":0,"do":"on"}]}]}}}

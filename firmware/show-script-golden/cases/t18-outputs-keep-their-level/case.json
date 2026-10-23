@@ -1,0 +1,63 @@
+{
+  "spec": [
+    "SS-R6"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 3000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 3150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 5000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            500
+          ]
+        ],
+        "RLY1": [
+          [
+            1600,
+            1000
+          ],
+          [
+            2100,
+            0
+          ],
+          [
+            3600,
+            1000
+          ],
+          [
+            4100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

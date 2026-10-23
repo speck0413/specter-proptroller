@@ -1,0 +1,23 @@
+{
+  "spec": [
+    "SS-D2"
+  ],
+  "sounds": {},
+  "settings": {
+    "rly2_role": "none"
+  },
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: rly2 is set to not used (rly2_role). Set rly2_role to shows to use it in a script."
+      },
+      {
+        "line": 4,
+        "message": "line 4: rly2 is set to not used (rly2_role). Set rly2_role to shows to use it in a script."
+      }
+    ],
+    "warnings": []
+  }
+}

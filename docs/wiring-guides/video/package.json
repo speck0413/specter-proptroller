@@ -1,0 +1,27 @@
+{
+  "name": "proptroller-wiring-guides",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Wiring guides for the Spectre Proptroller: interactive HTML step-throughs and Remotion videos from one set of step data",
+  "type": "module",
+  "scripts": {
+    "narrate": "node build/narrate.mjs",
+    "html": "node build/html.mjs",
+    "studio": "remotion studio src/remotion/index.jsx",
+    "render": "node build/render.mjs",
+    "test": "node test/audio-test.mjs",
+    "build": "npm run narrate && npm run html"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.532",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.532",
+    "three": "0.186.1"
+  },
+  "devDependencies": {
+    "@gltf-transform/cli": "4.5.1",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.64.0"
+  }
+}

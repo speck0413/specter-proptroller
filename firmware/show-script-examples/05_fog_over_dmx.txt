@@ -1,0 +1,19 @@
+# 05 Fog machine over DMX: a fog machine with a DMX input, through the DMX add-on.
+#
+# Board setting: dmx_port = s4
+#
+# Parts (SHOW-SCRIPT.md §7.4): a "MAX485 TTL to RS-485 module" and a 3-pin XLR female pigtail.
+#   module VCC -> expansion +5V        module GND -> expansion GND and XLR pin 1
+#   module DI  -> expansion S4         module DE and RE (joined) -> +5V
+#   module A   -> XLR pin 3            module B  -> XLR pin 2
+#
+#        [button]--TRIG1        S4--[MAX485]--XLR--[fog machine DMX in]
+#
+# Set the fog machine to DMX address 1 (channel 1 = fog). Check its manual for its channels.
+
+effect fog:
+  wait for trig1
+  dmx1 = 100%
+  sleep 4
+  dmx1 = off
+  sleep 45

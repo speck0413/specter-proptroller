@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14161a">
+<title>Proptroller</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="stickytop">
+<header class="top">
+  <div class="title">
+    <img src="icon.svg" alt="" width="28" height="28">
+    <div>
+      <h1 id="dev-name">Proptroller</h1>
+      <div class="sub"><span id="conn" class="dot" role="img" aria-label="not connected"></span><span id="dev-sub">connecting…</span></div>
+    </div>
+  </div>
+  <button id="unlock" class="small lockchip" hidden>Unlock</button>
+  <button id="stop-all" data-cap="shows|outputs|script|effect" class="danger" title="Stop every show, script effect and sound, and let go of every output tested here" aria-label="STOP everything">STOP</button>
+  <div id="unlock-box" class="unlockbox" hidden>
+    <label for="unlock-pin">The page is locked: page password</label>
+    <div class="row"><input id="unlock-pin" type="password" maxlength="32" autocomplete="current-password"><button id="unlock-go" class="primary">Unlock</button><button id="unlock-cancel">Cancel</button></div>
+  </div>
+  <div id="update-line" class="stopline" role="status" hidden></div>
+  <div id="stop-line" class="stopline" role="status" aria-live="polite" hidden></div>
+</header>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
+  <button data-tab="live" class="on">Live</button>
+  <button data-tab="wiring">Wiring</button>
+  <button data-tab="shows" data-cap="shows">Shows</button>
+  <button data-tab="script" data-cap="script">Script</button>
+  <button data-tab="record" data-cap="script">Record effect</button>
+  <button data-tab="settings" data-cap="params">Settings</button>
+  <button data-tab="firmware" data-cap="update">Firmware</button>
+</nav>
+</div>
+
+<main>
+  <!-- LIVE -->
+  <section id="tab-live" class="tab on">
+    <div id="banner" class="banner hidden" role="status"><span id="banner-text"></span><button id="resume">Resume</button></div>
+    <div class="card netwhere" id="net-card" hidden><div id="net-where"></div></div>
+    <div class="card" id="status-card">
+      <h2>Status</h2>
+      <div class="kv" id="status-lines"></div>
+      <div class="row wrap" id="actions"></div>
+      <div id="actions-msg" class="msg" role="status"></div>
+    </div>
+    <div class="card hidden" id="live-script-card">
+      <h2>Effect script</h2>
+      <div id="live-script" class="list"></div>
+      <p class="hint warnline" id="overlap-live" hidden></p>
+    </div>
+    <div class="card" data-cap="shows">
+      <h2>Shows</h2>
+      <div id="live-shows" class="list"></div>
+    </div>
+    <div class="card">
+      <h2>Inputs</h2>
+      <div id="inputs" class="chips"></div>
+      <p class="hint" id="sim-hint" hidden>Simulator: press and hold an input to close it; release to open it.</p>
+    </div>
+    <div class="card" data-cap="outputs|outputs_ro">
+      <h2>Outputs <small data-cap="outputs">test</small></h2>
+      <div id="outputs" class="outs"></div>
+      <p class="hint" data-cap="outputs" id="out-hint">On and Off keep an output on or off, whatever the shows do, until you tap Auto (the shows decide again), STOP, or close this page.</p>
+    </div>
+    <div class="card" data-cap="sound">
+      <h2>Sound</h2>
+      <div class="row wrap">
+        <label>Folder <input id="snd-folder" type="number" min="1" max="99" value="1"></label>
+        <label>Track <input id="snd-track" type="number" min="1" max="255" value="1"></label>
+        <button id="snd-play">Play</button>
+        <button id="snd-stop">Stop</button>
+        <label>Volume <input id="snd-vol" type="range" min="0" max="30" value="20"></label>
+      </div>
+      <p class="hint">Folder 1, track 2 plays the file <code>/01/002.mp3</code> on the player's card.</p>
+      <div class="hint" id="snd-state"></div>
+    </div>
+    <div class="card" data-cap="pixels">
+      <h2>Pixels</h2>
+      <div class="row wrap">
+        <input id="px-color" type="color" value="#ff6000" aria-label="Pixel colour">
+        <select id="px-effect" aria-label="Pixel effect">
+          <option value="fill">fill</option><option value="flicker">flicker</option><option value="chase">chase</option>
+          <option value="flash">flash</option><option value="rainbow">rainbow</option><option value="fade">fade in</option>
+        </select>
+        <button id="px-go">Show</button>
+        <button id="px-off">Release</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- WIRING -->
+  <section id="tab-wiring" class="tab">
+    <div class="card hidden" id="machine-card">
+      <h2>State</h2>
+      <div id="machine" class="machine"></div>
+      <div id="timers"></div>
+    </div>
+    <div class="card">
+      <h2>Wiring <small id="wiring-sub"></small></h2>
+      <div id="wiring" class="wiring"></div>
+      <p class="hint" id="wiring-hint"></p>
+    </div>
+    <div class="card">
+      <div class="row between"><h2>Event log</h2><button id="evlog-clear" class="small">Clear</button></div>
+      <div id="evlog" class="evlog"></div>
+    </div>
+  </section>
+
+  <!-- SHOWS -->
+  <section id="tab-shows" class="tab">
+    <div class="card">
+      <div class="row between"><h2>Shows</h2><div class="row"><button id="link-open" title="Turn outputs on from an input, without a timeline">Link</button><button id="new-show">+ New</button></div></div>
+      <div id="show-list" class="list"></div>
+      <div class="row wrap"><button id="add-example" class="small" title="TRIG1 pulses OUT1 for 2 s with a pixel flash">Add an example show</button></div>
+      <div id="shows-msg" class="msg"></div>
+    </div>
+    <div class="card hidden" id="link">
+      <h2>Link outputs to an input</h2>
+      <p class="hint">The simplest show: when the input is pressed, the outputs come on. It is saved as a normal show you can edit later.</p>
+      <div class="grid2">
+        <label>Input <select id="link-input"></select></label>
+        <label>Save as <select id="link-to"></select></label>
+      </div>
+      <h3>Outputs</h3>
+      <div id="link-outputs" class="chips"></div>
+      <h3>How long</h3>
+      <div class="seg" id="link-mode">
+        <label class="check"><input type="radio" name="link-mode" value="held" checked> On while held</label>
+        <label class="check"><input type="radio" name="link-mode" value="timed"> On for a time when pressed</label>
+      </div>
+      <label id="link-secs-label"><span id="link-secs-text">At most (s)</span> <input id="link-secs" type="number" min="0.1" max="3600" step="0.1" value="60"></label>
+      <p class="hint" id="link-hint"></p>
+      <div class="row between">
+        <button id="link-cancel">Close</button>
+        <button id="link-save" class="primary">Save link</button>
+      </div>
+      <div id="link-msg" class="msg"></div>
+    </div>
+    <div class="card hidden" id="editor">
+      <div class="row between">
+        <h2 id="ed-title">Show</h2>
+        <div class="row"><button id="ed-run">Run</button><button id="ed-stop">Stop</button></div>
+      </div>
+      <div class="grid2">
+        <label>Name <input id="ed-name" maxlength="40"></label>
+        <label>Cooldown (s) <input id="ed-cooldown" type="number" min="0" step="0.1"></label>
+        <label title="How many times it may run before the cooldown makes it wait (1 = rest after every run)">Runs per cooldown <input id="ed-runs" type="number" min="1" max="20"></label>
+        <label>Priority <input id="ed-priority" type="number" min="0" max="255"></label>
+        <label>If triggered while running
+          <select id="ed-retrigger"><option value="ignore">ignore</option><option value="restart">restart</option><option value="stop">stop</option></select>
+        </label>
+        <label>Length (s, blank = auto) <input id="ed-length" type="number" min="0" step="0.1"></label>
+        <label class="check"><input id="ed-enabled" type="checkbox"> Enabled</label>
+        <label class="check"><input id="ed-looping" type="checkbox"> Loop</label>
+      </div>
+      <h3>Starts on</h3>
+      <div id="ed-triggers"></div>
+      <button id="ed-add-trigger" class="small">+ trigger</button>
+      <h3>Timeline</h3>
+      <canvas id="timeline" height="160" role="img" aria-label="Timeline"></canvas>
+      <div id="ed-tracks"></div>
+      <div class="row wrap">
+        <select id="ed-new-target" aria-label="Output for a new track"></select>
+        <button id="ed-add-track" class="small">+ track</button>
+      </div>
+      <p class="hint" id="ed-reserved"></p>
+      <details>
+        <summary>JSON</summary>
+        <textarea id="ed-json" rows="12" spellcheck="false"></textarea>
+        <button id="ed-json-apply" class="small">Apply JSON</button>
+      </details>
+      <label>Save as <select id="ed-save-to"></select></label>
+      <div class="row between sticky">
+        <span id="ed-delete-box"><button id="ed-delete" class="danger">Delete</button></span>
+        <div class="row"><button id="ed-cancel">Close</button><button id="ed-save" class="primary">Save</button></div>
+        <div id="ed-msg" class="msg"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCRIPT -->
+  <section id="tab-script" class="tab">
+    <div class="card">
+      <div class="row between"><h2>Effect script</h2><small id="script-state"></small></div>
+      <p class="hint">One effect per block: <code>effect porch light:</code>, then its lines: <code>wait for trig1</code>,
+        <code>out1 = on</code>, <code>sleep 2</code>, <code>fade out1 to 0% over 3</code>, <code>flicker out2 for 5</code>,
+        <code>audio_single = 1</code> (plays <code>/01/001.mp3</code>), <code>audio_loop = 2</code>, <code>audio_stop</code>.
+        Times are seconds (or <code>200 ms</code>, <code>3 min</code>); <code>#</code> starts a comment.</p>
+      <div class="seg3" id="script-view" role="radiogroup" aria-label="How to show the script">
+        <label class="check"><input type="radio" name="script-view" value="both"> Script and blocks</label>
+        <label class="check"><input type="radio" name="script-view" value="text"> Script only</label>
+        <label class="check"><input type="radio" name="script-view" value="blocks"> Blocks only</label>
+      </div>
+      <div class="panes" id="script-panes">
+      <div class="pane" id="script-text-pane">
+      <textarea id="script-text" rows="16" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Effect script" aria-describedby="script-keys" placeholder="(no effect script stored yet: type one here, for example)&#10;&#10;effect porch light:&#10;  wait for trig1&#10;  out1 = on&#10;  sleep 30&#10;  fade out1 to 0% over 2"></textarea>
+      <p class="hint" id="script-keys">Tab indents; press Esc, then Tab, to leave the box.</p>
+      </div>
+      <div class="pane" id="script-blocks-pane">
+        <div id="script-blocks" class="blocks" role="group" aria-label="The effect script as blocks"></div>
+        <p class="hint">Change a value in a block, move a block with its arrows (or drag it by ⠿ with a mouse), remove it with ✕.</p>
+      </div>
+      </div>
+      <details id="script-sounds-box">
+        <summary>Sound files (name = number)</summary>
+        <p class="hint">The desktop app fills this in when it copies the sounds to the card. Sound N is folder N, track 1: the file <code>/NN/001.mp3</code> on the player's card.</p>
+        <textarea id="script-sounds" rows="4" spellcheck="false" autocapitalize="off" autocorrect="off" aria-label="Sound files" placeholder="chime.mp3 = 1"></textarea>
+      </details>
+      <div class="row wrap">
+        <button id="script-check">Check</button>
+        <button id="script-save" class="primary">Save</button>
+        <button id="script-revert">Revert</button>
+      </div>
+      <div id="script-msg" class="msg"></div>
+      <div id="script-msgs" class="smsgs"></div>
+      <p class="hint warnline" id="overlap-script" hidden></p>
+    </div>
+  </section>
+
+  <!-- RECORD EFFECT (record.js) -->
+  <section id="tab-record" class="tab">
+    <div class="card" id="rx-setup">
+      <h2>Record effect</h2>
+      <p class="hint">Pick what starts it and what it uses, press Start, then work the controls: the board does each
+        thing as you do it. Press Stop and the board does it all back. Keep saves it as an effect script, which you
+        can change later on the Script tab.</p>
+      <label>Starts when this is pressed <select id="rx-trigger"></select></label>
+      <p class="hint" id="rx-trigger-hint" hidden></p>
+      <h3 id="rx-outs-h">Outputs to use</h3>
+      <div id="rx-outs" class="chips" role="group" aria-labelledby="rx-outs-h"></div>
+      <div id="rx-sounds-box" hidden>
+        <h3 id="rx-sounds-h">Sounds to use</h3>
+        <div id="rx-sounds" class="chips" role="group" aria-labelledby="rx-sounds-h"></div>
+      </div>
+      <label class="check"><input id="rx-count" type="checkbox" checked> Count 3, 2, 1 before it starts</label>
+      <div class="row"><button id="rx-start" class="primary big">Start</button></div>
+      <div id="rx-setup-msg" class="msg"></div>
+    </div>
+    <div class="card hidden" id="rx-live">
+      <div class="row between"><h2 id="rx-title">Recording</h2><button id="rx-stop" class="danger">Stop</button></div>
+      <div id="rx-status" class="rxstatus" role="status" aria-live="polite"></div>
+      <div id="rx-controls" class="rxgrid"></div>
+      <div id="rx-live-msg" class="msg"></div>
+    </div>
+    <div class="card hidden" id="rx-review">
+      <h2>Your effect</h2>
+      <div id="rx-notes"></div>
+      <label>Name <input id="rx-name" maxlength="32" autocomplete="off"></label>
+      <details id="rx-code-box" open>
+        <summary>The effect script</summary>
+        <pre id="rx-code" class="code" tabindex="0" aria-label="The recorded effect script"></pre>
+      </details>
+      <div class="row wrap">
+        <button id="rx-play">Play it again</button>
+        <button id="rx-again">Try again</button>
+        <button id="rx-more">Add more on top</button>
+      </div>
+      <div class="row"><button id="rx-keep" class="primary big">Keep</button></div>
+      <div id="rx-msg" class="msg"></div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="tab-settings" class="tab">
+    <p class="hint">Tap a group to open it. <span id="p-units">Times are in seconds.</span> <span aria-hidden="true">⟳</span> = takes effect after a restart.</p>
+    <div id="params"></div>
+    <div class="savebar">
+      <div class="row between"><span id="p-count" class="hint">no changes</span><button id="p-save" class="primary" disabled>Save settings</button></div>
+      <div id="p-msg" class="msg"></div>
+    </div>
+    <div class="card">
+      <div class="row wrap">
+        <button id="p-reboot">Restart</button>
+        <button id="p-factory" class="danger">Factory reset</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Device</h2>
+      <label>Theme (this phone)
+        <select id="theme"><option value="">Like the phone</option><option value="dark">Dark (best in a dark haunt)</option><option value="light">Light</option></select>
+      </label>
+      <div class="kv" id="dev-info"></div>
+    </div>
+    <div class="card">
+      <h2>Log</h2>
+      <pre id="log"></pre>
+    </div>
+  </section>
+
+  <!-- FIRMWARE -->
+  <section id="tab-firmware" class="tab">
+    <div class="card">
+      <h2>Firmware</h2>
+      <div class="kv" id="fw-info"></div>
+    </div>
+    <div class="card">
+      <h2>Update</h2>
+      <p class="hint">Choose the firmware file (<code>.bin</code>) for this board from the release. The board checks it, writes it next to the
+        one it runs, restarts into it and keeps it after 30 s of normal running; if the new one fails, it goes back to this one.</p>
+      <div id="fw-drop" class="drop" tabindex="0">
+        <div class="drop-text">Drop a <code>.bin</code> file here, or</div>
+        <label class="pick">Choose the file<input id="fw-file" type="file" accept=".bin,application/octet-stream"></label>
+      </div>
+      <div id="fw-file-info" class="msg"></div>
+      <div class="row wrap">
+        <button id="fw-send" class="primary" disabled>Update</button>
+        <button id="fw-stop" class="danger hidden">Stop all, then update</button>
+      </div>
+      <progress id="fw-progress" max="1" value="0" class="hidden"></progress>
+      <div id="fw-msg" class="msg"></div>
+    </div>
+  </section>
+</main>
+<div id="alert" class="alertbar" role="alert" hidden><span id="alert-text"></span><button id="alert-close" class="small" aria-label="Dismiss">Close</button></div>
+<script src="app.js"></script>
+<script type="module" src="scriptview.js"></script>
+<script type="module" src="record.js"></script>
+</body>
+</html>

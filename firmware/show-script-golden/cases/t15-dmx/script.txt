@@ -1,0 +1,7 @@
+effect fog:
+wait for trig1
+dmx1 = on
+dmx2 = 50%
+sleep 1
+dmx1 = off
+dmx2 = off

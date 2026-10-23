@@ -1,0 +1,6 @@
+{"v":1,"seq":53,"event":"log","data":"firmware update: receiving 307298 bytes"}
+{"v":1,"seq":54,"event":"update","data":{"phase":"writing","done":0,"total":307298}}
+{"v":1,"seq":55,"event":"update","data":{"phase":"writing","done":131072,"total":307298}}
+{"v":1,"seq":56,"event":"update","data":{"phase":"writing","done":262144,"total":307298}}
+{"v":1,"seq":57,"event":"log","data":"firmware update: the new image is written and checked; restarting into it"}
+{"v":1,"seq":58,"event":"update","data":{"phase":"restarting","done":307298,"total":307298}}

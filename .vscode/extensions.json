@@ -1,0 +1,15 @@
+{
+  // Install with "Show Recommended Extensions" when VS Code asks; README.md "Developer quick start" lists them.
+  "recommendations": [
+    "platformio.platformio-ide",
+    "ms-vscode.cpptools",
+    "editorconfig.editorconfig",
+    "davidanson.vscode-markdownlint",
+    "streetsidesoftware.code-spell-checker",
+    // Windows: open the folder inside WSL 2 (README.md, "Windows")
+    "ms-vscode-remote.remote-wsl"
+  ],
+  "unwantedRecommendations": [
+    "ms-vscode.cmake-tools"
+  ]
+}

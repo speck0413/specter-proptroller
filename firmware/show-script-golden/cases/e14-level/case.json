@@ -1,0 +1,25 @@
+{
+  "spec": [
+    "SS-W7"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: \"bright\" is not a level. Use on, off or a percentage from 0% to 100%."
+      },
+      {
+        "line": 4,
+        "message": "line 4: \"120%\" is not a level. Use on, off or a percentage from 0% to 100%."
+      },
+      {
+        "line": 5,
+        "message": "line 5: \"dim\" is not a level. Use on, off or a percentage from 0% to 100%."
+      }
+    ],
+    "warnings": []
+  }
+}

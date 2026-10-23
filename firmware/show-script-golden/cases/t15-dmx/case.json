@@ -1,0 +1,51 @@
+{
+  "spec": [
+    "SS-D8"
+  ],
+  "sounds": {},
+  "settings": {
+    "dmx_port": "s4"
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 4000,
+    "expect": {
+      "dmx": {
+        "1": [
+          [
+            1100,
+            255
+          ],
+          [
+            2100,
+            0
+          ]
+        ],
+        "2": [
+          [
+            1100,
+            128
+          ],
+          [
+            2100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

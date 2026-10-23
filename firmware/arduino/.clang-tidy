@@ -1,0 +1,24 @@
+# clang-tidy for this project's sources (tools/check-static.sh, `pio check -e check`). Every check named here is a
+# gate: a finding is fixed, or suppressed at its line with NOLINT(<check>) and the reason.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-branch-clone,
+  -bugprone-implicit-widening-of-multiplication-result,
+  cert-*,
+  -cert-err58-cpp,
+  -cert-dcl21-cpp,
+  performance-*,
+  -performance-avoid-endl,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-slicing,
+  cppcoreguidelines-virtual-class-destructor,
+  cppcoreguidelines-pro-type-member-init,
+  readability-misleading-indentation,
+  readability-redundant-string-cstr,
+  misc-redundant-expression,
+  misc-misplaced-const
+WarningsAsErrors: '*'
+HeaderFilterRegex: 'lib/proptroller/src/.*'

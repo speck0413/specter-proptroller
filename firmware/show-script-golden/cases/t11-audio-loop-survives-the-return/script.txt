@@ -1,0 +1,9 @@
+effect rain:
+wait for trig1
+audio_loop = rain.mp3
+out1 = on
+sleep 1
+out1 = off
+effect quiet:
+wait for trig2
+audio_stop

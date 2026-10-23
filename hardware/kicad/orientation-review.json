@@ -1,0 +1,1828 @@
+{
+  "version": 1,
+  "irSha256": "208f6efd81a2eb16e72fb3df75d0b294ff077315a66ecbb600499c24adadc81e",
+  "pcbSha256": "48e55c75c304f2126bbd9722f6c5f28edbe8f4a376d5ffe7d3adf48b1c094e43",
+  "cplSha256": "8835a9a1ff9847430150b28b4680e6fbba8cee7744f86be89f0bff3667b9617e",
+  "rotationRulesSha256": "bf69e5226e80a52c3a47b4161fafed19fe0665072cdcdd304bf42aca4c6b4571",
+  "instructions": "Inspect both close-ups. Compare the physical pin-1/cathode/positive mark with the keyed pad and the exact part datasheet. Record status=pass only after inspection, with reviewer, notes and datasheet. Confirm each JLC placement-preview orientation in assemblyPreview. Pending/fail and changed evidence block release.",
+  "parts": [
+    {
+      "ref": "C_BK1",
+      "pad": "1",
+      "mark": "positive pad (+/1); check body + mark (tantalum) or negative stripe on the opposite pad (electrolytic)",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        94.95,
+        30.8
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Capacitor_SMD.3dshapes/CP_Elec_8x10.step",
+          "sha256": "eac826caddc87349153805510154d3cd62a11307d11e10b3761a8acf8712a37a"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/C_BK1-61734c-footprint.svg",
+          "sha256": "37b5f9d004be94451b059aaeb34ff12704936674aff6625ea5d71055ac7c4d6f"
+        },
+        "model": {
+          "path": "orientation/C_BK1-61734c-model.png",
+          "sha256": "d170b0b4b18f4e8ee947a92d168cd8307d07416dfc1aa0ae9b0fe9a7c669d046"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "C_BK2",
+      "pad": "1",
+      "mark": "positive pad (+/1); check body + mark (tantalum) or negative stripe on the opposite pad (electrolytic)",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        82,
+        36.9
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Capacitor_SMD.3dshapes/CP_Elec_8x10.step",
+          "sha256": "eac826caddc87349153805510154d3cd62a11307d11e10b3761a8acf8712a37a"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/C_BK2-15a4da-footprint.svg",
+          "sha256": "d821660e504d4bce27addfa9855b7ab9a485748b27a5dda24fec869fde36dc93"
+        },
+        "model": {
+          "path": "orientation/C_BK2-15a4da-model.png",
+          "sha256": "e19324f2174cb9557c2d76c73547145658cbd4720d24dc51ba1d7e2076d6f994"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "C_DF",
+      "pad": "1",
+      "mark": "positive pad (+/1); check body + mark (tantalum) or negative stripe on the opposite pad (electrolytic)",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        106.35,
+        35.1
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Capacitor_SMD.3dshapes/CP_Elec_8x10.step",
+          "sha256": "eac826caddc87349153805510154d3cd62a11307d11e10b3761a8acf8712a37a"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/C_DF-d32c5d-footprint.svg",
+          "sha256": "09da21b8b51b3565dbbe3792677ca964409612cb689ce9b5a98b3e56082ad43e"
+        },
+        "model": {
+          "path": "orientation/C_DF-d32c5d-model.png",
+          "sha256": "c778b9277374be471b55268aef442d4155d824571923536ba2d3a68962707167"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_C1",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        59.1,
+        47.4
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SOD-123.step",
+          "sha256": "b3dc4065573abc72e3d5b4cca0e908f72a24205a41b6284b1f75ccacbe99adf8"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_C1-729a76-footprint.svg",
+          "sha256": "b47f8f454ba02c7ff911bd96e185ec75eb841c9053e3c77345be3f64136071e9"
+        },
+        "model": {
+          "path": "orientation/D_C1-729a76-model.png",
+          "sha256": "0caea3a12194108fdf46d68ab1fd00b584f6e9fdb9d4b357508925c94459869e"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_C2",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        68.65,
+        45
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SOD-123.step",
+          "sha256": "b3dc4065573abc72e3d5b4cca0e908f72a24205a41b6284b1f75ccacbe99adf8"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_C2-e65d8b-footprint.svg",
+          "sha256": "7fdd18fcafac7bdc7a107dce3cf1d333bc14b89e2f47397bcf0c64ec23846e97"
+        },
+        "model": {
+          "path": "orientation/D_C2-e65d8b-model.png",
+          "sha256": "dda873a37b242ddc39ff42cc0836f2f9fffa59e472024ef993a4962fbc02cd09"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_CT1",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        22.55,
+        62.6
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SMA.step",
+          "sha256": "1cfddd4e3b1bf22b8fc6ee3258c2aade882ed7b85b528e23b9db42437775a1db"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_CT1-da0959-footprint.svg",
+          "sha256": "336a0f305f408e350886f1cbf83c7f829f74e34c303142268beead879a61fbaf"
+        },
+        "model": {
+          "path": "orientation/D_CT1-da0959-model.png",
+          "sha256": "5df2df7ae112060d15b392122a5f16fcdb6d11499ea60785c8a0cb435cf91fcf"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_CT2",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        20.85,
+        59.15
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SMA.step",
+          "sha256": "1cfddd4e3b1bf22b8fc6ee3258c2aade882ed7b85b528e23b9db42437775a1db"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_CT2-a7e3c6-footprint.svg",
+          "sha256": "5fa69b08803f0582c071c11cab14bb892b21fa93ee35126c5cb67adab8452742"
+        },
+        "model": {
+          "path": "orientation/D_CT2-a7e3c6-model.png",
+          "sha256": "7da76629368387430a7ee41db8c75d00cc6ab0b1bc3f150f4a4c2d1aa985e115"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_DF",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        104.05,
+        38.4
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SOD-123.step",
+          "sha256": "b3dc4065573abc72e3d5b4cca0e908f72a24205a41b6284b1f75ccacbe99adf8"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_DF-182143-footprint.svg",
+          "sha256": "f48bd3658963717bc1363f19e771f9791eb2ad7c12a6ec709f0fc042bc4d19f2"
+        },
+        "model": {
+          "path": "orientation/D_DF-182143-model.png",
+          "sha256": "e67db63625cd81a82cc251d22069e645d32511dbc1a57ca5fd3d4216b3f63bd5"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_F1",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        85.5,
+        61.345
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SMA.step",
+          "sha256": "1cfddd4e3b1bf22b8fc6ee3258c2aade882ed7b85b528e23b9db42437775a1db"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_F1-a4600f-footprint.svg",
+          "sha256": "fa0c32af9a141d5c126cbf041ce2215b3084b286ba5ff2071beb240486e44a52"
+        },
+        "model": {
+          "path": "orientation/D_F1-a4600f-model.png",
+          "sha256": "c6923a32471fb08552773e636590c2eddd329b7b9ad019a26be122a15f5b7ce1"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_F2",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        97.85,
+        61.345
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SMA.step",
+          "sha256": "1cfddd4e3b1bf22b8fc6ee3258c2aade882ed7b85b528e23b9db42437775a1db"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_F2-beb93b-footprint.svg",
+          "sha256": "a78372d2f6164b2d2fdd2d9510ee240169d881014ef888bb61ec9fa96294403b"
+        },
+        "model": {
+          "path": "orientation/D_F2-beb93b-model.png",
+          "sha256": "2e9561136a4e768669a79fa427d93f04c19628a973c5fd57092c702d5f953e28"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_F3",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        110.2,
+        61.345
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SMA.step",
+          "sha256": "1cfddd4e3b1bf22b8fc6ee3258c2aade882ed7b85b528e23b9db42437775a1db"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_F3-585457-footprint.svg",
+          "sha256": "b79fd39f7bfc265450365cb29991641264cdf6b1c97f34a1cea08d15c41d8025"
+        },
+        "model": {
+          "path": "orientation/D_F3-585457-model.png",
+          "sha256": "7b84c4fff85a7ab7b8cc8cd14e00960174741362a4ddf36261eb4f9e24d9d06b"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_F4",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        122.55,
+        61.345
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SMA.step",
+          "sha256": "1cfddd4e3b1bf22b8fc6ee3258c2aade882ed7b85b528e23b9db42437775a1db"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_F4-71aa16-footprint.svg",
+          "sha256": "141970280048984333541dd9c7a091d5b292e2e3c5270eea381900d1112eb76c"
+        },
+        "model": {
+          "path": "orientation/D_F4-71aa16-model.png",
+          "sha256": "7b35943ae84c415ede8c49084757a9b17898b818091e7d8548a70a9bd8c9415b"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_LO1",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        85.75,
+        65.7425
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0805_2012Metric.step",
+          "sha256": "0aa8b791804f5d72a2fc7d1bf231dd9959207d83df8ad801176fbc459f575b98"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_LO1-3d1d09-footprint.svg",
+          "sha256": "2db919f653382cb837105253a4c9647ddbe5a361284af914d5fced54b3ce0b53"
+        },
+        "model": {
+          "path": "orientation/D_LO1-3d1d09-model.png",
+          "sha256": "9ef448c501345813e3c444384347430fe9ede2e3d4df5cccaaf81cad24896f52"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_LO2",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        98.1,
+        65.7425
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0805_2012Metric.step",
+          "sha256": "0aa8b791804f5d72a2fc7d1bf231dd9959207d83df8ad801176fbc459f575b98"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_LO2-02d0fd-footprint.svg",
+          "sha256": "7af9e6f4e7430416aa0c460eefff44698f9a3f168a6e97d58c810c38759afea4"
+        },
+        "model": {
+          "path": "orientation/D_LO2-02d0fd-model.png",
+          "sha256": "d061ab5c0f071bdbb7e40336a59d6ce961d10d33af2f34880f2bf75f649b1c10"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_LO3",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        110.45,
+        65.7425
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0805_2012Metric.step",
+          "sha256": "0aa8b791804f5d72a2fc7d1bf231dd9959207d83df8ad801176fbc459f575b98"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_LO3-77edef-footprint.svg",
+          "sha256": "58f98bcd68a5368b5fda7190f304cdaed05ab1d9aaa123fb61de2ef5a98766c8"
+        },
+        "model": {
+          "path": "orientation/D_LO3-77edef-model.png",
+          "sha256": "865f32a8cdc922749431f0c18fc968521cdde99dabc816f390938bcc6bac1ed7"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_LO4",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        122.8,
+        65.7425
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0805_2012Metric.step",
+          "sha256": "0aa8b791804f5d72a2fc7d1bf231dd9959207d83df8ad801176fbc459f575b98"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_LO4-e2dc43-footprint.svg",
+          "sha256": "fbd1a4da70bfd1623dc7f3620782f434f6a66508f2f79168bc117d7bc23bc841"
+        },
+        "model": {
+          "path": "orientation/D_LO4-e2dc43-model.png",
+          "sha256": "789e8a56dd2fa3654ccf6d6e35e42a4335eda1de86a037db57c26a4c2ce1173c"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_MCU",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        23.65,
+        37.55
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SOD-123.step",
+          "sha256": "b3dc4065573abc72e3d5b4cca0e908f72a24205a41b6284b1f75ccacbe99adf8"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_MCU-2de6a6-footprint.svg",
+          "sha256": "63892ec9c9cca10010007022b03e011566e0458a9b3ba4bee72ba8122f8227ae"
+        },
+        "model": {
+          "path": "orientation/D_MCU-2de6a6-model.png",
+          "sha256": "3a186271cb090727d2a70b7cd2384e2ba38ee75eca816675f7332c6cb7ab6a67"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_RL1",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        62.35,
+        40.6125
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0805_2012Metric.step",
+          "sha256": "0aa8b791804f5d72a2fc7d1bf231dd9959207d83df8ad801176fbc459f575b98"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_RL1-88f29f-footprint.svg",
+          "sha256": "2a619d26f61837c57dae80faa1bbd0e5bdabfd7ed6dc4b446912c7d40d87c18d"
+        },
+        "model": {
+          "path": "orientation/D_RL1-88f29f-model.png",
+          "sha256": "d71923ecd425bc5a75f9cad303a7228a191037586bdd5522a9e9b2dab096fedc"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_RL2",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        79.1625,
+        43.25
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/LED_SMD.3dshapes/LED_0805_2012Metric.step",
+          "sha256": "0aa8b791804f5d72a2fc7d1bf231dd9959207d83df8ad801176fbc459f575b98"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_RL2-8246e4-footprint.svg",
+          "sha256": "20235179696679dea28aeb7598c5797cf27bd442a00cd7f72ae59ec1414de31a"
+        },
+        "model": {
+          "path": "orientation/D_RL2-8246e4-model.png",
+          "sha256": "cbabe96f918500d6e09a8bffde1b5e9d7e72ae9b59507f1f7e8a49608e729df4"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_TC1",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        13.5,
+        54.855
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SOD-123.step",
+          "sha256": "b3dc4065573abc72e3d5b4cca0e908f72a24205a41b6284b1f75ccacbe99adf8"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_TC1-c30e07-footprint.svg",
+          "sha256": "5aa173ccf974813915d722564406402d397f83d5622e7edeae188317ecd3a3ce"
+        },
+        "model": {
+          "path": "orientation/D_TC1-c30e07-model.png",
+          "sha256": "e8c1cacc04847bbc262494ab193fc3b96778598502efdcd60748a9429eb0ba04"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_TC2",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        28.25,
+        31.645
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SOD-123.step",
+          "sha256": "b3dc4065573abc72e3d5b4cca0e908f72a24205a41b6284b1f75ccacbe99adf8"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_TC2-d19820-footprint.svg",
+          "sha256": "af3ad8a5e0aa98d75b9ff26c2d512566c4dc479b720ed1d4d816b44a1cdd614c"
+        },
+        "model": {
+          "path": "orientation/D_TC2-d19820-model.png",
+          "sha256": "62d2e7789b5a7479c3a1adecc88b8a44d364f5b9f82ddd47fb93a848811f1e6a"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "D_TVS",
+      "pad": "1",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        88.05,
+        24.3
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Diode_SMD.3dshapes/D_SMA.step",
+          "sha256": "1cfddd4e3b1bf22b8fc6ee3258c2aade882ed7b85b528e23b9db42437775a1db"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/D_TVS-ca348d-footprint.svg",
+          "sha256": "51fd814e193cebb07adaab8a6941528fe2aad133ff0090ce4da56fb085f2ca90"
+        },
+        "model": {
+          "path": "orientation/D_TVS-ca348d-model.png",
+          "sha256": "50b13214c22f2e8415b431abcbb5709181a6f9709274d134c79b7b9827c4ad63"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "J_C1",
+      "pad": null,
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": null,
+      "geometryOk": false,
+      "modelPresent": false,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Connector_Audio.3dshapes/Jack_3.5mm_PJ320D_Horizontal.step",
+          "sha256": null
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/J_C1-a59ca2-footprint.svg",
+          "sha256": "e247d1f2020318a2eaf161302e884aee62c9b95bed824e8e6646756abd567ee2"
+        },
+        "model": {
+          "path": "orientation/J_C1-a59ca2-model.png",
+          "sha256": "00009332384fc189fb87fb1f451c17b3d79dad18a1feea11cd9d2305ecfbcbb3"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "J_C2",
+      "pad": null,
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": null,
+      "geometryOk": false,
+      "modelPresent": false,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Connector_Audio.3dshapes/Jack_3.5mm_PJ320D_Horizontal.step",
+          "sha256": null
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/J_C2-05f16f-footprint.svg",
+          "sha256": "6a5c02d227eb782cf2335261f3eee9bec8a48810f0974b83ceabba580f20c8a9"
+        },
+        "model": {
+          "path": "orientation/J_C2-05f16f-model.png",
+          "sha256": "d5abb98921aabd3d81a8a45d7deea7e2634fff1e21f168cf523ddae7b27b9c3c"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "J_LO",
+      "pad": null,
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": null,
+      "geometryOk": false,
+      "modelPresent": false,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Connector_Audio.3dshapes/Jack_3.5mm_PJ320D_Horizontal.step",
+          "sha256": null
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/J_LO-d33e95-footprint.svg",
+          "sha256": "17d19e36bdc7705ee4363ba4ff70171f05ed68c613791d416bd3ea68cd6687e5"
+        },
+        "model": {
+          "path": "orientation/J_LO-d33e95-model.png",
+          "sha256": "e205140fe612ab28b93d3dbda0af13a52d1d1efd0df6a3d05a4a635db8a51853"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "J_PWR",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        107.6,
+        14.045
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Connector_BarrelJack.3dshapes/BarrelJack_Horizontal.step",
+          "sha256": "53f1b2714ed169b5e314b9b42cc9943303769e29e0debdfb4ef7a0e2c4f369dd"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/J_PWR-71c13d-footprint.svg",
+          "sha256": "e12e2b5f6a2829897551c3f90ca48a118e72665f62234b3e67523d641e6104ff"
+        },
+        "model": {
+          "path": "orientation/J_PWR-71c13d-model.png",
+          "sha256": "bc1ae90e7e3a4289b006018e924a4119998053d52f16f8064ae5008e2fb73764"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "J_T1",
+      "pad": null,
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": null,
+      "geometryOk": false,
+      "modelPresent": false,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Connector_Audio.3dshapes/Jack_3.5mm_PJ320D_Horizontal.step",
+          "sha256": null
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/J_T1-fb0038-footprint.svg",
+          "sha256": "69a78848a77b2bb698373106ae2a92c52250a4cc28dd83b6f533877f32e2cab1"
+        },
+        "model": {
+          "path": "orientation/J_T1-fb0038-model.png",
+          "sha256": "8686776771452447d6bbced9a470321099fa3834844903e4572a5e48f81613ae"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "J_T2",
+      "pad": null,
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": null,
+      "geometryOk": false,
+      "modelPresent": false,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Connector_Audio.3dshapes/Jack_3.5mm_PJ320D_Horizontal.step",
+          "sha256": null
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/J_T2-10ffda-footprint.svg",
+          "sha256": "018a9768a131ea4eb6ac1cba70b65273b8deb6d02656039ec9ecf95565b77563"
+        },
+        "model": {
+          "path": "orientation/J_T2-10ffda-model.png",
+          "sha256": "109abcb1f20cc8548b714bb647304451ca860ee105c2058059f8ca04b10727c6"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "K1",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        48.1,
+        50.5
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Relay_THT.3dshapes/Relay_SPDT_SANYOU_SRD_Series_Form_C.step",
+          "sha256": "3d92616e573e298f066fde6cc7ba9cdcf7b25c78be1107297eab3af097728c71"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/K1-badb72-footprint.svg",
+          "sha256": "e623c5c1c28580506190ffba1573e76715253321e5242c2c9859a45d862479c6"
+        },
+        "model": {
+          "path": "orientation/K1-badb72-model.png",
+          "sha256": "817e6cc7dbc10c91808fce1573fbeea41e394a6f4c1018a82cad886bd51a29f7"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "K2",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        66.2,
+        50.5
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Relay_THT.3dshapes/Relay_SPDT_SANYOU_SRD_Series_Form_C.step",
+          "sha256": "3d92616e573e298f066fde6cc7ba9cdcf7b25c78be1107297eab3af097728c71"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/K2-6897ab-footprint.svg",
+          "sha256": "937aa9c0195d395a26276acf51320d1b3fed6fd7fa06ee7db07cd14db77b7a13"
+        },
+        "model": {
+          "path": "orientation/K2-6897ab-model.png",
+          "sha256": "89615affe728088006c187c4bf0a098a4fd853a9fcec7c8fa996532518a6aa13"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_D1",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        77.6,
+        62.6325
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+          "sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_D1-90069e-footprint.svg",
+          "sha256": "6968959056d1f47810d78aae9b675d35d7674a302fa3658a112be9b9f65a0499"
+        },
+        "model": {
+          "path": "orientation/Q_D1-90069e-model.png",
+          "sha256": "7c23c0368bed0c629e79891961b77fe1c8630f87c66866cd6cfbe515a2dd8f59"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_D2",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        89.95,
+        62.6325
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+          "sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_D2-3b286c-footprint.svg",
+          "sha256": "fab94dfaa1f5ac0ea2fae84251d3e74d7c5b4f8c8dafe91d814a4204d841d2c2"
+        },
+        "model": {
+          "path": "orientation/Q_D2-3b286c-model.png",
+          "sha256": "1d7d6a1f7c40655194cd6001cf80b9e2f3221ea648b2c3dcaf334340e30256be"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_D3",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        102.3,
+        62.6325
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+          "sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_D3-7277bd-footprint.svg",
+          "sha256": "18e367d94749aae26017783099b6ff3a99e4adc11261ea13c8d704f47d10096b"
+        },
+        "model": {
+          "path": "orientation/Q_D3-7277bd-model.png",
+          "sha256": "b7ea882866fb8e3860e2f732e650ba9740dd0152e1a6387abf016e0aa03899a6"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_D4",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        114.65,
+        62.6325
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+          "sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_D4-f061e9-footprint.svg",
+          "sha256": "ac28a20128e95aa645178a6ca5699d27897af61fc42d2de67370594c60e54a07"
+        },
+        "model": {
+          "path": "orientation/Q_D4-f061e9-model.png",
+          "sha256": "31c77898a605c599e263e109cf0c89523b9f4efbaad99e33029a3da422a2111c"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_O1",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        76.925,
+        52.99
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/SOIC-8_3.9x4.9mm_P1.27mm.step",
+          "sha256": "07f46cff378d30e6c27dfd5a03092c795323f86d91c71fc7e743f4f418dc553a"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_O1-225905-footprint.svg",
+          "sha256": "879636cc176e38e475559138386a571a923f9797f65f83244f73eb8475923abd"
+        },
+        "model": {
+          "path": "orientation/Q_O1-225905-model.png",
+          "sha256": "7b21e34d7aa61b6c8405e2c7ac7934f3c3b4a7d7c1297a930b46f1c0b5ab993b"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_O2",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        89.275,
+        52.99
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/SOIC-8_3.9x4.9mm_P1.27mm.step",
+          "sha256": "07f46cff378d30e6c27dfd5a03092c795323f86d91c71fc7e743f4f418dc553a"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_O2-357811-footprint.svg",
+          "sha256": "826b6b8b9e2d51cacc0560a5e5b20095a4d053fb25cc24d88a39c76d2d8f8a8a"
+        },
+        "model": {
+          "path": "orientation/Q_O2-357811-model.png",
+          "sha256": "6017f3273d5db9a4780d8dc0360f8fb4e179319d21117d3bbc72e46cf7433d62"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_O3",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        101.625,
+        52.99
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/SOIC-8_3.9x4.9mm_P1.27mm.step",
+          "sha256": "07f46cff378d30e6c27dfd5a03092c795323f86d91c71fc7e743f4f418dc553a"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_O3-d4806e-footprint.svg",
+          "sha256": "ca02bb676f9fa6d43c09d937bc7541c54c7ddadcb3a133f625b2ec31b837a0e5"
+        },
+        "model": {
+          "path": "orientation/Q_O3-d4806e-model.png",
+          "sha256": "cdb945f54970076f7550243c8d66751fc8310ac9f8710432af11e4081740dd4f"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_O4",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        113.975,
+        52.99
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/SOIC-8_3.9x4.9mm_P1.27mm.step",
+          "sha256": "07f46cff378d30e6c27dfd5a03092c795323f86d91c71fc7e743f4f418dc553a"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_O4-c9d40b-footprint.svg",
+          "sha256": "f4396a45af0ece758a5276c3626c99125174434d28583a72161a2d36dfb6287d"
+        },
+        "model": {
+          "path": "orientation/Q_O4-c9d40b-model.png",
+          "sha256": "f5ee47621a20cdc077cdfe312318d8adc1863c726a66f85a1fd855dd0d2271ba"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_PX",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        12,
+        16.1375
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+          "sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_PX-e2af50-footprint.svg",
+          "sha256": "95d57b96d07b1b8614db7810c1e3f0d32338b2790072052a40a2bb5496ddb7ea"
+        },
+        "model": {
+          "path": "orientation/Q_PX-e2af50-model.png",
+          "sha256": "1636adb6fac487269ebc94eed8278ef659e6f44bd4a8e1a1df9b2caba7130a38"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_R1",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        59.6875,
+        43
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+          "sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_R1-a154e7-footprint.svg",
+          "sha256": "ab67bfe699e30e6ef7a6b56013d380770e65516e94904771dda138f58303504f"
+        },
+        "model": {
+          "path": "orientation/Q_R1-a154e7-model.png",
+          "sha256": "77114e54c1abaf6d29a20563cf2549b4bf29cd16f78cdf8951749fb3c630088f"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "Q_R2",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        74.5625,
+        42.3
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-23.step",
+          "sha256": "dd5d1711204e1d8d26cd11490923bd84340820baa69538c385a4300ec2539bc0"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/Q_R2-f0fbba-footprint.svg",
+          "sha256": "5c1d30ff0f052482f276ef7218dd5c1712bdf0bc13ee6b95e10afce777b5b415"
+        },
+        "model": {
+          "path": "orientation/Q_R2-f0fbba-model.png",
+          "sha256": "dcfca735f92d9353c8a50bb55c2c34e74704b3b1c3e4d90a29cdf26f137ec330"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "SW_U1",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        126.625,
+        56.35
+      ],
+      "geometryOk": true,
+      "modelPresent": false,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_XKB_TS-1187A.step",
+          "sha256": null
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/SW_U1-3cdda1-footprint.svg",
+          "sha256": "f8df5031bdb979050cab79593dbae7b10c565e5e266cd790dfb5eba13a2464e7"
+        },
+        "model": {
+          "path": "orientation/SW_U1-3cdda1-model.png",
+          "sha256": "63d2fdcc647de9d0b18cc1154ba36b59a3363e6f87657b7c432bd1957a1e1b37"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "SW_U2",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        126.625,
+        63.95
+      ],
+      "geometryOk": true,
+      "modelPresent": false,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_XKB_TS-1187A.step",
+          "sha256": null
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/SW_U2-08195a-footprint.svg",
+          "sha256": "f4c6bd886e27e5488e563874c364d6aca90809c663dec1a006ae44cbafab9935"
+        },
+        "model": {
+          "path": "orientation/SW_U2-08195a-model.png",
+          "sha256": "daae37ab2c73917a49f06ad08bee25e142810fedbe7959b6bbb7f79108a0843b"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "SW_U3",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        126.625,
+        71.55
+      ],
+      "geometryOk": true,
+      "modelPresent": false,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Button_Switch_SMD.3dshapes/SW_Push_1P1T_XKB_TS-1187A.step",
+          "sha256": null
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/SW_U3-7d3313-footprint.svg",
+          "sha256": "19269d2e691168fa6a927fd6cb70bb1cbff6e4127959850b47922b448c894ec9"
+        },
+        "model": {
+          "path": "orientation/SW_U3-7d3313-model.png",
+          "sha256": "f99a311fc23140538b0562606802d64eaeb08f1d2a9ab3d0c7a6a3399c235961"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "U_BK",
+      "pad": "1",
+      "mark": "pin 1: package dot/notch/chamfer or keyed connector corner; compare exact datasheet",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        32.28,
+        60.405
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/TI_SO-PowerPAD-8.step",
+          "sha256": "53b055ee4d166c0b9de551669cc1294f95b96baacbfe26d9316b576c1ce29fbf"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/U_BK-e69a43-footprint.svg",
+          "sha256": "cd74a81faa6c672c37214a6e51f8e6af7a967205c1610416759729f15ada0d54"
+        },
+        "model": {
+          "path": "orientation/U_BK-e69a43-model.png",
+          "sha256": "cd792f8815129646f32c6fe7a25468694ebc48f2af2d85ef243f02765d2e53a7"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "U_C1",
+      "pad": "2",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        38.1125,
+        27.88
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/SOP-4_4.4x2.6mm_P1.27mm.step",
+          "sha256": "cb2b0da8eb9fdb76dbba2de2ff1cc50164623079ee56b75b8eef2c751591bff3"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/U_C1-da1512-footprint.svg",
+          "sha256": "97e537ee98a633b3fadc0dd73eabb61295b33461593c3490ffb6ffa6b34ce5fd"
+        },
+        "model": {
+          "path": "orientation/U_C1-da1512-model.png",
+          "sha256": "015abe57ea5e713cc7b97065a0d30971bff856c0560925abf5a544d2c1b14bfc"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    },
+    {
+      "ref": "U_C2",
+      "pad": "2",
+      "mark": "cathode K: diode band / LED cathode mark",
+      "assembly": "smt",
+      "side": "F",
+      "padPositionMm": [
+        49.7125,
+        27.88
+      ],
+      "geometryOk": true,
+      "modelPresent": true,
+      "modelAssets": [
+        {
+          "path": "${KICAD10_3DMODEL_DIR}/Package_SO.3dshapes/SOP-4_4.4x2.6mm_P1.27mm.step",
+          "sha256": "cb2b0da8eb9fdb76dbba2de2ff1cc50164623079ee56b75b8eef2c751591bff3"
+        }
+      ],
+      "renderError": null,
+      "evidence": {
+        "footprint": {
+          "path": "orientation/U_C2-029a2e-footprint.svg",
+          "sha256": "cff08e20c0478e49fd38bc91babd0844baeb6823bad097ffc7a61fc7ee97de50"
+        },
+        "model": {
+          "path": "orientation/U_C2-029a2e-model.png",
+          "sha256": "b054bf045055ffb9ea01600e4e964b3cdb90d761e73d3e51f0e72614f9807941"
+        }
+      },
+      "status": "pending",
+      "reviewer": "",
+      "notes": "",
+      "datasheet": "",
+      "assemblyPreview": {
+        "status": "pending",
+        "reviewer": "",
+        "notes": ""
+      }
+    }
+  ]
+}

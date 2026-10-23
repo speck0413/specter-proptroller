@@ -1,0 +1,6 @@
+effect a:
+wait for trig1
+dmx7 = on
+effect b:
+wait for trig2
+dmx7 = off

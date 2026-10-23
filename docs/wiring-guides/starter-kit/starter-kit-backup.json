@@ -1,0 +1,140 @@
+{
+ "format": "proptroller-backup",
+ "format_version": 1,
+ "from": {
+  "id": "starter-kit",
+  "name": "Starter kit",
+  "fw": "generic",
+  "fw_version": "0.1.0",
+  "fw_impl": "cpp",
+  "mcu": "any"
+ },
+ "name": "Starter kit",
+ "settings": [
+  {
+   "key": "pixel_count",
+   "value": 15
+  },
+  {
+   "key": "pixel_brightness",
+   "value": 40
+  },
+  {
+   "key": "trig2_input",
+   "value": "sensor_high"
+  }
+ ],
+ "shows": [
+  {
+   "id": 1,
+   "name": "Ready glow",
+   "enabled": true,
+   "triggers": [
+    {
+     "on": "boot",
+     "delay_ms": 0
+    }
+   ],
+   "cooldown_ms": 0,
+   "retrigger": "ignore",
+   "looping": true,
+   "priority": 1,
+   "length_ms": 6000,
+   "stop_sound": true,
+   "tracks": [
+    {
+     "target": "PIXEL",
+     "cues": [
+      {
+       "at": 0,
+       "do": "fade",
+       "color": "#301000",
+       "ms": 3000
+      },
+      {
+       "at": 3000,
+       "do": "fade",
+       "color": "#080200",
+       "ms": 3000
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "Big moment pixels",
+   "enabled": true,
+   "triggers": [
+    {
+     "on": "input",
+     "input": "TRIG1"
+    }
+   ],
+   "cooldown_ms": 0,
+   "retrigger": "ignore",
+   "looping": false,
+   "priority": 3,
+   "length_ms": 5000,
+   "stop_sound": true,
+   "tracks": [
+    {
+     "target": "PIXEL",
+     "cues": [
+      {
+       "at": 0,
+       "do": "flash",
+       "color": "#ffffff",
+       "period_ms": 150
+      },
+      {
+       "at": 1000,
+       "do": "chase",
+       "color": "#ff4000",
+       "step_ms": 40,
+       "width": 4
+      },
+      {
+       "at": 3500,
+       "do": "rainbow",
+       "period_ms": 1500
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "name": "Spooky pixels",
+   "enabled": true,
+   "triggers": [
+    {
+     "on": "input",
+     "input": "TRIG2"
+    }
+   ],
+   "cooldown_ms": 0,
+   "retrigger": "ignore",
+   "looping": false,
+   "priority": 2,
+   "length_ms": 6000,
+   "stop_sound": true,
+   "tracks": [
+    {
+     "target": "PIXEL",
+     "cues": [
+      {
+       "at": 0,
+       "do": "flicker",
+       "color": "#ff0000"
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "script": {
+  "text": "# The starter kit: one big button, one motion sensor, a lamp, a fan,\n# a pixel strip and a speaker, all on one desk.\n#\n# Wiring:\n#   big arcade button                -> TRIG1 jack (tip and sleeve)\n#   mini 3-pin motion sensor         -> TRIG2 jack: VCC to ring (3.3 V), OUT to tip, GND to sleeve\n#     (Settings: TRIG2 input = Powered sensor (its signal goes high))\n#   12 V LED strip or lamp           -> OUT1 + and -\n#   small 12 V fan                   -> OUT2 + and -\n#   short pixel strip (15 LEDs)      -> PIXEL 5V, DATA, GND (the pixels run from the three show-*.json shows)\n#   speaker                          -> SPK (neither wire to ground)\n#   SD card: the big sound as /01/001.mp3 (sound 1), the spooky sound as /02/001.mp3 (sound 2)\n#\n#   [button]--TRIG1   OUT1--[LED strip]   OUT2--[fan]   PIXEL--[strip]\n#   [motion]--TRIG2   SPK--[speaker]\n#\n# Press the button: the big sound plays, the lamp flashes, the fan puffs, the pixels chase.\n# Walk past: a spooky sound plays and the pixels flicker red.\n# The checker warns that both effects play sound. That is fine here: there is one speaker,\n# so the newest sound wins.\n\neffect big moment:\n  wait for trig1\n  audio_single = 1     # the big sound\n  out2 = on            # fan puff\n  out1 = on\n  sleep 0.15\n  out1 = off\n  sleep 0.15\n  out1 = on\n  sleep 0.15\n  out1 = off\n  sleep 0.15\n  out1 = on\n  sleep 0.15\n  out1 = off\n  sleep 0.15\n  out1 = on            # then the lamp stays bright\n  sleep 1\n  out2 = off           # the fan stops\n  sleep 2\n  fade out1 to 0% over 2\n  sleep 1              # a short rest before the next press\n\neffect spooky:\n  wait for trig2\n  audio_single = 2     # the spooky sound\n  sleep 20             # rest: walking past again within 20 s does nothing\n",
+  "sounds": {}
+ }
+}

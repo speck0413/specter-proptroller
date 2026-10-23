@@ -1,0 +1,22 @@
+# 02 Fading doll eyes: two small red LEDs fade up, glow, blink twice and fade away.
+#
+# Wiring:
+#   a doorbell button or a step mat  -> TRIG1 jack
+#   12 V red LEDs (with their resistors) in the eyes: + to OUT2 +, - to OUT2 -
+#   power the board from 12 V (OUT2 gives the board's supply voltage)
+#
+#        [step mat]--TRIG1        OUT2--[eye LEDs]
+
+effect doll eyes:
+  wait for trig1
+  fade out2 to 80% over 2
+  sleep 3
+  out2 = off
+  sleep 150 ms
+  out2 = 80%
+  sleep 150 ms
+  out2 = off
+  sleep 150 ms
+  out2 = 80%
+  sleep 2
+  fade out2 to 0% over 4

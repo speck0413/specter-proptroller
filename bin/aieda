@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# Project launcher for aieda (the submodule's own bin/aieda resolves its root from its own path, so this works from any cwd).
+# Sets the KiCad 3D model cache when the shell has not. Usage: bin/aieda build hardware/board.ts
+ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+[ -n "$KICAD10_3DMODEL_DIR" ] || export KICAD10_3DMODEL_DIR="$HOME/kicad3d/3dmodels"
+# Freerouting left clearance-rounding errors at the TPS54360B's 1.27 mm pins with the default 15 um margin: 25 um for this board.
+[ -n "$AIEDA_FR_CLEAR_MARGIN_UM" ] || export AIEDA_FR_CLEAR_MARGIN_UM=25
+[ -x "$ROOT/aieda/node_modules/.bin/tsx" ] || { echo "aieda is not bootstrapped: run tools/bootstrap.sh" >&2; exit 1; }
+exec "$ROOT/aieda/bin/aieda" "$@"

@@ -1,0 +1,21 @@
+{
+  "spec": [
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: there is no out5 on this board. The outputs are out1 to out4, rly1, rly2, cc1 and cc2."
+      },
+      {
+        "line": 4,
+        "message": "line 4: there is no relay1 on this board. The outputs are out1 to out4, rly1, rly2, cc1 and cc2."
+      }
+    ],
+    "warnings": []
+  }
+}

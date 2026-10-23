@@ -1,0 +1,29 @@
+{
+  "spec": [
+    "SS-D3"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: cc1 is set to pulse on every trigger (cc1_role). Set cc1_role to shows to use it in a script."
+      },
+      {
+        "line": 4,
+        "message": "line 4: cc2 is set to pulse when a sound starts (cc2_role). Set cc2_role to shows to use it in a script."
+      },
+      {
+        "line": 5,
+        "message": "line 5: cc1 is set to pulse on every trigger (cc1_role). Set cc1_role to shows to use it in a script."
+      },
+      {
+        "line": 6,
+        "message": "line 6: cc2 is set to pulse when a sound starts (cc2_role). Set cc2_role to shows to use it in a script."
+      }
+    ],
+    "warnings": []
+  }
+}

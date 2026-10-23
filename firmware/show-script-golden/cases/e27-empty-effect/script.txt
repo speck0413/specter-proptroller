@@ -1,0 +1,3 @@
+effect a:
+effect b:
+wait for trig1
