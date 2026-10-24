@@ -1,4 +1,5 @@
 #include "show.h"
+#include "sound.h"
 #include <algorithm>
 #include <stdio.h>
 #include <string.h>
@@ -82,7 +83,7 @@ bool Action::effect(Effect& e) const {
 
 bool Action::sound(SoundCommand& c) const {
   switch (kind) {
-    case Kind::Play: c = SoundCommand::playFolder(folder, track); return true;
+    case Kind::Play: c = folder == 0 ? soundPlay(track) : SoundCommand::playFolder(folder, (uint8_t)track); return true;
     case Kind::LoopFolder: c = SoundCommand::loopFolder(folder); return true;
     case Kind::Volume: c = SoundCommand::volume(volume); return true;
     case Kind::Off: c = SoundCommand::simple(SoundCommand::Kind::Stop); return true;
@@ -270,7 +271,7 @@ ShowError validate(const Show& show) {
         case Target::Kind::SOUND: {
           bool ok = false;
           switch (a.kind) {
-            case Action::Kind::Play: ok = a.folder >= 1 && a.folder <= 99 && a.track >= 1; break;
+            case Action::Kind::Play: ok = a.folder == 0 ? a.track >= 1 && a.track <= SOUND_MAX_TRACK : a.folder <= 99 && a.track >= 1 && a.track <= 255; break;
             case Action::Kind::LoopFolder: ok = a.folder >= 1 && a.folder <= 99; break;
             case Action::Kind::Volume: ok = a.volume <= 30; break;
             case Action::Kind::Off: ok = true; break;
@@ -557,6 +558,8 @@ std::string explain(const ShowError& e, const Show& show) {
       else if (cue->action.kind == Action::Kind::Volume) (void)snprintf(b, sizeof b, "%s%s: volume %u is too loud; the player goes from 0 to 30", w, t, (unsigned)cue->action.volume);
       else if (cue->action.kind == Action::Kind::SetLevel || cue->action.kind == Action::Kind::Ramp)
         (void)snprintf(b, sizeof b, "%s%s: %u %% is more than full power; use 0 to 100 %%", w, t, (unsigned)(cue->action.level / 10));
+      else if (cue->action.kind == Action::Kind::Play && cue->action.folder == 0)
+        (void)snprintf(b, sizeof b, "%s%s: there is no sound %u; sounds are numbered 1 to %u", w, t, (unsigned)cue->action.track, (unsigned)SOUND_MAX_TRACK);
       else if (cue->action.kind == Action::Kind::Play)
         (void)snprintf(b, sizeof b, "%s%s: there is no /%02u/%03u.mp3 slot; folders are 01-99 and files 001-255", w, t, (unsigned)cue->action.folder, (unsigned)cue->action.track);
       else (void)snprintf(b, sizeof b, "%s%s: a value is out of range", w, t);

@@ -5,17 +5,8 @@
   "sounds": {},
   "settings": {},
   "check": {
-    "ok": false,
-    "errors": [
-      {
-        "line": 7,
-        "message": "line 7: out1 is already used by effect \"a\" (line 3). Each output belongs to one effect."
-      },
-      {
-        "line": 8,
-        "message": "line 8: out1 is already used by effect \"a\" (line 3). Each output belongs to one effect."
-      }
-    ],
+    "ok": true,
+    "errors": [],
     "warnings": []
   }
 }

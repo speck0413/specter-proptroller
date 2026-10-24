@@ -1,0 +1,53 @@
+{
+  "spec": [
+    "SS-L",
+    "SS-N",
+    "SS-G6"
+  ],
+  "sounds": {},
+  "settings": {
+    "trig2_name": "out1_on_ms"
+  },
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      {
+        "line": 2,
+        "message": "line 2: \"out1_on_ms\" is the name of trig2 and of the setting out1_on_ms. \"wait for out1_on_ms\" waits for trig2; to wait the setting's time, write \"wait out1_on_ms\"."
+      }
+    ],
+    "table": {
+      "effects": [
+        {
+          "name": "a",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "wait_for",
+              "input": "TRIG2"
+            },
+            {
+              "line": 3,
+              "op": "set",
+              "target": "OUT1",
+              "level": 1000
+            },
+            {
+              "line": 4,
+              "op": "sleep",
+              "setting": "out1_on_ms"
+            },
+            {
+              "line": 5,
+              "op": "set",
+              "target": "OUT1",
+              "level": 0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

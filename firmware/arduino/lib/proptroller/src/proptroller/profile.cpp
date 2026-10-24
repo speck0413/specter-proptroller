@@ -1,6 +1,6 @@
 // The profile's alias table (STATE-MACHINE.md §11, SM-AL0-7): parsing, checking, storing. The wire format is the
 // reference's example table: {"topic_prefix", "aliases": [{"alias", one of "key" |
-// "control" | "status" | "terminal", "label", "unit", "invert", "scale"}]}.
+// "control" | "status" | "terminal" | "fixed", "label", "unit", "invert", "scale", "also"}]}.
 #include <ctype.h>
 #include <string.h>
 #include "settings.h"
@@ -10,12 +10,13 @@ namespace pt {
 const char* const EFFECT_CONTROLS[4] = {"trigger", "recover", "cancel", "restart"};
 const char* const EFFECT_STATUS[9] = {"run_count", "runs_left", "cooldown_remaining_ms", "pulsing", "recovering", "ready",
                                       "remote_trigger_enable", "remote_trigger_by", "queued"};
+static_assert(ALIAS_ALSO_MAX == 4 && ALIAS_FIXED_MAX_LEN == 32, "the messages below quote these limits");
 const char* const RUN_STATUS[3] = {"runs_since_power_on", "runs_lifetime", "last_run_uptime_ms"};
 // every board terminal name (terminal aliases may not equal one, in any case)
 static const char* const TERMINAL_NAMES[] = {"OUT1", "OUT2", "OUT3", "OUT4", "RLY1", "RLY2", "CC1", "CC2", "TRIG1", "TRIG2",
                                              "USER1", "USER2", "USER3", "SOUND", "PIXEL", "S3"};
-static const char* const KIND_NAMES[] = {"key", "control", "status", "terminal"};
-PT_ONE_PER(KIND_NAMES, AliasEntry::Kind::Terminal);
+static const char* const KIND_NAMES[] = {"key", "control", "status", "terminal", "fixed"};
+PT_ONE_PER(KIND_NAMES, AliasEntry::Kind::Fixed);
 
 static std::string upper(std::string s) {
   for (auto& c : s) c = (char)toupper((unsigned char)c);
@@ -49,8 +50,13 @@ void Profile::toJson(JsonObject o) const {
     x[KIND_NAMES[idx(e.kind)]] = e.target;
     if (!e.label.empty()) x["label"] = e.label;
     if (!e.unit.empty()) x["unit"] = e.unit;
+    if (!e.group.empty()) x["group"] = e.group;
     if (e.invert) x["invert"] = true;
     if (e.scale) x["scale"] = e.scale;
+    if (!e.also.empty()) {
+      JsonArray al = x["also"].to<JsonArray>();
+      for (auto& k : e.also) al.add(k);
+    }
   }
 }
 
@@ -75,17 +81,31 @@ bool parseProfile(JsonVariantConst v, Profile& out, std::string& why) {
     if (!x["alias"].is<const char*>()) { why = "every entry needs an \"alias\""; return false; }
     e.alias = x["alias"].as<const char*>();
     int kinds = 0;
-    for (int k = 0; k < 4; k++)
+    for (int k = 0; k < (int)(sizeof KIND_NAMES / sizeof KIND_NAMES[0]); k++)
       if (x[KIND_NAMES[k]].is<const char*>()) { e.kind = (AliasEntry::Kind)k; e.target = x[KIND_NAMES[k]].as<const char*>(); kinds++; }
     const std::string& a = e.alias;
-    if (kinds != 1) { why = "alias " + a + ": give exactly one of key, control, status or terminal"; return false; }
+    if (kinds != 1) { why = "alias " + a + ": give exactly one of key, control, status, terminal or fixed"; return false; }
     if (x["label"].is<const char*>()) e.label = x["label"].as<const char*>();
     if (x["unit"].is<const char*>()) e.unit = x["unit"].as<const char*>();
-    if (e.label.size() > ALIAS_LABEL_MAX_LEN || e.unit.size() > ALIAS_UNIT_MAX_LEN) { why = "alias " + a + ": label up to 32, unit up to 8 characters"; return false; }
+    if (x["group"].is<const char*>()) e.group = x["group"].as<const char*>();
+    if (e.label.size() > ALIAS_LABEL_MAX_LEN || e.unit.size() > ALIAS_UNIT_MAX_LEN || e.group.size() > ALIAS_LABEL_MAX_LEN) {
+      why = "alias " + a + ": label and group up to 32, unit up to 8 characters";
+      return false;
+    }
     e.invert = x["invert"] | false;
     if (!x["scale"].isNull()) {
       if (!x["scale"].is<int64_t>() || x["scale"].as<int64_t>() < 1) { why = "alias " + a + ": scale must be a whole number of at least 1"; return false; }
       e.scale = x["scale"].as<int64_t>();
+    }
+    if (!x["also"].isNull()) {
+      if (e.kind != AliasEntry::Kind::Key || !x["also"].is<JsonArrayConst>() || x["also"].size() < 1 || x["also"].size() > ALIAS_ALSO_MAX) {
+        why = "alias " + a + ": also is a list of 1 to 4 more settings, for a key alias";
+        return false;
+      }
+      for (JsonVariantConst k : x["also"].as<JsonArrayConst>()) {
+        if (!k.is<const char*>()) { why = "alias " + a + ": also lists setting names"; return false; }
+        e.also.push_back(k.as<const char*>());
+      }
     }
     if (e.kind == AliasEntry::Kind::Terminal) {
       // terminal names: 1-16 characters A-Z 0-9 _, compared without case (SM-AL0)
@@ -113,6 +133,17 @@ bool parseProfile(JsonVariantConst v, Profile& out, std::string& why) {
       if (d->isSecret()) { why = "alias \"" + a + "\": \"" + e.target + "\" is a secret (set-only): it cannot have an alias"; return false; }
       if (e.invert && d->kind != ParamDesc::Kind::Bool) { why = "alias " + a + ": invert is for on/off settings"; return false; }
       if (e.scale && d->kind != ParamDesc::Kind::Int) { why = "alias " + a + ": scale is for whole-number settings"; return false; }
+      for (auto& k : e.also) {
+        const ParamDesc* o = Settings::find(k);
+        if (!o) { why = "alias \"" + a + "\": there is no setting \"" + k + "\""; return false; }
+        if (k == e.target || o->kind != d->kind || o->isSecret()) {
+          why = "alias " + a + ": also needs other settings of the same kind as " + e.target + ", and no secret";
+          return false;
+        }
+      }
+    } else if (e.kind == AliasEntry::Kind::Fixed) {
+      if (e.target.size() > ALIAS_FIXED_MAX_LEN) { why = "alias " + a + ": a fixed value has up to 32 characters"; return false; }
+      if (e.invert || e.scale) { why = "alias " + a + ": invert and scale are for keys"; return false; }
     } else if (e.kind == AliasEntry::Kind::Control) {
       if (!isControl(e.target)) { why = "alias " + a + ": there is no control " + e.target + " (trigger, recover, cancel, restart)"; return false; }
       if (e.invert || e.scale) { why = "alias " + a + ": invert and scale are for keys"; return false; }

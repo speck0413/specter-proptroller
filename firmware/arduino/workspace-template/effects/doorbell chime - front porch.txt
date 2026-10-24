@@ -2,17 +2,17 @@
 
 effect doorbell:
   wait for trig1
-  audio_single = 1     # chime.mp3
+  audio_single = 1     # the chime
   out1 = on
-  sleep 0.3
+  wait 0.3
   out1 = off
-  sleep 0.3
+  wait 0.3
   out1 = on
-  sleep 0.3
+  wait 0.3
   out1 = off
 
 effect rain:
   wait for trig2
-  audio_loop = 2       # rain.mp3: loops until the next sound line
+  audio_loop = 2       # rain: loops until the next sound line
   wait for trig2
   audio_stop

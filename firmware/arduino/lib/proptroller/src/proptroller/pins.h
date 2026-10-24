@@ -25,6 +25,9 @@ namespace pt {
 enum class Mcu : uint8_t { Esp32DevKit, Pico };
 
 static const uint8_t NO_PIN = 255;
+// status_led: the MCU board's own LED that is not on a GPIO of its own (the Pico W / Pico 2 W LED sits on the radio
+// chip): the core's LED_BUILTIN
+static const uint8_t STATUS_LED_BUILTIN = 254;
 
 struct PinMap {
   Mcu mcu;

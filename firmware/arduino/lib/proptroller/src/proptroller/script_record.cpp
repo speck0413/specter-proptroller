@@ -12,8 +12,9 @@ void put32(std::string& b, uint32_t v) { put16(b, v & 0xFFFF); put16(b, v >> 16)
 uint16_t get16(const uint8_t* p) { return (uint16_t)(p[0] | p[1] << 8); }
 uint32_t get32(const uint8_t* p) { return (uint32_t)get16(p) | (uint32_t)get16(p + 2) << 16; }
 
-const size_t EFFECT_BYTES = SCRIPT_MAX_NAME + 1 + 6;  // name (NUL padded), first, count, line
-const size_t STEP_BYTES = 11;                          // ms, target, value, line, op
+// name (NUL padded), first, count, line; limit, limit runs, its setting, limit ms, its setting
+const size_t EFFECT_BYTES = SCRIPT_MAX_NAME + 1 + 6 + 8;
+const size_t STEP_BYTES = 12;                          // ms, target, value, line, op, setting
 const size_t TABLE_HEAD = 6;                           // effects, steps, channels, inputs, dmx
 
 uint32_t fnv1a(uint32_t h, const void* data, size_t n) {
@@ -37,6 +38,11 @@ std::string scriptTableEncode(const ScriptProgram& p) {
     put16(b, f.first);
     put16(b, f.count);
     put16(b, f.line);
+    put8(b, f.limit ? 1 : 0);
+    put8(b, f.limit_runs);
+    put8(b, f.limit_runs_setting);
+    put32(b, f.limit_ms);
+    put8(b, f.limit_ms_setting);
   }
   for (int s = 0; s < p.steps; s++) {
     const ScriptStep& st = p.step[s];
@@ -45,6 +51,7 @@ std::string scriptTableEncode(const ScriptProgram& p) {
     put16(b, st.value);
     put16(b, st.line);
     put8(b, (uint8_t)st.op);
+    put8(b, st.setting);
   }
   return b;
 }
@@ -68,6 +75,13 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
     f.first = get16(p + SCRIPT_MAX_NAME + 1);
     f.count = get16(p + SCRIPT_MAX_NAME + 3);
     f.line = get16(p + SCRIPT_MAX_NAME + 5);
+    const uint8_t* x = p + SCRIPT_MAX_NAME + 7;
+    if (x[0] > 1 || x[2] > SCRIPT_SETTING_COUNT || x[7] > SCRIPT_SETTING_COUNT) { out.reset(); return false; }
+    f.limit = x[0] == 1;
+    f.limit_runs = x[1];
+    f.limit_runs_setting = x[2];
+    f.limit_ms = get32(x + 3);
+    f.limit_ms_setting = x[7];
     if (f.count == 0 || f.count > SCRIPT_MAX_LINES_PER_EFFECT || (uint32_t)f.first + f.count > steps) { out.reset(); return false; }
   }
   for (int s = 0; s < steps; s++, p += STEP_BYTES) {
@@ -77,7 +91,8 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
     st.value = get16(p + 6);
     st.line = get16(p + 8);
     uint8_t op = p[10];
-    if (op > (uint8_t)ScriptStep::Op::Stop) { out.reset(); return false; }
+    st.setting = p[11];
+    if (op > (uint8_t)ScriptStep::Op::Volume || st.setting > SCRIPT_SETTING_COUNT) { out.reset(); return false; }
     st.op = (ScriptStep::Op)op;
     bool ok = true;
     switch (st.op) {
@@ -85,10 +100,13 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
       case ScriptStep::Op::Set:
       case ScriptStep::Op::Flicker: ok = st.target < SCRIPT_DMX + DMX_CHANNELS; break;
       case ScriptStep::Op::Fade: ok = st.target < SCRIPT_DMX + DMX_CHANNELS && st.ms > 0; break;
+      case ScriptStep::Op::Pulse: ok = st.target < CHANNEL_COUNT; break;
       case ScriptStep::Op::Sleep:
       case ScriptStep::Op::Single:
       case ScriptStep::Op::Loop:
-      case ScriptStep::Op::Stop: break;
+      case ScriptStep::Op::Stop:
+      case ScriptStep::Op::LoopOff: break;
+      case ScriptStep::Op::Volume: ok = st.value <= 30; break;
     }
     if (!ok || st.ms > SCRIPT_MAX_TIME_MS) { out.reset(); return false; }
   }
@@ -107,6 +125,14 @@ uint32_t scriptTableKey(const ScriptBoard& board, const std::string& sounds_json
   for (auto& n : board.names) {  // a renamed terminal: the text is checked again (no names: the key as before)
     h = fnv1a(h, &n.terminal, 1);
     h = fnv1a(h, n.name.data(), n.name.size());
+    h = fnv1a(h, "\0", 1);
+  }
+  uint8_t lamp = board.ready_lamp ? 1 : 0;
+  h = fnv1a(h, &lamp, 1);
+  for (auto& a : board.setting_aliases) {  // a setting named by its alias: the text is checked again when it changes
+    h = fnv1a(h, a.first.data(), a.first.size());
+    h = fnv1a(h, "=", 1);
+    h = fnv1a(h, a.second.data(), a.second.size());
     h = fnv1a(h, "\0", 1);
   }
   h = fnv1a(h, fw.data(), fw.size());

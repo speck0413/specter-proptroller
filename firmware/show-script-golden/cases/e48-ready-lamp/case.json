@@ -1,0 +1,23 @@
+{
+  "spec": [
+    "SS-G7"
+  ],
+  "sounds": {},
+  "settings": {
+    "out4_ready_lamp": true
+  },
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: out4 is the ready lamp (setting out4_ready_lamp). Turn it off to use out4 in a script."
+      },
+      {
+        "line": 5,
+        "message": "line 5: out4 is the ready lamp (setting out4_ready_lamp). Turn it off to use out4 in a script."
+      }
+    ],
+    "warnings": []
+  }
+}

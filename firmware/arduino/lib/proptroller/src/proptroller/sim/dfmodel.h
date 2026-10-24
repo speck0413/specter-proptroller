@@ -37,6 +37,7 @@ class DfModel {
   std::vector<Frame> frames;  // every command frame, with its parameter
   struct Play { Millis t; std::string what; uint8_t volume; };
   std::vector<Play> plays;  // every playback that started
+  std::vector<std::pair<Millis, uint16_t>> finished;  // (time, track) of every track that played to its end
   uint32_t bad_frames = 0;
 
   void receive(const uint8_t* b, size_t n, Millis now);

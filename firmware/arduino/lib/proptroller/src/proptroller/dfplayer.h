@@ -34,7 +34,9 @@ size_t frame(uint8_t cmd, bool feedback, uint16_t param, bool with_checksum, uin
 
 // A high-level player command.
 struct SoundCommand {
-  enum class Kind : uint8_t { PlayFolder, PlayMp3, PlayIndex, LoopIndex, LoopFolder, Volume, Stop, Pause, Resume, Next, Reset, SelectSd };
+  // LoopMp3 plays /mp3/NNNN once; the sound director plays it again each time it finishes (there is no loop command
+  // for the mp3 folder).
+  enum class Kind : uint8_t { PlayFolder, PlayMp3, PlayIndex, LoopIndex, LoopFolder, Volume, Stop, Pause, Resume, Next, Reset, SelectSd, LoopMp3 };
   Kind kind = Kind::Stop;
   uint16_t a = 0;  // folder / track / index / volume
   uint16_t b = 0;  // track for PlayFolder
@@ -42,6 +44,8 @@ struct SoundCommand {
   static SoundCommand playFolder(uint8_t folder, uint8_t track) { SoundCommand c; c.kind = Kind::PlayFolder; c.a = folder; c.b = track; return c; }
   static SoundCommand playMp3(uint16_t track) { SoundCommand c; c.kind = Kind::PlayMp3; c.a = track; return c; }
   static SoundCommand playIndex(uint16_t i) { SoundCommand c; c.kind = Kind::PlayIndex; c.a = i; return c; }
+  static SoundCommand loopIndex(uint16_t i) { SoundCommand c; c.kind = Kind::LoopIndex; c.a = i; return c; }
+  static SoundCommand loopMp3(uint16_t track) { SoundCommand c; c.kind = Kind::LoopMp3; c.a = track; return c; }
   static SoundCommand loopFolder(uint8_t f) { SoundCommand c; c.kind = Kind::LoopFolder; c.a = f; return c; }
   static SoundCommand volume(uint8_t v) { SoundCommand c; c.kind = Kind::Volume; c.a = v; return c; }
   static SoundCommand simple(Kind k) { SoundCommand c; c.kind = k; return c; }

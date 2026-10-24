@@ -1,0 +1,89 @@
+{
+  "spec": [
+    "SS-R10"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 800,
+        "control": "fog_burst"
+      },
+      {
+        "t": 900,
+        "set": {
+          "remote_trigger_enable": true
+        }
+      },
+      {
+        "t": 1000,
+        "control": "fog_burst"
+      },
+      {
+        "t": 1500,
+        "control": "fog_burst"
+      },
+      {
+        "t": 1600,
+        "control": "fog_burst"
+      },
+      {
+        "t": 4200,
+        "control": "fog_burst"
+      },
+      {
+        "t": 4300,
+        "control": "fog_burst"
+      },
+      {
+        "t": 4400,
+        "control": "cancel"
+      },
+      {
+        "t": 6000,
+        "set": {
+          "remote_trigger_enable": false
+        }
+      },
+      {
+        "t": 6500,
+        "control": "fog_burst"
+      }
+    ],
+    "until": 8000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1000,
+            1000
+          ],
+          [
+            2000,
+            0
+          ],
+          [
+            2500,
+            1000
+          ],
+          [
+            3500,
+            0
+          ],
+          [
+            4200,
+            1000
+          ],
+          [
+            5200,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

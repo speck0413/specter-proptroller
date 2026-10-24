@@ -104,6 +104,7 @@ std::vector<uint8_t> DfModel::tick(Millis now) {
       until = now + d;
     } else {
       playing = false;
+      finished.push_back({now, play_track});
       send(df::msg::FINISHED_SD, play_track);
       if (behaviour.double_finish) send(df::msg::FINISHED_SD, play_track);
     }

@@ -1,0 +1,7 @@
+effect a:
+  audio_loop = 1
+  out1 = on
+  wait for trig1
+  out1 = off
+effect b:
+  audio_loop = off

@@ -33,6 +33,34 @@
 
 using namespace pt;
 
+// A board support package on the include path (-I path/to/bsp, as a board build): the simulated board gets its pin
+// map (proptroller_board.h) and starts fresh with its defaults (proptroller_defaults.h or proptroller_board.h:
+// PROPTROLLER_BOARD_PROFILE / _SETTINGS / _SCRIPT, GOING-FURTHER.md "Make your own board").
+#if defined(__has_include)
+#if __has_include(<proptroller_board.h>)
+#include <proptroller_board.h>
+#define PT_SIM_MAP (&PROPTROLLER_BOARD_MAP)
+#endif
+#if __has_include(<proptroller_defaults.h>)
+#include <proptroller_defaults.h>
+#endif
+#endif
+#ifndef PT_SIM_MAP
+#define PT_SIM_MAP nullptr
+#endif
+#if defined(PROPTROLLER_BOARD_PROFILE) || defined(PROPTROLLER_BOARD_SETTINGS) || defined(PROPTROLLER_BOARD_SCRIPT)
+#define PT_SIM_DEFAULTS 1
+#ifndef PROPTROLLER_BOARD_PROFILE
+#define PROPTROLLER_BOARD_PROFILE nullptr
+#endif
+#ifndef PROPTROLLER_BOARD_SETTINGS
+#define PROPTROLLER_BOARD_SETTINGS nullptr
+#endif
+#ifndef PROPTROLLER_BOARD_SCRIPT
+#define PROPTROLLER_BOARD_SCRIPT nullptr
+#endif
+#endif
+
 static bool readFile(const char* path, std::string& out) {
   std::ifstream f(path, std::ios::binary);
   if (!f) return false;
@@ -119,7 +147,18 @@ int main(int argc, char** argv) {
     else if (!strcmp(argv[i], "--swap-ms")) swap_ms = (Millis)strtoull(argv[i + 1], nullptr, 10);
     i++;
   }
-  Sim sim(id, PROPTROLLER_FW_BUILD);  // the real build (the tests' Sim reports "sim")
+  Sim sim(id, PROPTROLLER_FW_BUILD, PT_SIM_MAP);  // the real build (the tests' Sim reports "sim")
+#if defined(PT_SIM_DEFAULTS)
+  // a fresh board with the board support package's defaults
+  static FactoryDefaults defaults;
+  defaults.profile = PROPTROLLER_BOARD_PROFILE;
+  defaults.settings = PROPTROLLER_BOARD_SETTINGS;
+  defaults.script = PROPTROLLER_BOARD_SCRIPT;
+  sim.setFactoryDefaults(&defaults);
+  if (!sim.flash().wipe() || !sim.scriptFlash().wipe()) return 1;
+  sim.powerCycle(0);
+  if (!sim.factoryRefused.empty()) (void)fprintf(stderr, "board defaults refused:\n%s\n", sim.factoryRefused.c_str());
+#endif
   sim.setFailSelfCheck(fail_self_check);
   sim.setSwapMs(swap_ms);
   if (!name.empty()) {

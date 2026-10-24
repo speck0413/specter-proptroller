@@ -19,6 +19,9 @@ static const uint16_t DISCOVERY_PORT = 47800;
 static const uint16_t HTTP_PORT = 80;
 // set_output "ms": a manual pulse, at most this long (plain HTTP and MQTT switch an output on only as a pulse)
 static const uint32_t MANUAL_PULSE_MAX_MS = 600000;
+// test_input: a test press is let go by itself after "ms", and never later than this (a press held from a page that
+// stopped answering, a lost let-go): also the longest "ms" taken
+static const uint32_t TEST_PRESS_MAX_MS = 30000;
 
 // `{"proptroller":"discover","v":1}`: a UDP discovery probe?
 bool isDiscover(const char* data, size_t len);
@@ -90,6 +93,7 @@ struct ActionDesc {
   std::string key, label;
   bool confirm = false;
   bool momentary = false;
+  bool hold = false;  // start it with a press held for the page's hold time (setting start_buttons = hold)
 };
 
 struct Terminal {
@@ -109,6 +113,7 @@ struct Terminal {
 
 struct Info {
   std::string id, name, fw, fw_version, fw_impl, fw_build, mcu;
+  std::string board = "proptroller";  // the board package (Identity::board)
   // over-the-air updates (present with the `update` capability)
   bool has_update = false;
   std::string update_slot;
@@ -118,6 +123,7 @@ struct Info {
   std::vector<std::string> capabilities;
   std::vector<ActionDesc> actions;
   std::vector<Terminal> terminals;
+  bool stop_button = true;  // the page shows STOP (setting stop_button)
   bool has(const char* cap) const;
   void toJson(JsonObject o) const;
   // UDP discovery answer and mDNS TXT records.

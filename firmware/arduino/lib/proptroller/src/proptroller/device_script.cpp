@@ -15,7 +15,14 @@ ScriptBoard scriptBoardFor(const Settings& s) {
   if (s.effect_on) {
     b.effect_inputs = 0x03;  // TRIG1, TRIG2
     b.effect_channels = (uint8_t)(0x03 | (s.fx.out3_enabled ? 0x04 : 0) | (s.out4_ready_lamp ? 0x08 : 0));
+  } else {
+    b.ready_lamp = s.out4_ready_lamp;  // OUT4 shows whether the script's remote effect is ready
   }
+  // the profile's key aliases of the settings a script line may name for a time or a count
+  for (auto& a : s.profile.aliases)
+    if (a.kind == AliasEntry::Kind::Key)
+      for (auto k : SCRIPT_SETTINGS)
+        if (a.target == k) b.setting_aliases.push_back({a.alias, a.target});
   // SS-N: the wiring labels and the profile's terminal aliases (Settings::names is in the checker's order)
   static_assert(sizeof(s.names) / sizeof(s.names[0]) == SCRIPT_NAMED, "one name per nameable terminal");
   for (int k = 0; k < SCRIPT_NAMED; k++) {
@@ -66,6 +73,12 @@ ScriptInputs Controller::scriptInputs() const {
   for (int k = 0; k < INPUT_COUNT; k++) {
     in.closed[k] = has_closed_[k];
     in.since[k] = has_closed_[k] ? closed_since_[k] : opened_since_[k];
+    // a test press that does not start things (remote start off) still reaches the effects that start remotely
+    // without it (remote_free_effects): they see it joined with the pin
+    if (!testStarts()) {
+      in.test[k] = testHeld(k);
+      in.test_since[k] = in.test[k] ? test_on_since_[k] : test_off_since_[k];
+    }
   }
   return in;
 }
@@ -77,12 +90,14 @@ void Controller::scriptInstall(std::unique_ptr<ScriptProgram> prog) {
     if (!script_run_) script_run_.reset(new ScriptRunner());
     script_run_->setTimes(settings_.trig_debounce_ms, settings_.trig_release_ms, boot_ms_ + SCRIPT_BOOT_LOCKOUT_MS);
     script_run_->load(script_prog_.get(), now_);
+    scriptValues();  // after load: the runner no longer points at the table just freed
     for (int c = 0; c < CHANNEL_COUNT; c++)
       if (script_prog_->channels & (1u << c)) engine_.setScript(ALL_CHANNELS[c], true, 0);
   } else {
     script_prog_.reset();
     script_run_.reset();
   }
+  for (auto& c : sound_.scriptLoop(0, now_)) df_.command(c);  // a new table sets its own loop
   for (auto& c : sound_.setConfig(soundConfig(), now_)) df_.command(c);
   for (auto& n : script_runs_seen_) n = 0;  // a loaded table starts its effects' run counts at 0
 }
@@ -269,6 +284,17 @@ ScriptCheck Controller::saveScript(const std::string& text, const SoundList& sou
   return c;
 }
 
+void Controller::scriptValues() {
+  if (!script_run_) return;
+  const Settings& st = settings_;
+  const uint32_t v[SCRIPT_SETTING_COUNT] = {st.fx.out1_on_ms, st.fx.out2_on_ms, st.fx.out3_on_ms, st.fx.recover_time_ms,
+                                            st.fx.cooldown_ms, st.trigger_out_pulse_ms, st.role_pulse_ms, st.fx.runs_per_cooldown};
+  script_run_->setSettings(v);
+  script_run_->setPaused(engine_.isPaused());
+  script_run_->setRemote(st.fx.remote_trigger_enable, scriptFreeEffects());
+  for (int k = 0; k < 2; k++) script_run_->setReadyRule(k, !st.trig_wait_return[k]);
+}
+
 bool Controller::scriptEffectRunning() const {
   if (!script_prog_ || !script_run_) return false;
   for (int e = 0; e < script_prog_->effects; e++)
@@ -289,6 +315,7 @@ void Controller::scriptTick(Millis now) {
     dmx_at_ = now;
   }
   if (!script_run_ || !script_prog_) return;  // no table: a new script is being written (scriptWrite)
+  scriptValues();
   std::vector<SoundCommand> snd;
   if (!engine_.isPaused()) script_run_->tick(now, scriptInputs(), snd);  // nothing runs while paused
   // an effect that left its first `wait for` started a run
@@ -296,13 +323,34 @@ void Controller::scriptTick(Millis now) {
     while (script_runs_seen_[e] < script_run_->runs(e)) {
       script_runs_seen_[e]++;
       std::string detail;
-      const ScriptStep& first = script_prog_->step[script_prog_->fx[e].first];
-      if (first.op == ScriptStep::Op::Wait && first.target < INPUT_COUNT) detail = name(ALL_INPUTS[first.target]);
+      const ScriptEffect& fe = script_prog_->fx[e];
+      for (int i = 0; i < fe.count; i++) {
+        const ScriptStep& w = script_prog_->step[fe.first + i];
+        if (w.op != ScriptStep::Op::Wait) continue;
+        if (w.target < INPUT_COUNT) detail = name(ALL_INPUTS[w.target]);
+        break;
+      }
       countRun(now, "input", "script", std::string(script_prog_->fx[e].name), detail);
     }
   for (int c = 0; c < CHANNEL_COUNT; c++)
     if (script_prog_->channels & (1u << c)) engine_.setScript(ALL_CHANNELS[c], true, script_run_->level(c));
   for (auto& c : snd) {
+    if (c.kind == SoundCommand::Kind::LoopMp3 || c.kind == SoundCommand::Kind::LoopIndex) {
+      // audio_loop: the background loop (0: off), resumed by itself after a sound played over it (SS-R7)
+      for (auto& x : sound_.scriptLoop(c.a, now, c.kind == SoundCommand::Kind::LoopMp3)) df_.command(x);
+      continue;
+    }
+    if (c.kind == SoundCommand::Kind::Volume) {
+      // audio_volume: the player's volume now, and for the script's sounds from here on (the ambient and trigger
+      // sounds keep their settings)
+      sound_.script_volume = c.a;
+      df_.command(c);
+      continue;
+    }
+    if (c.kind == SoundCommand::Kind::Stop)
+      for (auto& x : sound_.scriptLoop(0, now)) (void)x;  // audio_stop: the loop goes too
+    // audio_single's volume: the script's audio_volume once it set one, else trigger_volume
+    if (c.startsPlayback()) df_.command(SoundCommand::volume(sound_.script_volume >= 0 ? (uint8_t)sound_.script_volume : settings_.trigger_volume));
     sound_.observeShow(c, now);
     df_.command(c);
   }

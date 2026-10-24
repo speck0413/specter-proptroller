@@ -1,4 +1,4 @@
 effect a:
 wait for trig1
-audio_single = 100
+audio_single = 3001
 audio_loop = 0

@@ -1,0 +1,1 @@
+{"v":1,"id":111,"ok":true,"result":{"kind":"board_set","id":"relay4-button","name":"Four relays and a button (example)","restart_needed":true,"warnings":["status_led: GPIO 2 is read at power-on (a boot-strapping pin): what is wired to it must not pull it the wrong way while the board starts"]}}

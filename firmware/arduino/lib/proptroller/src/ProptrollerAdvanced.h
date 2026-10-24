@@ -66,7 +66,8 @@ class AdvancedSequence : public Sequence {
   // Blink an output: on, off, so many times.
   AdvancedSequence& blink(PropOutput o, int times, Duration on_for, Duration off_for) { Sequence::blink(o, times, on_for, off_for); return *this; }
 
-  // Sound: a file from another folder (playSound(5, 1) plays 05/001.mp3), a whole folder in a loop, the volume.
+  // Sound: a file in a numbered folder instead of a sound number (playSound(5, 1) plays /05/001.mp3), a whole
+  // folder in a loop, the volume.
   AdvancedSequence& playSound(int folder, int number) { Sequence::playSound(folder, number); return *this; }
   AdvancedSequence& loopSoundsInFolder(int folder) { Sequence::loopSoundsInFolder(folder); return *this; }
   AdvancedSequence& setVolume(int volume_0_to_30) { Sequence::setVolume(volume_0_to_30); return *this; }

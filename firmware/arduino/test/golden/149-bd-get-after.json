@@ -1,0 +1,1 @@
+{"v":1,"id":110,"ok":true,"result":{"kind":"board","mcu":"esp32-devkit","running":{"id":"relay-board","name":"Relay board","source":"stored"},"stored":{"id":"relay-board","name":"Relay board","pending":false},"presets":[{"id":"proptroller","name":"Spectre Proptroller board"},{"id":"relay4-button","name":"Four relays and a button (example)"}]}}

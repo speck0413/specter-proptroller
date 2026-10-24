@@ -48,6 +48,31 @@ static_assert(outputsCanDrive(PROPTROLLER_BOARD_MAP), "board profile: an ESP32 o
 static_assert(internalPullsPossible(PROPTROLLER_BOARD_MAP), "board profile: an ESP32 input on GPIO34-39 needs external_pull");
 #endif
 #endif
+// A board support package may also give a fresh board (nothing stored yet, or after a factory reset) its own
+// starting point (device.h FactoryDefaults): define any of PROPTROLLER_BOARD_PROFILE (set_profile's JSON),
+// PROPTROLLER_BOARD_SETTINGS ("key=value" lines) and PROPTROLLER_BOARD_SCRIPT (a show script) as string literals,
+// in proptroller_board.h or in proptroller_defaults.h (a header of its own on the include path, or
+// -D PROPTROLLER_DEFAULTS_HEADER='"my_defaults.h"'): the defaults alone, on the board's own pin map.
+#if PT_BOARD && !defined(PROPTROLLER_DEFAULTS_HEADER) && defined(__has_include)
+#if __has_include(<proptroller_defaults.h>)
+#define PROPTROLLER_DEFAULTS_HEADER <proptroller_defaults.h>
+#endif
+#endif
+#if PT_BOARD && defined(PROPTROLLER_DEFAULTS_HEADER)
+#include PROPTROLLER_DEFAULTS_HEADER
+#endif
+#if PT_BOARD && (defined(PROPTROLLER_BOARD_PROFILE) || defined(PROPTROLLER_BOARD_SETTINGS) || defined(PROPTROLLER_BOARD_SCRIPT))
+#define PT_BOARD_DEFAULTS 1
+#ifndef PROPTROLLER_BOARD_PROFILE
+#define PROPTROLLER_BOARD_PROFILE nullptr
+#endif
+#ifndef PROPTROLLER_BOARD_SETTINGS
+#define PROPTROLLER_BOARD_SETTINGS nullptr
+#endif
+#ifndef PROPTROLLER_BOARD_SCRIPT
+#define PROPTROLLER_BOARD_SCRIPT nullptr
+#endif
+#endif
 
 static Proptroller* g_prop = nullptr;  // for proptrollerMemoryReport()
 #if PT_BOARD
@@ -141,27 +166,69 @@ class PropApp : public NetApp {
 // ------------------------------------------------------------------ platforms
 
 #if PT_BOARD
-struct Proptroller::Platform {
+// The image's own board (a board support package compiled in): the default when no board package is stored.
 #if defined(PROPTROLLER_BOARD_HEADER)
-  const PinMap& map = PROPTROLLER_BOARD_MAP;
-  int led = PROPTROLLER_BOARD_MAP.status_led == NO_PIN ? -1 : PROPTROLLER_BOARD_MAP.status_led;
-#elif defined(ESP32)
-  const PinMap& map = ESP32_DEVKIT;
-  int led = ESP32_DEVKIT.status_led;
-#elif defined(PICO_CYW43_SUPPORTED)
-  const PinMap& map = PICO;
-  int led = LED_BUILTIN;  // on the Pico W the LED is on the radio chip
-#else
-  const PinMap& map = PICO;
-  int led = PICO.status_led;
+#ifndef PROPTROLLER_BOARD_ID
+#define PROPTROLLER_BOARD_ID "custom"
 #endif
+#ifndef PROPTROLLER_BOARD_NAME
+#define PROPTROLLER_BOARD_NAME "Board support package (built in)"
+#endif
+#ifndef PROPTROLLER_BOARD_PIXEL_INVERTED
+#define PROPTROLLER_BOARD_PIXEL_INVERTED true
+#endif
+static const BuiltinBoard IMAGE_BOARD = {PROPTROLLER_BOARD_ID, PROPTROLLER_BOARD_NAME, PROPTROLLER_BOARD_MAP, PROPTROLLER_BOARD_PIXEL_INVERTED};
+static const BuiltinBoard* const IMAGE_BOARD_PTR = &IMAGE_BOARD;
+#else
+static const BuiltinBoard* const IMAGE_BOARD_PTR = nullptr;
+#endif
+
+// The chip this image runs on (board_package.h): which GPIOs exist and which belong to something else.
+static ChipRules chipRules() {
+  ChipRules c;
+#if defined(ESP32)
+  c.mcu = Mcu::Esp32DevKit;
+  c.psram = psramFound();
+#else
+  c.mcu = Mcu::Pico;
+#if defined(PICO_CYW43_SUPPORTED)
+  c.radio = true;  // the Pico W / Pico 2 W radio owns GP23, 24, 25 and 29
+#endif
+#endif
+  return c;
+}
+
+// The status LED's pin for ArduinoPins (-1: none). STATUS_LED_BUILTIN: the core's LED_BUILTIN (on the Pico W it is
+// on the radio chip).
+static int statusLedPin(const PinMap& m) {
+  if (m.status_led == NO_PIN) return -1;
+#if defined(LED_BUILTIN)
+  if (m.status_led == STATUS_LED_BUILTIN) return LED_BUILTIN;
+#else
+  if (m.status_led == STATUS_LED_BUILTIN) return -1;
+#endif
+  return m.status_led;
+}
+
+static const char* const BOARD_FILE_A = "/board-a.bin";
+static const char* const BOARD_FILE_B = "/board-b.bin";
+static LittleFsIo g_fs;  // mounted first, before any pin is touched (the board package says which pins exist)
+
+struct Proptroller::Platform {
+  Platform(const BoardBoot& b, const ChipRules& c, const std::vector<BuiltinBoard>& all) : boot(b), chip(c), builtins(all) {}
+  BoardBoot boot;
+  ChipRules chip;
+  std::vector<BuiltinBoard> builtins;
+  const PinMap& map = boot.cfg.map;
+  int led = statusLedPin(boot.cfg.map);
   ArduinoPins pins{map, led};
   SerialStream* uart = nullptr;
-  BoardPixels pixels{map.pixel};
-  LittleFsIo fs;
+  BoardPixels pixels{map.pixel, boot.cfg.pixel_inverted};
+  LittleFsIo& fs = g_fs;
   ABStorage store{fs};
   ABStorage script_store{fs, "/script-a.bin", "/script-b.bin", SCRIPT_STORE_CAPACITY};
   ABStorage run_store{fs, "/runs-a.bin", "/runs-b.bin", RUNS_STORE_CAPACITY};
+  ABStorage board_store{fs, BOARD_FILE_A, BOARD_FILE_B, BOARD_STORE_CAPACITY};
   BoardDmx dmx{map.exp[0]};  // expansion S4
 #if defined(PT_HAS_OTA)
   BoardOta ota;
@@ -334,6 +401,20 @@ static Firmware* makeGeneric(BoardParts& p) {
   c->setRunStore(p.run_store);
   c->setDmx(p.dmx);
   if (p.update) c->setUpdateTarget(p.update);
+  if (p.board_store && p.board_boot && p.chip && p.builtins) c->setBoardPackages(p.board_store, *p.board_boot, *p.chip, *p.builtins);
+  // the board's defaults on a fresh board: the stored board package's, else the image's own (compiled in)
+#if defined(PT_BOARD_DEFAULTS)
+  FactoryDefaults d;
+  d.profile = PROPTROLLER_BOARD_PROFILE;
+  d.settings = PROPTROLLER_BOARD_SETTINGS;
+  d.script = PROPTROLLER_BOARD_SCRIPT;
+#ifdef PROPTROLLER_BOARD_SCRIPT_NAME
+  d.script_name = PROPTROLLER_BOARD_SCRIPT_NAME;
+#endif
+  (void)c->applyBoardDefaults(&d);
+#else
+  (void)c->applyBoardDefaults(nullptr);
+#endif
   return c;
 #endif
 }
@@ -351,9 +432,17 @@ void Proptroller::start(FirmwareMaker make) {
   if (started_) return;
   advanced();  // made here, before the step task or core 1 can ask for it
 #if PT_BOARD
-  plat_ = new Platform();
-  // 1. outputs off, before anything slow
-  outputsOffNow(plat_->map);
+  // 1. the board package, before any pin is touched: until outputsOffNow every GPIO keeps its reset state (an
+  // input). The file system is mounted first (formatted only when it was never written: a new board).
+  MountResult fsr = g_fs.begin();
+  {
+    const ChipRules chip = chipRules();
+    const std::vector<BuiltinBoard> builtins = builtinBoards(chip, IMAGE_BOARD_PTR);
+    ABStorage board_record(g_fs, BOARD_FILE_A, BOARD_FILE_B, BOARD_STORE_CAPACITY);
+    plat_ = new Platform(boardAtBoot(&board_record, chip, builtins), chip, builtins);
+  }
+  // 2. outputs off (the board package's pins only: a pin it does not use is never touched)
+  outputsOffNow(plat_->map, plat_->boot.cfg.pixel_inverted);
 #if defined(ARDUINO_ARCH_RP2040) && !defined(PROPTROLLER_NO_CORE1)
   stackPaint();
 #endif
@@ -368,13 +457,13 @@ void Proptroller::start(FirmwareMaker make) {
 #if defined(ARDUINO_ARCH_RP2040)
   analogReadResolution(12);
 #endif
-  // 2. storage, sound port, pixels
-  MountResult fsr = plat_->fs.begin();
+  // 3. storage, sound port, pixels
+  if (plat_->boot.source == BoardSource::None) logLine(plat_->boot.problem.c_str());
   if (fsr == MountResult::Formatted) logLine("the flash file system was empty and has been formatted");
   if (fsr == MountResult::Refused)
     logLine("could not open the flash file system and left it as it is: settings are not saved (a factory reset formats it)");
   plat_->uart = new SerialStream(openDfSerial(plat_->map));
-  if (!plat_->pixels.begin()) logLine("pixel driver not available");
+  if (plat_->map.pixel != NO_PIN && !plat_->pixels.begin()) logLine("pixel driver not available");  // a board without a pixel port: quiet
   BoardParts parts;
   parts.pins = &plat_->pins;
   parts.uart = plat_->uart;
@@ -387,8 +476,16 @@ void Proptroller::start(FirmwareMaker make) {
 #if defined(PT_HAS_OTA)
   parts.update = &plat_->ota;
 #endif
+  parts.board_store = &plat_->board_store;
+  parts.board_boot = &plat_->boot;
+  parts.chip = &plat_->chip;
+  parts.builtins = &plat_->builtins;
   parts.identity.id = deviceId();
   parts.identity.mcu = mcuName();
+  // the running board package's id (info.board, mDNS TXT `board`, backups, release lists): a stored package's, else
+  // the image's own board (a board support package names itself with #define PROPTROLLER_BOARD_ID "my-board" in its
+  // proptroller_board.h; without one the Proptroller board, "proptroller")
+  parts.identity.board = plat_->boot.cfg.id;
 #elif PT_HOST
   plat_ = new Platform();
   BoardParts parts;
@@ -425,7 +522,7 @@ void Proptroller::start(FirmwareMaker make) {
   char b[160];
   snprintf(b, sizeof b, "Proptroller %s on %s, id %s", PROPTROLLER_FW_VERSION_STR, parts.identity.mcu.c_str(), parts.identity.id.c_str());
   logLine(b);
-  // 3. the 10 ms step
+  // 4. the 10 ms step
   {
 #if defined(ESP32)
     xTaskCreatePinnedToCore(tickTask, "proptroller", TICK_TASK_STACK, this, 5, &g_tick_task, 1);
@@ -455,7 +552,7 @@ void Proptroller::start(FirmwareMaker make) {
 #endif
   started_ = true;  // the step runs (and feeds the watchdog) from here, also while Wi-Fi starts
 #if PT_BOARD && PT_WIFI
-  // 4. Wi-Fi, web UI, discovery, mDNS, MQTT
+  // 5. Wi-Fi, web UI, discovery, mDNS, MQTT
   plat_->net = new ArduinoNet(*plat_->app, plat_->lk);
   plat_->net->begin();
 #endif
@@ -603,7 +700,7 @@ void Proptroller::update() {
 #if defined(ARDUINO_ARCH_RP2040) && !defined(PROPTROLLER_NO_CORE1)
   if (stackGuardHit()) {
     logLine("core 0 stack overflow: restarting");
-    outputsOffNow(plat_->map);
+    outputsOffNow(plat_->map, plat_->boot.cfg.pixel_inverted);
     delay(100);
     restartNow();
   }
@@ -743,7 +840,12 @@ bool Proptroller::wasPressed(PropInput i) {
   seen_[(int)i] = n;
   return yes;
 }
-void Proptroller::playSound(int number) { playSound(2, number); }
+void Proptroller::playSound(int number) {
+  if (!needController("playSound()")) return;
+  lock();
+  ctl_->engine().sound(soundPlay((uint16_t)number));
+  unlock();
+}
 void Proptroller::playSound(int folder, int number) {
   if (!needController("playSound()")) return;
   lock();
@@ -1058,11 +1160,11 @@ Sequence& Sequence::blink(PropOutput o, int times, Duration on_for, Duration off
   cue(Target::of(ch(o)), a, a.duration());
   return *this;
 }
-Sequence& Sequence::playSound(int number) { return playSound(2, number); }
+Sequence& Sequence::playSound(int number) { return playSound(0, number); }  // folder 0: sound N (sound.h)
 Sequence& Sequence::playSound(int folder, int number) {
   Action a = act(Action::Kind::Play);
   a.folder = (uint8_t)folder;
-  a.track = (uint8_t)number;
+  a.track = (uint16_t)number;
   cue(Target::sound(), a, 0);
   return *this;
 }

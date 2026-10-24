@@ -47,18 +47,19 @@ void SoundCommand::encode(uint8_t& c, uint16_t& p) const {
     case Kind::Next: c = NEXT; p = 0; break;
     case Kind::Reset: c = RESET; p = 0; break;
     case Kind::SelectSd: c = DEVICE; p = 2; break;
+    case Kind::LoopMp3: c = PLAY_MP3; p = clampv<uint16_t>(a, 1, 3000); break;
   }
 }
 
 bool SoundCommand::startsPlayback() const {
   return kind == Kind::PlayFolder || kind == Kind::PlayMp3 || kind == Kind::PlayIndex || kind == Kind::LoopIndex || kind == Kind::LoopFolder ||
-         kind == Kind::Resume || kind == Kind::Next;
+         kind == Kind::LoopMp3 || kind == Kind::Resume || kind == Kind::Next;
 }
 
 const char* SoundCommand::name() const {
   static const char* const n[] = {"play_folder", "play_mp3", "play_index", "loop_index", "loop_folder", "volume",
-                                  "stop", "pause", "resume", "next", "reset", "select_sd"};
-  PT_ONE_PER(n, Kind::SelectSd);
+                                  "stop", "pause", "resume", "next", "reset", "select_sd", "loop_mp3"};
+  PT_ONE_PER(n, Kind::LoopMp3);
   return n[idx(kind)];
 }
 

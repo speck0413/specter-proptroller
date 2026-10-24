@@ -31,7 +31,7 @@ One board starts the next: a plain 3.5 mm stereo cable from CONTACT1 to TRIG1.
 5. **Board one: CC1 for shows.** On board one’s page: Settings > Output roles > "CC1 role" = shows > Save settings. Now board one’s shows and script can switch it.
 6. **Test it.** Power both boards. On board one’s Live tab, in the Outputs card, press On next to CC1: on board two’s Live tab, the TRIG1 box lights up. Then press Auto on board one.
    (How to open the board’s page: [Meet your board](00-meet-your-board.md), step "Connect your phone".)
-7. **Use it in a show.** In board one’s script, `cc1 = on`, `sleep 0.5`, `cc1 = off` presses board two’s TRIG1. Board two waits with `wait for trig1` as usual.
+7. **Use it in a show.** In board one’s script, `cc1 = on`, `wait 0.5`, `cc1 = off` presses board two’s TRIG1. Board two waits with `wait for trig1` as usual.
 
 ## Not working?
 

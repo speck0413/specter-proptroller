@@ -1,0 +1,164 @@
+# Firmware CI: on every push and pull request, the host tests, the board builds with the release packaging (no
+# tag, nothing published), the example and workspace builds, and the simulated board with the phone page's browser
+# tests (Chrome is on GitHub's Ubuntu runners). docs/FIRMWARE-BUILD.md section 6 lists the jobs. Actions are
+# pinned by commit SHA (the tag in the comment); PlatformIO is pinned as in release.yml.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PLATFORMIO_VERSION: "6.2.0"
+
+jobs:
+  host:
+    name: host tests (native, release.py)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: firmware/arduino
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-host-${{ hashFiles('firmware/arduino/platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-host-
+      - name: Install PlatformIO
+        run: python -m pip install "platformio==$PLATFORMIO_VERSION"
+      - name: Unit tests (pio test -e native)
+        run: pio test -e native
+      - name: release.py tests
+        run: python -m unittest discover -s tools -p 'test_*.py' -v
+
+  boards:
+    name: board builds and release packaging
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: firmware/arduino
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-boards-${{ hashFiles('firmware/arduino/platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-boards-
+      - name: Install PlatformIO
+        run: python -m pip install "platformio==$PLATFORMIO_VERSION"
+      - name: Build (ESP32 DevKit, Pico, Pico W, Pico 2 W, the Pico bootloaders)
+        run: pio run -e esp32dev -e pico -e picow -e pico2w -e boot_rp2040 -e boot_rp2350
+      - name: Pico W / Pico 2 W first-flash files
+        run: |
+          python tools/picoboot_image.py merge pico-w
+          python tools/picoboot_image.py merge pico2-w
+      - name: Package as the release would (release.py, no tag)
+        run: python tools/release.py "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: firmware-${{ github.sha }}
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+          retention-days: 7
+
+  examples:
+    name: examples and workspace projects
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: firmware/arduino
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-examples-${{ hashFiles('firmware/arduino/platformio.ini', 'firmware/arduino/workspace-template/platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-examples-
+      - name: Install PlatformIO
+        run: python -m pip install "platformio==$PLATFORMIO_VERSION"
+      - name: Every example and workspace project (tools/build-examples.sh)
+        run: tools/build-examples.sh
+
+  web:
+    name: simulator and phone page (browser tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: firmware/arduino
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-web-${{ hashFiles('firmware/arduino/platformio.ini') }}
+          restore-keys: pio-${{ runner.os }}-web-
+      - name: Install PlatformIO
+        run: python -m pip install "platformio==$PLATFORMIO_VERSION"
+      - name: Phone fonts (Roboto, Android's font, as system-ui and sans-serif; the 390 px layout checks measure text)
+        run: |
+          # the runner's default sans-serif (DejaVu Sans) is wider than any phone's font: with it the seven tabs
+          # end at 412 px and ui-test's "every tab fits at 390 px" fails; Noto Sans gives 388, Roboto less
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-roboto
+          mkdir -p ~/.config/fontconfig
+          cat > ~/.config/fontconfig/fonts.conf <<'EOF'
+          <?xml version="1.0"?>
+          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+          <fontconfig>
+            <alias binding="strong"><family>system-ui</family><prefer><family>Roboto</family></prefer></alias>
+            <alias binding="strong"><family>sans-serif</family><prefer><family>Roboto</family></prefer></alias>
+          </fontconfig>
+          EOF
+          fc-cache -f >/dev/null
+          echo "system-ui: $(fc-match system-ui)  sans-serif: $(fc-match sans-serif)"
+      - name: Simulated board, protocol client, MQTT, update, script check, browser tests (tools/check-host.sh)
+        env:
+          CHROMIUM: /usr/bin/google-chrome
+          WORK: ${{ runner.temp }}/check-host
+        run: tools/check-host.sh
+      - name: Screenshots and simulator logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: check-host-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/check-host/*.log
+            ${{ runner.temp }}/check-host/webtest/*.png
+          if-no-files-found: ignore
+          retention-days: 7

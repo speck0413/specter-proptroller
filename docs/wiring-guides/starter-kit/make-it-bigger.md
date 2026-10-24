@@ -11,7 +11,7 @@ waits, and plays sounds.** Everything bigger is more of the same. Some ideas, ea
 | A flickering haunted lamp | `flicker out1 for 5` in an effect | [2](../02-lamp-on-out1.md) |
 | A jump-scare air valve | a DC 12 V air valve (solenoid valve) on an OUT, with a diode across its coil | [7](../07-air-valve-on-out.md) |
 | A pump, a motor or a pop-up | a 12 V DC motor or pump on an OUT | [10](../10-pump-or-motor-on-out.md) |
-| Fog on cue | a fog machine with a socket labelled **DMX IN**, through the DMX add-on (`dmx1 = on`, `sleep 4`, `dmx1 = off`). Never its wired remote: on many machines that cable carries mains | [6](../06-fog-over-dmx.md) |
+| Fog on cue | a fog machine with a socket labelled **DMX IN**, through the DMX add-on (`dmx1 = on`, `wait 4`, `dmx1 = off`). Never its wired remote: on many machines that cable carries mains | [6](../06-fog-over-dmx.md) |
 | A longer pixel strip | over about 15 LEDs at full white, give the strip its own 5 V supply and join only DATA and GND to the board | [5](../05-pixel-strip.md) |
 | A doorbell or step mat | wired like the button, on TRIG1 or TRIG2 | [1](../01-button-on-trig1.md) |
 | A bigger power budget | a bigger 12 V supply on the screw terminal input (up to 10 A for the whole board) | [8](../08-powering-the-board.md) |
@@ -28,12 +28,12 @@ effect creak:
   fade out3 to 60% over 4      # a slow glow
   flicker out3 for 3           # then a failing-bulb flicker
   out3 = off
-  sleep 30                     # a rest: nothing restarts it for 30 s
+  wait 30                      # a rest: nothing restarts it for 30 s
 ```
 
 - Each output belongs to one effect: if two effects need a light, give each its own OUT.
-- A `sleep` at the end of an effect is a rest: presses during it are ignored.
-- Times can be `sleep 200 ms`, `sleep 2.5`, `sleep 3 min`.
+- A `wait` at the end of an effect is a rest: presses during it are ignored.
+- Times can be `wait 200 ms`, `wait 2.5`, `wait 3 min`.
 
 ## Things that plug into the wall
 

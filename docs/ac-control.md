@@ -68,7 +68,7 @@ current is tiny next to the output's 5 A rating.
 effect porch lamp:
   wait for trig1
   out1 = on        # the box switches the lamp on
-  sleep 30
+  wait 30
   out1 = off
 ```
 
@@ -109,7 +109,7 @@ the box's manual says its (−) must go to ground, use method 1.
 effect porch lamp:
   wait for trig2
   rly1 = on        # NO closes: the box input's (−) reaches GND and the box turns on
-  sleep 10
+  wait 10
   rly1 = off
 ```
 
@@ -146,7 +146,7 @@ side so the plug's sleeve sits at GND, and put a **0.5 A fuse or PTC in the VIN 
 effect porch lamp:
   wait for trig2
   cc1 = on
-  sleep 10
+  wait 10
   cc1 = off
 ```
 

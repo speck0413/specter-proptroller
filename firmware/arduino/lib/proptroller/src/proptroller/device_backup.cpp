@@ -46,6 +46,7 @@ void Controller::backupJson(JsonObject o) const {
   from["fw_version"] = in.fw_version;
   from["fw_impl"] = in.fw_impl;
   from["mcu"] = in.mcu;
+  from["board"] = in.board;
   o["name"] = settings_.name;
   JsonArray st = o["settings"].to<JsonArray>();
   for (auto& d : Settings::params()) {

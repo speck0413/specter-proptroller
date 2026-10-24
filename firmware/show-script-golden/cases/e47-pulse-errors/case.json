@@ -1,0 +1,41 @@
+{
+  "spec": [
+    "SS-G5"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: write a pulse as \"pulse cc1 for 200 ms\"."
+      },
+      {
+        "line": 4,
+        "message": "line 4: dmx1 cannot pulse. Pulses work on out1 to out4, rly1, rly2, cc1 and cc2."
+      },
+      {
+        "line": 5,
+        "message": "line 5: rly1 is a relay or a contact: pulse it for at least 0.1 s."
+      },
+      {
+        "line": 6,
+        "message": "line 6: there is no out9 on this board. The outputs are out1 to out4, rly1, rly2, cc1 and cc2."
+      },
+      {
+        "line": 7,
+        "message": "line 7: \"soon\" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min."
+      },
+      {
+        "line": 8,
+        "message": "line 8: runs_per_cooldown is a number of runs, not a time."
+      },
+      {
+        "line": 9,
+        "message": "line 9: cc1 is set to pulse on every trigger (cc1_role). Set cc1_role to shows to use it in a script."
+      }
+    ],
+    "warnings": []
+  }
+}

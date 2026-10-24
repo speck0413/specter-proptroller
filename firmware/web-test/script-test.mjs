@@ -43,7 +43,9 @@ ok(far.top > 0 && far.lineTop >= far.top && far.lineTop < far.top + far.h, 'the 
 // Blocks only: the message marks the line's block; Script and blocks: both
 await page.click('input[name=script-view][value=blocks]');
 await page.click('.smsg.err[data-line="43"]');
-const blk = await page.evaluate(() => [...document.querySelectorAll('#script-blocks .blk.goto')].map((b) => [b.dataset.type, b.querySelector('input')?.value]));
+// the blocks are drawn after the click (a busy CI runner can be slower than the evaluate below)
+await page.waitForSelector('#script-blocks .blk.goto', { timeout: 3000 }).catch(() => {});
+const blk =await page.evaluate(() => [...document.querySelectorAll('#script-blocks .blk.goto')].map((b) => [b.dataset.type, b.querySelector('input')?.value]));
 ok(blk.length === 1 && blk[0][0] === 'ps_set' && blk[0][1] === 'rly1', 'Blocks only: the rly1 block is marked: ' + JSON.stringify(blk));
 ok(await page.evaluate(() => document.querySelector('input[name=script-view]:checked').value) === 'blocks', 'Blocks only stays (a block holds the line)');
 await page.screenshot({ path: `${S}/script-goto-block.png`, fullPage: false });
@@ -52,11 +54,9 @@ await page.click('input[name=script-view][value=text]');
 await page.click('#script-save');
 await page.waitForFunction(() => /nothing saved/.test(document.getElementById('script-msg').textContent), null, { timeout: 5000 });
 ok(true, 'save refused: ' + (await page.textContent('#script-msg')));
-// fixed, with a sound by name
-const good = 'effect porch light:\n  wait for trig1\n  out1 = on\n  audio_single = chime.mp3\n  sleep 2\n  fade out1 to 0% over 1\n';
+// fixed, with a sound by its number and a volume
+const good = 'effect porch light:\n  wait for trig1\n  out1 = on\n  audio_volume = 60%\n  audio_single = 3\n  sleep 2\n  fade out1 to 0% over 1\n';
 await page.fill('#script-text', good);
-await page.click('#script-sounds-box summary');
-await page.fill('#script-sounds', 'chime.mp3 = 3');
 await page.click('#script-check');
 await page.waitForFunction(() => /^no errors/.test(document.getElementById('script-msg').textContent), null, { timeout: 5000 });
 ok(true, await page.textContent('#script-msg'));
@@ -90,7 +90,6 @@ await page.waitForTimeout(2500);
 await open();
 await page.waitForFunction((g) => document.getElementById('script-text').value === g, good, { timeout: 5000 });
 ok(/stored, running/.test(await page.textContent('#script-state')), 'still stored and running after a restart');
-ok((await page.inputValue('#script-sounds')) === 'chime.mp3 = 3', 'the sound list is kept');
 // another phone saves a script while this page has edits: the edits stay, the page says so, Save asks first
 await page.fill('#script-text', good + '# my edit\n');
 const other = 'effect other phone:\n  wait for trig2\n  out3 = on\n  sleep 1\n  out3 = off\n';

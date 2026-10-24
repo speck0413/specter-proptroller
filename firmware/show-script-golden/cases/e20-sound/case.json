@@ -3,16 +3,14 @@
     "SS-C4",
     "SS-W1"
   ],
-  "sounds": {
-    "chime.mp3": 1
-  },
+  "sounds": {},
   "settings": {},
   "check": {
     "ok": false,
     "errors": [
       {
         "line": 3,
-        "message": "line 3: there is no sound called \"Chime.mp3\". Use its number: \"audio_single = 1\" plays /01/001.mp3 (the desktop app copies named sounds to the card and lists them)."
+        "message": "line 3: \"Chime.mp3\" is not a sound number. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3)."
       }
     ],
     "warnings": []

@@ -1,0 +1,9 @@
+effect a:
+  wait for trig1
+  pulse out1
+  pulse dmx1 for 1
+  pulse rly1 for 50 ms
+  pulse out9 for 1
+  pulse out2 for soon
+  pulse out3 for runs_per_cooldown
+  pulse cc1 for 200 ms

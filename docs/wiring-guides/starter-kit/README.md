@@ -62,15 +62,15 @@ the two pixel shows' inputs, and set Settings > Inputs > TRIG1 input type (not T
 
 ## Sounds
 
-On the microSD card make two folders, each with one file:
+Put the big sound on the microSD card as sound 1 and the spooky sound as sound 2. Specter Studio's SD card tool
+does it for you: add the two files in that order and press Copy. By hand ([Setting up the SD card](../../SD-CARD.md)):
 
 ```
-01/001.mp3    the big sound (sound 1)
-02/001.mp3    the spooky sound (sound 2)
+mp3/0001-big.mp3      the big sound (sound 1), copied first
+mp3/0002-spooky.mp3   the spooky sound (sound 2), copied second
 ```
 
-A show script plays sound N from folder NN, file 001.mp3. Slide the card into the sound module's slot at the right
-edge of the board, contacts first. (Specter Studio can copy and number the sounds for you: [guide 4](../04-speaker-and-sounds.md).)
+Slide the card into the sound module's slot at the right edge of the board, contacts first.
 
 ## The show
 
@@ -120,7 +120,7 @@ played sound 2 and the red flicker. Not yet tried on a real board.
   for a spooky reaction, never for anything safety-related.
 - The OUT1 or OUT2 light on the board comes on but the strip or fan does not: plus and minus swapped, or a screw on
   insulation.
-- No sound: folder names 01 and 02, file names 001.mp3, card FAT32 and pushed in ([guide 4](../04-speaker-and-sounds.md)).
+- No sound: the card filled by Studio's SD card tool (or `mp3/0001-….mp3` and `0002-….mp3` copied in that order), FAT32 and pushed in ([guide 4](../04-speaker-and-sounds.md)).
 - The pixels stay dark: the DATA wire, the three shows on the Shows tab, Pixels = 15 in Settings.
 
 ## Next

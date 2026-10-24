@@ -1,0 +1,128 @@
+{
+  "spec": [
+    "SS-R1",
+    "SS-R7",
+    "SS-G3",
+    "SS-G5",
+    "SS-G6"
+  ],
+  "sounds": {},
+  "settings": {
+    "cc1_role": "shows"
+  },
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "run",
+          "line": 1,
+          "limit": {
+            "runs": "runs_per_cooldown",
+            "ms": "cooldown_ms"
+          },
+          "steps": [
+            {
+              "line": 2,
+              "op": "audio_loop",
+              "sound": 1
+            },
+            {
+              "line": 3,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 5,
+              "op": "audio_single",
+              "sound": 2
+            },
+            {
+              "line": 6,
+              "op": "pulse",
+              "target": "CC1",
+              "setting": "trigger_out_pulse_ms"
+            },
+            {
+              "line": 7,
+              "op": "set",
+              "target": "OUT1",
+              "level": 1000
+            },
+            {
+              "line": 8,
+              "op": "sleep",
+              "setting": "out1_on_ms"
+            },
+            {
+              "line": 9,
+              "op": "set",
+              "target": "OUT1",
+              "level": 0
+            },
+            {
+              "line": 10,
+              "op": "audio_loop_off"
+            },
+            {
+              "line": 11,
+              "op": "sleep",
+              "ms": 10
+            },
+            {
+              "line": 12,
+              "op": "set",
+              "target": "OUT2",
+              "level": 1000
+            },
+            {
+              "line": 13,
+              "op": "sleep",
+              "setting": "out2_on_ms"
+            },
+            {
+              "line": 14,
+              "op": "set",
+              "target": "OUT2",
+              "level": 0
+            }
+          ]
+        },
+        {
+          "name": "refill",
+          "line": 15,
+          "limit": {
+            "runs": 1,
+            "ms": 30000
+          },
+          "steps": [
+            {
+              "line": 16,
+              "op": "wait_for",
+              "input": "TRIG2"
+            },
+            {
+              "line": 18,
+              "op": "set",
+              "target": "OUT2",
+              "level": 1000
+            },
+            {
+              "line": 19,
+              "op": "sleep",
+              "ms": 2000
+            },
+            {
+              "line": 20,
+              "op": "set",
+              "target": "OUT2",
+              "level": 0
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

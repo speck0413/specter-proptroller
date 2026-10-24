@@ -19,7 +19,7 @@
 
 namespace pt {
 
-static const uint16_t SCRIPT_TABLE_VERSION = 1;  // raise with any change to scriptTableEncode or ScriptProgram's meaning
+static const uint16_t SCRIPT_TABLE_VERSION = 2;  // 2: limits, pulses, settings as times, audio_loop off; raise with any change to scriptTableEncode or ScriptProgram's meaning
 static const char SCRIPT_RECORD_MAGIC[4] = {'P', 'T', 'S', 'R'};
 static const size_t SCRIPT_RECORD_HEADER = 24;
 

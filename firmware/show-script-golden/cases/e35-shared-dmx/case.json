@@ -1,20 +1,14 @@
 {
   "spec": [
-    "SS-R8",
-    "SS-D8"
+    "SS-R8"
   ],
   "sounds": {},
   "settings": {
     "dmx_port": "s4"
   },
   "check": {
-    "ok": false,
-    "errors": [
-      {
-        "line": 6,
-        "message": "line 6: dmx7 is already used by effect \"a\" (line 3). Each DMX channel belongs to one effect."
-      }
-    ],
+    "ok": true,
+    "errors": [],
     "warnings": [
       {
         "line": 1,

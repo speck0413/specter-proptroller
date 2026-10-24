@@ -1,0 +1,12 @@
+{
+  "spec": [
+    "SS-R8"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": []
+  }
+}

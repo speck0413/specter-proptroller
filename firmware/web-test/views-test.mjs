@@ -41,15 +41,15 @@ await page.screenshot({ path: `${S}/views-both-390.png`, fullPage: true });
 
 // a value changed in a block: only that line changes, comments and blank lines stay
 await page.fill('#script-blocks .blk[data-type="ps_sleep"] input', '5');
-ok(await text() === SCRIPT.replace('sleep 2', 'sleep 5'), 'a value changed in a block rewrites only its line');
+ok(await text() === SCRIPT.replace('sleep 2', 'wait 5'), 'a value changed in a block rewrites only its line');
 // ↑ moves a line up, ✕ removes it, Add puts a new line at the end of the effect
 await page.click('#script-blocks .blk[data-type="ps_fade"] button[aria-label^="Move up"]');
-ok((await text()).includes('  out1 = on\n\n  fade out1 to 0% over 3\n\n  sleep 5\n# the prop'), 'Move up: the fade before the sleep (a blank line goes with the line above it, as in Studio)');
+ok((await text()).includes('  out1 = on\n\n  fade out1 to 0% over 3\n\n  wait 5\n# the prop'), 'Move up: the fade before the wait (a blank line goes with the line above it, as in Studio)');
 await page.click('#script-blocks .blk.effect >> nth=1 >> .blk[data-type="ps_sleep"] button[aria-label^="Remove"]');
 ok(!(await text()).includes('sleep 1'), 'Remove: the prop\'s sleep is gone');
 await page.selectOption('#script-blocks .blk.effect >> nth=1 >> select', 'ps_audio_single');
 await page.click('#script-blocks .blk.effect >> nth=1 >> button:has-text("Add the line")');
-ok((await text()).endsWith('  rly1 = off\n  audio_single = chime.mp3\n'), 'Add the line: "play sound chime.mp3 once" written as audio_single at the end of the effect');
+ok((await text()).endsWith('  rly1 = off\n  audio_single = 1\n'), 'Add the line: "play sound 1 once" written as audio_single at the end of the effect');
 ok(/not saved|/.test(await page.textContent('#script-state')), 'the Script tab knows it changed');
 // typing in the text box redraws the blocks
 await page.fill('#script-text', 'effect one:\n  wait for user1\n  out2 = 40%\n  sleep 1\n  out2 = off\n');

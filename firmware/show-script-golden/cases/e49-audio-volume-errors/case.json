@@ -1,0 +1,29 @@
+{
+  "spec": [
+    "SS-L"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: \"loud\" is not a volume. Use a percentage from 0% to 100%, or off."
+      },
+      {
+        "line": 4,
+        "message": "line 4: \"101%\" is not a volume. Use a percentage from 0% to 100%, or off."
+      },
+      {
+        "line": 5,
+        "message": "line 5: \"\" is not a volume. Use a percentage from 0% to 100%, or off."
+      },
+      {
+        "line": 6,
+        "message": "line 6: \"30\" is not a volume. Use a percentage from 0% to 100%, or off."
+      }
+    ],
+    "warnings": []
+  }
+}

@@ -73,13 +73,12 @@
     <div class="card" data-cap="sound">
       <h2>Sound</h2>
       <div class="row wrap">
-        <label>Folder <input id="snd-folder" type="number" min="1" max="99" value="1"></label>
-        <label>Track <input id="snd-track" type="number" min="1" max="255" value="1"></label>
+        <label>Sound <input id="snd-track" type="number" min="1" max="3000" value="1"></label>
         <button id="snd-play">Play</button>
         <button id="snd-stop">Stop</button>
         <label>Volume <input id="snd-vol" type="range" min="0" max="30" value="20"></label>
       </div>
-      <p class="hint">Folder 1, track 2 plays the file <code>/01/002.mp3</code> on the player's card.</p>
+      <p class="hint">Sound 2 is the file <code>mp3/0002-…</code> on the player's card. Studio's SD card tool puts your sounds there in the right order.</p>
       <div class="hint" id="snd-state"></div>
     </div>
     <div class="card" data-cap="pixels">
@@ -191,8 +190,8 @@
     <div class="card">
       <div class="row between"><h2>Effect script</h2><small id="script-state"></small></div>
       <p class="hint">One effect per block: <code>effect porch light:</code>, then its lines: <code>wait for trig1</code>,
-        <code>out1 = on</code>, <code>sleep 2</code>, <code>fade out1 to 0% over 3</code>, <code>flicker out2 for 5</code>,
-        <code>audio_single = 1</code> (plays <code>/01/001.mp3</code>), <code>audio_loop = 2</code>, <code>audio_stop</code>.
+        <code>out1 = on</code>, <code>wait 2</code>, <code>fade out1 to 0% over 3</code>, <code>flicker out2 for 5</code>,
+        <code>audio_single = 1</code> (plays the card's <code>mp3/0001-….mp3</code>), <code>audio_loop = 2</code>, <code>audio_volume = 60%</code>, <code>audio_stop</code>.
         Times are seconds (or <code>200 ms</code>, <code>3 min</code>); <code>#</code> starts a comment.</p>
       <div class="seg3" id="script-view" role="radiogroup" aria-label="How to show the script">
         <label class="check"><input type="radio" name="script-view" value="both"> Script and blocks</label>
@@ -201,7 +200,7 @@
       </div>
       <div class="panes" id="script-panes">
       <div class="pane" id="script-text-pane">
-      <textarea id="script-text" rows="16" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Effect script" aria-describedby="script-keys" placeholder="(no effect script stored yet: type one here, for example)&#10;&#10;effect porch light:&#10;  wait for trig1&#10;  out1 = on&#10;  sleep 30&#10;  fade out1 to 0% over 2"></textarea>
+      <textarea id="script-text" rows="16" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Effect script" aria-describedby="script-keys" placeholder="(no effect script stored yet: type one here, for example)&#10;&#10;effect porch light:&#10;  wait for trig1&#10;  out1 = on&#10;  wait 30&#10;  fade out1 to 0% over 2"></textarea>
       <p class="hint" id="script-keys">Tab indents; press Esc, then Tab, to leave the box.</p>
       </div>
       <div class="pane" id="script-blocks-pane">
@@ -209,11 +208,6 @@
         <p class="hint">Change a value in a block, move a block with its arrows (or drag it by ⠿ with a mouse), remove it with ✕.</p>
       </div>
       </div>
-      <details id="script-sounds-box">
-        <summary>Sound files (name = number)</summary>
-        <p class="hint">The desktop app fills this in when it copies the sounds to the card. Sound N is folder N, track 1: the file <code>/NN/001.mp3</code> on the player's card.</p>
-        <textarea id="script-sounds" rows="4" spellcheck="false" autocapitalize="off" autocorrect="off" aria-label="Sound files" placeholder="chime.mp3 = 1"></textarea>
-      </details>
       <div class="row wrap">
         <button id="script-check">Check</button>
         <button id="script-save" class="primary">Save</button>
@@ -241,11 +235,11 @@
         <div id="rx-sounds" class="chips" role="group" aria-labelledby="rx-sounds-h"></div>
       </div>
       <label class="check"><input id="rx-count" type="checkbox" checked> Count 3, 2, 1 before it starts</label>
-      <div class="row"><button id="rx-start" class="primary big">Start</button></div>
+      <div class="row wrap"><button id="rx-start" class="primary big">Start</button><button id="rx-cancel-setup" class="rx-cancel">Cancel</button></div>
       <div id="rx-setup-msg" class="msg"></div>
     </div>
     <div class="card hidden" id="rx-live">
-      <div class="row between"><h2 id="rx-title">Recording</h2><button id="rx-stop" class="danger">Stop</button></div>
+      <div class="row between"><h2 id="rx-title">Recording</h2><div class="row"><button id="rx-cancel-live" class="rx-cancel">Cancel</button><button id="rx-stop" class="danger">Stop</button></div></div>
       <div id="rx-status" class="rxstatus" role="status" aria-live="polite"></div>
       <div id="rx-controls" class="rxgrid"></div>
       <div id="rx-live-msg" class="msg"></div>
@@ -263,7 +257,9 @@
         <button id="rx-again">Try again</button>
         <button id="rx-more">Add more on top</button>
       </div>
-      <div class="row"><button id="rx-keep" class="primary big">Keep</button></div>
+      <div class="row wrap"><button id="rx-keep" class="primary big">Keep</button><button id="rx-cancel-review" class="rx-cancel">Cancel</button></div>
+      <div id="rx-ask" class="ask" role="alertdialog" aria-labelledby="rx-ask-q" hidden><span class="q" id="rx-ask-q">Discard this recording?</span>
+        <button id="rx-discard" class="danger small">Discard</button><button id="rx-keep-take" class="small">No, go back</button></div>
       <div id="rx-msg" class="msg"></div>
     </div>
   </section>

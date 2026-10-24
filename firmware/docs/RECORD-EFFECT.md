@@ -16,7 +16,7 @@ ordinary effect script, so afterwards you can change any time, level or sound as
    slider as well as a Hold button. RLY1, RLY2 (and CC1, CC2 when they are not used for something else) are on
    or off only. Outputs that have another job in Settings, or belong to the built-in effect, are not offered.
 4. **Sounds to use** (boards with a sound player): tick the sounds you want buttons for. Sound N is the file
-   `/NN/001.mp3` on the player's card; names from the Script tab's sound list are shown beside the numbers.
+   `0001-….mp3`, `0002-….mp3` … in the card's `mp3` folder (Studio's SD card tool fills the card).
 5. Leave **Count 3, 2, 1** on if you want a moment to get ready, and press **Start**.
 6. Now do the effect. The board follows you live:
    - **Hold: on** turns the output on for as long as you hold it. Tap it for a short blip.
@@ -32,6 +32,12 @@ ordinary effect script, so afterwards you can change any time, level or sound as
      it (good for doing a light and a relay with one thumb each).
    - **Keep**: give it a name and save it on the board. From now on, pressing the input you picked runs it.
 
+**Cancel** is on every screen (and Escape does the same): during the 3, 2, 1, while recording, while the board
+does it back and on the review screen. It stops at once and lets go of every output the recording touched, so
+each one goes back to what it did before (off, or what its show was doing). If something was recorded, the page
+shows it and asks **Discard this recording?**: **Discard** throws it away and nothing is saved; **No, go back**
+keeps it for review. With nothing recorded it just goes back to the start (from the first screen: to the Live tab).
+
 **STOP** in the header always works. It, a pause, putting the phone away (the page hidden), and a dropped
 connection end the recording: everything is let go and turned off, and what you recorded so far is kept for
 you to review. An output never stays on longer than its **maximum on-time** (Settings): the recorder turns it
@@ -46,20 +52,20 @@ which, and nothing is saved; record without that output, or change the other eff
 
 On the board's page, choose **Make it do something… → Record effect**. The steps are the same: pick what starts
 it, Start, work the big buttons (keys 1-8 for the outputs, Q W E R for sounds, Space to start and stop), Stop,
-and the board does it back. **Keep it** saves the effect in your library and sends it to the board. The
+and the board does it back. **Cancel** (or Escape) works as on the phone. **Keep it** saves the effect in your library and sends it to the board. The
 phone page turns a recording into a script with the shared module `firmware/web/take.js`, made for Studio to
 import from this firmware so the same take gives the same script in both (until Studio switches to it, its own
 copy of the rules has no level sliders).
 
 ## How a recording becomes a script
 
-- Times are rounded to 0.1 s and written as `sleep` lines between the moments something changes. A very
+- Times are rounded to 0.1 s and written as `wait` lines between the moments something changes. A very
   short tap still lasts 0.1 s; two taps of one output that touch or overlap become one.
 - A held button is `outN = on` then `outN = off`. A slider is `outN = 40%` lines, in 5 % steps and at most one
   every 0.1 s; a smooth movement becomes `fade outN to 100% over 0.7` when nothing else happens during it (a
-  fade takes its time, like `sleep`, so the other lines wait for it).
+  fade takes its time, like `wait`, so the other lines wait for it).
 - Relays and contacts are on or off only (`rly1 = on`); they never switch faster than 0.1 s.
-- A sound is `audio_single = N` (or its file name from the sound list).
+- A sound is `audio_single = N`, its number.
 - The quiet bit before you first touched anything is left out, and everything is off at the end.
 - A long take that does not fit one effect (64 lines) is split into one effect per output (plus one for the
   sounds), all waiting for the same input, so they still start together. A slider that moved very often is
@@ -82,16 +88,16 @@ presses a store-bought prop's "try me" button, and sound 2 is a scream.
 effect porch scare:
   wait for trig1
   out1 = 30%
-  sleep 1.6
+  wait 1.6
   out1 = 40%
   fade out1 to 100% over 0.7
-  sleep 0.2
+  wait 0.2
   audio_single = 2
-  sleep 0.1
+  wait 0.1
   rly1 = on
-  sleep 0.5
+  wait 0.5
   rly1 = off
-  sleep 1.6
+  wait 1.6
   out1 = off
 ```
 
@@ -99,9 +105,9 @@ effect porch scare:
    the top: **Script only** (the text), **Blocks only** (one coloured block per line: change a value in place,
    move with ↑ ↓, remove with ✕, add a line), or **Script and blocks** (both; each changes the other). The phone
    remembers your choice. In Studio, use its code or blocks view the same way:
-   - the lamp should glow longer before the scare: change the first `sleep 1.6` to `sleep 4`;
+   - the lamp should glow longer before the scare: change the first `wait 1.6` to `wait 4`;
    - it should start dimmer: change `out1 = 30%` to `out1 = 15%`;
-   - add a rest so the prop is not set off twice in a row: put `sleep 20` as the last line (nothing restarts
+   - add a rest so the prop is not set off twice in a row: put `wait 20` as the last line (nothing restarts
      an effect until its last line is done, SHOW-SCRIPT.md SS-R2).
 5. Press **Check**, then **Save**. Press TRIG1: the board runs your changed effect.
 

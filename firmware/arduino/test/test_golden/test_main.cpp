@@ -49,7 +49,7 @@ static void check(const std::string& name, const std::string& got) {
 
 // ---------------------------------------------------------------- the show script (proptroller_sim::golden)
 static const char* const SC_SCRIPT =
-    "effect porch light:\n  wait for trig1\n  out1 = on\n  audio_single = chime.mp3\n  sleep 2\n  fade out1 to 0% over 1\n\n"
+    "effect porch light:\n  wait for trig1\n  out1 = on\n  audio_single = 3\n  sleep 2\n  fade out1 to 0% over 1\n\n"
     "effect prop:\n  wait for trig2\n  rly1 = on   # the prop's try-me button\n  sleep 0.5\n  rly1 = off\n";
 static const char* const SC_BAD_TEXT = "effect a:\n  wait for trig1\n  out5 = on\n";
 
@@ -307,6 +307,52 @@ static void wifiSession() {
   CALL("wf-bad-rescan", R"__({"id":93,"op":"wifi_scan","rescan":1})__");
 }
 
+// ---------------------------------------------------------------- board packages (get_board / set_board)
+// On a fresh board: what runs and the presets, a built-in exported, a package refused in plain words, one stored
+// (applied by the restart), the board after the restart, a preset, forget, and the bad requests.
+static void boardSession() {
+  Sim sim("a0b1c2d3e4f5");
+  sim.step(500);
+  CALL("bd-get", R"__({"id":100,"op":"get_board"})__");
+  CALL("bd-get-preset", R"__({"id":101,"op":"get_board","preset":"relay4-button"})__");
+  CALL("bd-get-unknown", R"__({"id":102,"op":"get_board","preset":"big-board"})__");
+  CALL("bd-set-bad-pin", R"__({"id":103,"op":"set_board","package":{"board_package":1,"id":"x","name":"X","mcu":"esp32-devkit","terminals":{"OUT3":{"pin":35}}}})__");
+  CALL("bd-set-bad-format", R"__({"id":104,"op":"set_board","package":{"board_package":2,"id":"x","name":"X"}})__");
+  CALL("bd-set-two", R"__({"id":105,"op":"set_board","preset":"proptroller","forget":true})__");
+  CALL("bd-set", R"__({"id":106,"op":"set_board","package":{"board_package":1,"id":"relay-board","name":"Relay board","mcu":"esp32-devkit","terminals":{"OUT1":{"pin":23},"TRIG1":{"pin":36,"pull":"board"},"TRIG2":{"pin":18,"active":"high","pull":"board"},"USER1":{"pin":5}}},"defaults":"keep"})__");
+  CALL("bd-get-pending", R"__({"id":107,"op":"get_board"})__");
+  CALL("bd-reboot", R"__({"id":108,"op":"reboot"})__");
+  sim.step(500);
+  CALL("bd-info-after", R"__({"id":109,"op":"info"})__");
+  CALL("bd-get-after", R"__({"id":110,"op":"get_board"})__");
+  CALL("bd-set-preset", R"__({"id":111,"op":"set_board","preset":"relay4-button","defaults":"apply"})__");
+  CALL("bd-forget", R"__({"id":112,"op":"set_board","forget":true})__");
+  CALL("bd-defaults-pending", R"__({"id":113,"op":"get_defaults"})__");
+  CALL("bd-apply-defaults-pending", R"__({"id":114,"op":"apply_defaults","only":["script"]})__");
+  CALL("bd-apply-defaults-bad", R"__({"id":115,"op":"apply_defaults","only":["wifi"]})__");
+  CALL("bd-reset-keep-wifi-bad", R"__({"id":116,"op":"factory_reset","keep_wifi":"yes"})__");
+}
+
+static void testInputSession() {
+  // a test press (op test_input): shown on the input; with remote start off the example show does not start,
+  // with it on the show runs as from a real press; letting go; the request's checks
+  Sim sim("a0b1c2d3e4f5");
+  sim.addExample();
+  sim.step(2500);
+  CALL_S("ti-press", R"__({"id":120,"op":"test_input","input":"TRIG1","active":true})__");
+  sim.step(300);
+  PUT("ti-state-shown", sim.stateJson());
+  CALL_S("ti-let-go", R"__({"id":121,"op":"test_input","input":"TRIG1","active":false})__");
+  sim.step(300);
+  CALL_S("ti-remote-on", R"__({"id":122,"op":"set_params","values":[{"key":"remote_trigger_enable","value":true}]})__");
+  CALL_S("ti-press-starts", R"__({"id":123,"op":"test_input","input":"TRIG1","active":true,"ms":300})__");
+  sim.step(500);
+  PUT("ti-state-running", sim.stateJson());
+  CALL("ti-bad-input", R"__({"id":124,"op":"test_input","input":"OUT1","active":true})__");
+  CALL("ti-bad-ms", R"__({"id":125,"op":"test_input","input":"TRIG1","active":true,"ms":30001})__");
+  CALL("ti-no-active", R"__({"id":126,"op":"test_input","input":"TRIG1"})__");
+}
+
 void session_matches_the_golden_files() {
   Sim sim("a0b1c2d3e4f5");
 #include "session.inc"
@@ -325,6 +371,10 @@ void session_matches_the_golden_files() {
   TEST_ASSERT_EQUAL(134, compared);
   wifiSession();
   TEST_ASSERT_EQUAL(138, compared);
+  boardSession();
+  TEST_ASSERT_EQUAL(155, compared);
+  testInputSession();
+  TEST_ASSERT_EQUAL(164, compared);
 }
 
 

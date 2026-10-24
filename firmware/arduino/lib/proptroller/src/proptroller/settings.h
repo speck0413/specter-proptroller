@@ -29,13 +29,17 @@ extern const char* const NAME_IDS[13];
 
 // A project's own names for keys, controls, status values and terminals (STATE-MACHINE.md §11).
 struct AliasEntry {
-  enum class Kind : uint8_t { Key, Control, Status, Terminal };
+  // Fixed: a name an older tool still asks for that no setting stands behind; it always reads `target` (its
+  // fixed value, as text) and a value set under it is accepted and changes nothing
+  enum class Kind : uint8_t { Key, Control, Status, Terminal, Fixed };
   std::string alias;
   Kind kind = Kind::Key;
-  std::string target;  // the key, control, status name or terminal
+  std::string target;  // the key, control, status name, terminal or fixed value
   std::string label, unit;
+  std::string group;    // key aliases: the Settings group the page lists it in (and messages name), "" = the key's
   bool invert = false;  // bool keys only
   int64_t scale = 0;    // int keys only: key value = alias value * scale (0 = none)
+  std::vector<std::string> also;  // key aliases: more keys that a value set under the alias goes to as well
 };
 // A scaled alias's range in its own units: key value = alias value * scale, so the alias allows
 // ceil(min / scale) to floor(max / scale). Computed without (min + scale - 1), which overflows for a large scale.
@@ -48,7 +52,8 @@ struct Profile {
   void toJson(JsonObject o) const;
 };
 static const size_t PROFILE_MAX_ALIASES = 64, ALIAS_MAX_LEN = 32, ALIAS_LABEL_MAX_LEN = 32, ALIAS_UNIT_MAX_LEN = 8,
-                    TOPIC_PREFIX_MAX_LEN = 32, TERMINAL_ALIAS_MAX_LEN = 16;
+                    TOPIC_PREFIX_MAX_LEN = 32, TERMINAL_ALIAS_MAX_LEN = 16,
+                    ALIAS_ALSO_MAX = 4, ALIAS_FIXED_MAX_LEN = 32;
 // The controls and the status values of the effect (the names aliases may point at).
 extern const char* const EFFECT_CONTROLS[4];  // trigger, recover, cancel, restart
 extern const char* const EFFECT_STATUS[9];    // run_count, runs_left, ...
@@ -73,13 +78,22 @@ struct Settings {
   // TRIG1 / TRIG2 input type: false = switch (closes to ground, active low), true = sensor_high (a powered sensor
   // whose signal goes high). Combined (XOR) with the board support package's own polarity.
   bool trig_sensor_high[2] = {false, false};
+  // trig1_wait / trig2_wait: how a show script's first "wait for" on that input starts its effect (SHOW-SCRIPT.md
+  // SS-R4): false "ready" (released since the last run, then held for the debounce while the effect could start),
+  // true "return" (released after the effect came back to its wait for; a press while its outputs are busy is
+  // remembered)
+  bool trig_wait_return[2] = {false, false};
+  // effects of the show script that the web, MQTT and serial may start without remote_trigger_enable
+  // (names separated by commas)
+  std::string remote_free_effects;
   uint32_t trig_debounce_ms = TRIGGER_DEBOUNCE_MS;
   uint32_t trig_release_ms = TRIGGER_DEBOUNCE_MS;
   uint16_t pixel_count = 16;
   uint8_t pixel_brightness = PIXEL_BRIGHTNESS_MAX;  // %, a plain scale of every channel
   bool dmx_s4 = false;  // dmx_port = s4: show-script DMX frames on expansion S4 (SHOW-SCRIPT.md 7.4)
   bool ambient = true;
-  uint8_t ambient_folder = 1, ambient_track = 1, ambient_volume = 15;
+  uint16_t ambient_track = 2;  // sound 1 is the trigger sound: a one-sound card plays it on a trigger
+  uint8_t ambient_volume = 15;
   uint16_t trigger_track = 1;
   uint8_t trigger_volume = 25;
   OutputRole roles[4] = {OutputRole::Shows, OutputRole::Shows, OutputRole::TriggerRepeat, OutputRole::SoundTrigger};
@@ -87,6 +101,10 @@ struct Settings {
   std::string names[13];
   bool df_ack = true, df_checksum = true;
   bool status_led = true;
+  // the phone page: its STOP button shown (a board whose stop is pulling the power hides it); the start buttons of
+  // script effects a click (false) or a press and hold (true, PAGE_START_HOLD_MS in the page)
+  bool stop_button = true;
+  bool start_hold = false;
   std::string mqtt_broker;
   uint16_t mqtt_port = 1883;
   // The pulse-and-recover effect (firmware/STATE-MACHINE.md): off unless a profile turns it on.

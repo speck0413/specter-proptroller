@@ -46,10 +46,20 @@ function ink(hex) {
   const l = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
   return (l + 0.05) / 0.05 >= 1.05 / (l + 0.05) ? '#111' : '#fff';
 }
-// what a block says, for button names ("sleep 1")
+// what a block says, for button names ("wait 1")
 const said = (b) => KINDS[b.type].words.map((w) => (w in KINDS[b.type].fields ? b.f[w] : w)).join(' ').trim();
 
 function field(b, k) {
+  const sl = KINDS[b.type].slider?.[k];
+  if (sl) {
+    // a slider (the sound volume, 0-100 %): its value written as N%
+    const [lo, hi, unit] = sl;
+    const n = Math.max(lo, Math.min(hi, Math.round(parseFloat(b.f[k]) || 0)));
+    const r = el('input', { type: 'range', min: String(lo), max: String(hi), step: '1', value: String(n), 'aria-label': `${k.toLowerCase()} of "${said(b)}"` });
+    const out = el('span', { class: 'w', text: `${n}${unit}` });
+    r.addEventListener('input', () => { b.f[k] = `${r.value}${unit}`; out.textContent = b.f[k]; commit(false); });
+    return el('span', { class: 'slider' }, r, out);
+  }
   const i = el('input', { value: b.f[k], 'aria-label': `${k.toLowerCase()} of "${said(b)}"`, autocapitalize: 'off', autocomplete: 'off', spellcheck: 'false' });
   i.setAttribute('autocorrect', 'off');
   const size = () => { i.style.width = `${Math.max(4, i.value.length + 2)}ch`; };

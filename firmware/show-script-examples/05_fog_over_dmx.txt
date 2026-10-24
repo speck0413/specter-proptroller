@@ -14,6 +14,6 @@
 effect fog:
   wait for trig1
   dmx1 = 100%
-  sleep 4
+  wait 4
   dmx1 = off
-  sleep 45
+  wait 45

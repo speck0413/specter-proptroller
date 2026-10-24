@@ -13,6 +13,6 @@
 effect animatronic:
   wait for trig1
   out4 = on
-  sleep 12         # the prop's own routine
+  wait 12          # the prop's own routine
   out4 = off
-  sleep 30
+  wait 30

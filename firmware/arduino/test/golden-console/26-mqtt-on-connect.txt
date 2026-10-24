@@ -18,20 +18,24 @@ proptroller/front-door/config/interlock_relays [r] false
 proptroller/front-door/config/trig2 [r] trigger
 proptroller/front-door/config/trig1_input [r] switch
 proptroller/front-door/config/trig2_input [r] switch
+proptroller/front-door/config/trig1_wait [r] ready
+proptroller/front-door/config/trig2_wait [r] ready
+proptroller/front-door/config/remote_free_effects [r] 
 proptroller/front-door/config/trig_debounce_ms [r] 100
 proptroller/front-door/config/trig_release_ms [r] 100
 proptroller/front-door/config/pixel_count [r] 8
 proptroller/front-door/config/pixel_brightness [r] 100
 proptroller/front-door/config/dmx_port [r] off
 proptroller/front-door/config/ambient [r] true
-proptroller/front-door/config/ambient_folder [r] 1
-proptroller/front-door/config/ambient_track [r] 1
+proptroller/front-door/config/ambient_track [r] 2
 proptroller/front-door/config/ambient_volume [r] 15
 proptroller/front-door/config/trigger_track [r] 1
 proptroller/front-door/config/trigger_volume [r] 25
 proptroller/front-door/config/df_ack [r] true
 proptroller/front-door/config/df_checksum [r] true
 proptroller/front-door/config/status_led [r] true
+proptroller/front-door/config/stop_button [r] true
+proptroller/front-door/config/start_buttons [r] click
 proptroller/front-door/config/mqtt_broker [r] 
 proptroller/front-door/config/mqtt_port [r] 1883
 proptroller/front-door/config/rly1_role [r] shows
@@ -68,4 +72,4 @@ proptroller/front-door/config/remote_trigger_enable [r] false
 proptroller/front-door/status/runs_since_power_on [r] 0
 proptroller/front-door/status/runs_lifetime [r] 0
 proptroller/front-door/status/last_run_uptime_ms [r] -1
-proptroller/front-door/state [r] {"v":1,"uptime_ms":2000,"outputs":[{"channel":"OUT1","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"OUT2","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"OUT3","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"OUT4","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"RLY1","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"RLY2","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"CC1","level":0,"manual":false,"requested":0,"ramping":false,"driver":"trigger repeat"},{"channel":"CC2","level":0,"manual":false,"requested":0,"ramping":false,"driver":"sound trigger"}],"inputs":[{"input":"TRIG1","active":false,"waiting":false,"raw":false,"armed":true,"held":false},{"input":"TRIG2","active":false,"waiting":false,"raw":false,"armed":true,"held":false},{"input":"USER1","active":false,"waiting":false,"raw":false,"held":false},{"input":"USER2","active":false,"waiting":false,"raw":false,"held":false},{"input":"USER3","active":false,"waiting":false,"raw":false,"held":false}],"shows":[{"id":1,"name":"Example show: door knock","state":"idle"}],"paused":false,"runs_since_power_on":0,"runs_lifetime":0,"sound_playing":true,"sound_online":true,"pattern":"steady","status":[],"net":{"mode":"sim","ip":"127.0.0.1","ssid":""},"sound":{"playing":true,"track":"/01/001","source":"ambient","online":true,"ambient_missing":false}}
+proptroller/front-door/state [r] {"v":1,"uptime_ms":2000,"outputs":[{"channel":"OUT1","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"OUT2","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"OUT3","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"OUT4","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"RLY1","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"RLY2","level":0,"manual":false,"requested":0,"ramping":false},{"channel":"CC1","level":0,"manual":false,"requested":0,"ramping":false,"driver":"trigger repeat"},{"channel":"CC2","level":0,"manual":false,"requested":0,"ramping":false,"driver":"sound trigger"}],"inputs":[{"input":"TRIG1","active":false,"waiting":false,"raw":false,"armed":true,"held":false},{"input":"TRIG2","active":false,"waiting":false,"raw":false,"armed":true,"held":false},{"input":"USER1","active":false,"waiting":false,"raw":false,"held":false},{"input":"USER2","active":false,"waiting":false,"raw":false,"held":false},{"input":"USER3","active":false,"waiting":false,"raw":false,"held":false}],"shows":[{"id":1,"name":"Example show: door knock","state":"idle"}],"paused":false,"runs_since_power_on":0,"runs_lifetime":0,"sound_playing":true,"sound_online":true,"pattern":"steady","status":[],"net":{"mode":"sim","ip":"127.0.0.1","ssid":""},"sound":{"playing":true,"track":"/mp3/0002","source":"ambient","online":true,"ambient_missing":false}}

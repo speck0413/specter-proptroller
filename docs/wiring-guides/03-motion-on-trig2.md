@@ -38,7 +38,7 @@ Wire a mini 3-pin motion sensor to TRIG2, powered by the jack itself, so a prop 
 6. *In the case:* **Tell the board.** This sensor’s signal goes high when it sees someone. On the phone page: Settings > Inputs > TRIG1 input type > sensor_high > Save settings.
 7. **Test it.** Power the board and wait a minute: motion sensors need about a minute to settle after power-on, and may fire on their own until then. Open the Live tab. Wave in front of the sensor. In the Inputs card, TRIG2 (TRIG1 in the case) lights up orange for a couple of seconds.
    (How to open the board’s page: [Meet your board](00-meet-your-board.md), step "Connect your phone".)
-8. **Use it in a show.** In a show script, `wait for trig2` (or `wait for trig1` in the case) waits for someone to walk by. End the effect with a rest, for example `sleep 20`, so it does not fire again straight away.
+8. **Use it in a show.** In a show script, `wait for trig2` (or `wait for trig1` in the case) waits for someone to walk by. End the effect with a rest, for example `wait 20`, so it does not fire again straight away.
 9. *Bare board:* **Long cable: a 12 V sensor (optional).** For a long cable, use a 12 V sensor with a relay output instead. NO goes to T and COM to S. Power it from RAILS: VIN through a 0.5 A fuse to +12V, GND to GND (RAILS gives the supply’s voltage, so match the sensor to it). Set TRIG2 input type back to "switch" and Save settings.
 10. *Bare board:* **Bigger sensors (optional).** A sensor that needs 5 V, like the HC-SR501, can take its power from RAILS: 5V to its VCC, GND to its GND. Its signal goes to T and its GND also to S, and keep sensor_high. Its signal must not go above 3.3 V (the HC-SR501’s does not).
 

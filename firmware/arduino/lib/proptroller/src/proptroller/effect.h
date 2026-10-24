@@ -9,7 +9,7 @@
 #include <vector>
 #include "status.h"
 #include "types.h"
-#include "window.h"
+#include "gate.h"
 
 namespace pt {
 
@@ -59,7 +59,7 @@ struct EffectEvent {
   bool remote = false; // Started: from the remote queue
 };
 
-class EffectMachine {
+class EffectMachine : public RunGate {
  public:
   EffectMachine(const EffectConfig& c, Millis now);
   bool safety_on;
@@ -72,27 +72,18 @@ class EffectMachine {
   Millis recover_until = 0;
   uint32_t run_count = 0;  // since boot (recover cycles count too, SM-PR3)
   uint32_t last_recovery_ms = 0;
-  bool queued_remote = false;   // SM-Q1
   bool queued_recover = false;  // SM-PR2
-  bool released = false;        // a TRIG1 release (outside a Full window) since the last run (SM-T)
-  bool confirming = false;      // SM-T1a timer running ...
-  Millis confirm_since = 0;     // ... since
-  bool raw_closed = false;      // TRIG1 at the last sample
-  Millis open_since = 0;        // raw open without a break since
+  // queued_remote, released, confirming, raw_closed, ...: the start gate's (gate.h)
 
   bool pulsing() const { return phase == EffectPhase::Pulse; }
   bool busy() const { return phase != EffectPhase::Idle; }
   bool recovering() const { return phase == EffectPhase::Recovery || recovery_bg || recover != RecoverRun::NoRecover || phase == EffectPhase::RecoverInterval; }
-  bool windowFull(Millis now) const { return window_.isOpen(now) && runsLeft(now) == 0; }
-  uint32_t runsLeft(Millis now) const { return window_.left(now, max_runs_); }
-  uint32_t cooldownRemaining(Millis now) const { return window_.isOpen(now) ? window_.remainingMs(now) : 0; }
   // Why a run cannot start now (ignoring TRIG1), or None. Ready = None (SM-A1).
   EffectRefused refusal(Millis now) const { return refusalInner(now, true); }
   bool ready(Millis now) const { return refusal(now) == EffectRefused::None; }
 
   // A remote trigger (web, MQTT, serial): starts now if Ready, else waits (one deep).
   EffectRefused remoteTrigger(Millis now, const EffectConfig& c, EffectEvent& started);
-  bool cancelRemote() { bool q = queued_remote; queued_remote = false; return q; }
   EffectEvent safetyOff();
   // Recover (TRIG2, web, MQTT, serial). A second press during a timed or held recover stops it.
   EffectRefused recoverPress(Millis now, const EffectConfig& c, bool& queued);
@@ -101,7 +92,8 @@ class EffectMachine {
   void stop() {
     phase = EffectPhase::Idle;
     recover = RecoverRun::NoRecover;
-    recovery_bg = queued_remote = queued_recover = released = confirming = false;
+    recovery_bg = queued_recover = false;
+    clearRequests();
   }
   // Advance with TRIG1's raw sample now (every 1 ms).
   std::vector<EffectEvent> tick(Millis now, const EffectConfig& c, bool trig1_closed);
@@ -117,10 +109,7 @@ class EffectMachine {
   void startRecover(Millis now, const EffectConfig& c);
   EffectEvent afterGap(Millis now, const EffectConfig& c, bool cycle);
   Millis boot_until_;
-  RunWindow window_;
-  uint32_t max_runs_;
   bool booted_ = false;
-  bool seen_open_ = false;   // TRIG1 read open at least once since power-on (SM-B3)
   bool recover_cycle_ = false;  // the running cycle is a recover (no OUT3 stage)
 };
 

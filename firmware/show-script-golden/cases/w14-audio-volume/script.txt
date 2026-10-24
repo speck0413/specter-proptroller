@@ -1,0 +1,10 @@
+effect a:
+  audio_volume = 40%
+  audio_loop = 2
+  wait for trig1
+  audio_volume = 100%
+  audio_single = 1
+  wait 2
+  audio_volume = 12.5%
+  audio_volume = off
+  AUDIO_VOLUME: 0

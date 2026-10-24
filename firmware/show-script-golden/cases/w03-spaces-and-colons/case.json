@@ -3,9 +3,7 @@
     "SS-W2",
     "SS-W3"
   ],
-  "sounds": {
-    "chime.mp3": 1
-  },
+  "sounds": {},
   "settings": {},
   "check": {
     "ok": true,

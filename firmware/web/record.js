@@ -51,13 +51,11 @@ const maxOn = () => {
   for (const v of params?.values || []) { const k = /^([a-z]+\d)_max_on_ms$/.exec(v.key); if (k) m[k[1]] = Number(v.value) || 0; }
   return m;
 };
-// the sounds: the stored script's sound list (name = number), else sounds 1 to 3
+// the sounds: 1 to 3 (sound N is the card's mp3/NNNN-<name>.mp3)
 function soundChoices() {
   if (!has('sound')) return [];
-  const list = Object.entries(scriptSaved.sounds || {}).map(([name, n]) => ({ n: Number(n), label: `${name} (sound ${n})` })).sort((a, b) => a.n - b.n);
-  return list.length ? list.slice(0, 8) : [1, 2, 3].map((n) => ({ n, label: `Sound ${n}` }));
+  return [1, 2, 3].map((n) => ({ n, label: `Sound ${n}` }));
 }
-const soundNames = () => Object.fromEntries(Object.entries(scriptSaved.sounds || {}).map(([name, n]) => [Number(n), name]));
 
 const picked = () => ({
   trigger: lower($('rx-trigger').value || 'trig1'),
@@ -66,7 +64,7 @@ const picked = () => ({
 });
 const options = (extra = {}) => ({
   name: $('rx-name').value.trim() || suggestName(whole(), labels()),
-  trigger: picked().trigger, maxOnMs: maxOn(), labels: labels(), soundNames: soundNames(), source: 'on the phone page', ...extra,
+  trigger: picked().trigger, maxOnMs: maxOn(), labels: labels(), source: 'on the phone page', ...extra,
 });
 
 // ------------------------------------------------------------------ setup
@@ -128,7 +126,7 @@ function letGoBoard() {
   for (const s of Object.values(rx.sent)) clearTimeout(s.timer);
   rx.sent = {};
 }
-const playSound = (n) => conn.call('sound', { cmd: 'play_folder', folder: n, track: 1 }).catch(() => {});
+const playSound = (n) => conn.call('sound', { cmd: 'play_mp3', track: n }).catch(() => {});
 const later = (ms, f) => rx.timers.push(setTimeout(f, Math.max(0, ms)));
 function stopTimers() { rx.timers.forEach(clearTimeout); rx.timers = []; clearInterval(rx.ticker); rx.ticker = null; }
 
@@ -226,6 +224,7 @@ function renderLive() {
 
 function setPhase(p) {
   rx.phase = p;
+  if (p !== 'review') hideAsk();
   $('rx-setup').classList.toggle('hidden', p !== 'setup');
   $('rx-live').classList.toggle('hidden', !['count', 'rec', 'play'].includes(p));
   $('rx-review').classList.toggle('hidden', p !== 'review');
@@ -343,8 +342,57 @@ function halt(why) {
   letGoBoard();
   for (const t of Object.keys(rx.slider)) rx.slider[t] = 0;
   if (hasTake(rx.base)) review(); else setPhase('setup');
-  showMsg(rx.phase === 'review' ? 'rx-msg' : 'rx-setup-msg', why, false);
+  if (why) showMsg(rx.phase === 'review' ? 'rx-msg' : 'rx-setup-msg', why, false);
 }
+
+// ------------------------------------------------------------------ cancel: stop, let go, throw the take away
+
+// Cancel (any step) and Escape: everything this page turned on is let go at once (set_output level null: each
+// output goes back to what it did before, off or the level its show gives it), timers and the playback stop.
+// With nothing recorded it ends there; with a take, the take is shown and the page asks before throwing it away.
+function cancel() {
+  const fromSetup = rx.phase === 'setup';
+  hideAsk();
+  halt('');
+  for (const r of document.querySelectorAll('#rx-controls input[type=range]')) { r.value = 0; r.previousSibling.textContent = '0 %'; }
+  if (!hasTake(rx.base)) return discard(fromSetup);
+  if (rx.phase !== 'review') review();
+  $('rx-msg').textContent = '';
+  $('rx-ask').hidden = false;
+  $('rx-keep-take').focus();
+}
+function hideAsk() { $('rx-ask').hidden = true; }
+// the take is gone; back to the start of Record effect (from its first screen: back to the Live tab)
+function discard(toLive) {
+  hideAsk();
+  rx.base = empty();
+  rx.pass = empty();
+  $('rx-name').value = '';
+  $('rx-msg').textContent = '';
+  $('rx-live-msg').textContent = '';
+  setPhase('setup');
+  fillSetup();
+  if (toLive) {
+    $('rx-setup-msg').textContent = '';
+    const live = document.querySelector('#tabs button[data-tab="live"]');
+    live.click(); live.focus();
+    return;
+  }
+  showMsg('rx-setup-msg', 'Cancelled: nothing was kept, and everything the recording turned on is back to how it was.', true);
+  $('rx-start').disabled ? $('rx-cancel-setup').focus() : $('rx-start').focus();
+}
+for (const id of ['rx-cancel-setup', 'rx-cancel-live', 'rx-cancel-review']) $(id).onclick = cancel;
+$('rx-discard').onclick = () => discard(false);
+$('rx-keep-take').onclick = () => { hideAsk(); $('rx-keep').focus(); };
+// Escape cancels while the Record effect tab is open (a question open: Escape answers "No, go back"); on the first
+// screen with nothing recorded there is nothing to cancel
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing || !$('tab-record').classList.contains('on')) return;
+  if (!$('rx-ask').hidden) { e.preventDefault(); $('rx-keep-take').click(); return; }
+  if (rx.phase === 'setup' && !hasTake(rx.base)) return;
+  e.preventDefault();
+  cancel();
+});
 
 // ------------------------------------------------------------------ keep: into the board's stored script
 
@@ -368,14 +416,13 @@ async function keep() {
       const c = m.clashes[0];
       return showMsg('rx-msg', `${tdisp(c.output.toUpperCase())} is already used by the effect “${c.effect}” on the board, and an output belongs to one effect only. Leave it out of this recording (Try again), or change “${c.effect}” on the Script tab first.`, false);
     }
-    const sounds = stored.sounds || {};
-    const chk = await conn.call('check_script', { text: m.text, sounds });
+    const chk = await conn.call('check_script', { text: m.text });
     if (!chk.ok) {
       const first = chk.errors?.[0]?.message || 'it has a problem';
       const theirs = stored.text && stored.check && !stored.check.ok;
       return showMsg('rx-msg', theirs ? `The effect script stored on the board already has a problem, so nothing was saved: ${first} Fix it on the Script tab first.` : `The board says: ${first} Nothing was saved.`, false);
     }
-    const res = await conn.call('set_script', { text: m.text, sounds });
+    const res = await conn.call('set_script', { text: m.text });
     if (!res.ok) return showMsg('rx-msg', `The board says: ${res.errors?.[0]?.message || 'it has a problem'} Nothing was saved.`, false);
     const trig = tdisp(picked().trigger.toUpperCase());
     $('rx-msg').className = 'msg ok';
@@ -396,7 +443,7 @@ $('rx-stop').onclick = finish;
 $('rx-play').onclick = () => { $('rx-msg').textContent = ''; playBack(); };
 $('rx-again').onclick = () => { stopTimers(); letGoBoard(); rx.base = empty(); rx.pass = empty(); $('rx-name').value = ''; $('rx-msg').textContent = ''; setPhase('setup'); fillSetup(); };
 $('rx-more').onclick = () => { $('rx-msg').textContent = ''; setPhase('setup'); fillSetup(); showMsg('rx-setup-msg', 'Your earlier take plays on the board while you record more on top of it.', true); };
-$('rx-keep').onclick = () => keep();
+$('rx-keep').onclick = () => { hideAsk(); keep(); };
 
 pageHooks.info.push(() => { fillSetup(); renderButtons(); });
 pageHooks.state.push(() => {
@@ -415,7 +462,7 @@ pageHooks.drop.push(() => {
 document.addEventListener('visibilitychange', () => { if (document.hidden) halt('The page was hidden, so everything was turned off. What you recorded so far is kept.'); });
 window.addEventListener('pagehide', () => { stopTimers(); letGoBoard(); });
 window.addEventListener('blur', () => { if (active()) halt('The page lost focus, so everything was turned off. What you recorded so far is kept.'); });
-// the script's sound list arrives with the script: the sound choices follow it
+// the setup is filled again each time the tab opens (the outputs and their jobs may have changed)
 document.querySelector('#tabs button[data-tab="record"]').addEventListener('click', fillSetup);
 fillSetup();
 setPhase('setup');

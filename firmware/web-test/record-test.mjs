@@ -2,7 +2,8 @@
 // (a slider) and RLY1, record, see the board follow live, Stop → the board does it back, Keep → the stored script
 // has the new effect beside the one already there and passes the board's check, TRIG1 runs it. Also: the same
 // name asks before it replaces, an output another effect uses is refused in plain words, STOP during the
-// playback turns everything off.
+// playback turns everything off. Cancel at every step (3-2-1, recording, playback, review), Escape, the
+// "Discard this recording?" question only with a take, nothing saved.
 //   node record-test.mjs <screenshot dir> <url>      (CHROMIUM=/path/to/chrome)
 import { chromium } from 'playwright-core';
 const [S = '.', URL = 'http://127.0.0.1:18080/'] = process.argv.slice(2);
@@ -190,8 +191,8 @@ await page.waitForSelector('#rx-review:not(.hidden)', { timeout: 8000 });
 const both = await page.textContent('#rx-code');
 ok((both.match(/^effect /gm) || []).length === 1 && /rly1 = on/.test(both) && /out1 = 50%/.test(both) && /audio_single = 1/.test(both), 'both passes in one effect:\n' + both);
 // the guide's worked example and its tweaked version pass the board's checker
-const EXAMPLE = 'effect porch scare:\n  wait for trig1\n  out1 = 30%\n  sleep 1.6\n  out1 = 40%\n  fade out1 to 100% over 0.7\n  sleep 0.2\n  audio_single = 2\n  sleep 0.1\n  rly1 = on\n  sleep 0.5\n  rly1 = off\n  sleep 1.6\n  out1 = off\n';
-const TWEAKED = EXAMPLE.replace('sleep 1.6', 'sleep 4').replace('out1 = 30%', 'out1 = 15%') + '  sleep 20\n';
+const EXAMPLE = 'effect porch scare:\n  wait for trig1\n  out1 = 30%\n  wait 1.6\n  out1 = 40%\n  fade out1 to 100% over 0.7\n  wait 0.2\n  audio_single = 2\n  wait 0.1\n  rly1 = on\n  wait 0.5\n  rly1 = off\n  wait 1.6\n  out1 = off\n';
+const TWEAKED = EXAMPLE.replace('wait 1.6', 'wait 4').replace('out1 = 30%', 'out1 = 15%') + '  wait 20\n';
 for (const [n, t] of [['the worked example', EXAMPLE], ['the tweaked example', TWEAKED]]) {
   const c = (await rpc({ op: 'check_script', text: t, sounds: {} })).result;
   ok(c.ok && !c.warnings.length, `RECORD-EFFECT.md: ${n} passes the checker` + (c.ok ? '' : ': ' + JSON.stringify(c.errors)));
@@ -222,6 +223,69 @@ await page.waitForFunction(() => /connection to the board dropped/.test(document
 ok((await waitLevel('OUT3', (l) => l === 0)) === 0, 'connection dropped: OUT3 off (the board ends what the page held)');
 ok(true, 'and the page says so: ' + await page.textContent('#rx-msg'));
 await page.waitForSelector('#conn.ok', { timeout: 8000 });
+
+// ---- Cancel: at every step; it stops, lets go of everything and throws the take away (asked only with a take)
+const askShown = () => page.isVisible('#rx-ask');
+await page.click('#tabs button[data-tab="record"]');
+if (await page.isVisible('#rx-review')) await page.click('#rx-again');
+const before = (await rpc({ op: 'get_script' })).result.text;
+ok(await page.isVisible('#rx-cancel-setup'), 'Cancel on the first screen');
+// during the 3-2-1: nothing recorded, so no question
+await pick(['rly1']);
+await page.check('#rx-count');
+await page.click('#rx-start');
+await page.waitForFunction(() => document.querySelector('#rx-status').textContent === '3', null, { timeout: 2000 });
+ok(await page.isVisible('#rx-cancel-live'), 'Cancel during the 3-2-1');
+await page.click('#rx-cancel-live');
+ok(await page.isVisible('#rx-setup') && !(await askShown()) && /^Cancelled/.test(await page.textContent('#rx-setup-msg')),
+  'cancel during the 3-2-1: back to the start, nothing asked: ' + await page.textContent('#rx-setup-msg'));
+await page.waitForTimeout(3 * 800 + 300);
+ok(await page.isVisible('#rx-setup') && (await level('RLY1')) === 0, 'and the recording never starts later');
+// while recording, with RLY1 held and OUT1's slider up: Escape lets go of both before anything is asked
+await pick(['out1', 'rly1']);
+await page.uncheck('#rx-count');
+await page.click('#rx-start');
+await page.waitForFunction(() => /^Recording/.test(document.querySelector('#rx-status').textContent), null, { timeout: 3000 });
+await slide('out1', 50);
+await waitLevel('OUT1', (l) => l === 500);
+await holdDown('rly1');
+ok((await waitLevel('RLY1', (l) => l === 1000)) === 1000, 'recording: RLY1 held, OUT1 at 50 %');
+ok(await page.isVisible('#rx-cancel-live'), 'Cancel while recording');
+await page.keyboard.press('Escape');
+ok((await waitLevel('RLY1', (l) => l === 0)) === 0 && (await waitLevel('OUT1', (l) => l === 0)) === 0, 'Escape while recording: RLY1 and OUT1 off at once, before any question');
+await page.mouse.up();
+ok(await askShown() && (await page.textContent('#rx-ask-q')) === 'Discard this recording?', 'a take was recorded: "Discard this recording?"');
+ok(await page.evaluate(() => document.activeElement?.id) === 'rx-keep-take', 'the focus is on No, go back (Enter or Escape never throws the take away)');
+await page.screenshot({ path: `${S}/record-cancel-ask.png`, fullPage: true });
+await page.keyboard.press('Escape');
+ok(!(await askShown()) && await page.isVisible('#rx-review') && /rly1 = on/.test(await page.textContent('#rx-code')), 'Escape on the question keeps the take for review');
+await page.waitForTimeout(600);
+ok((await level('RLY1')) === 0 && (await level('OUT1')) === 0, 'and nothing comes back on (no playback)');
+// on the review screen: Cancel, Discard → nothing saved, back to the start
+ok(await page.isVisible('#rx-cancel-review'), 'Cancel on the review screen');
+await page.click('#rx-cancel-review');
+ok(await askShown(), 'Cancel on review asks first');
+await page.click('#rx-discard');
+ok(await page.isVisible('#rx-setup') && /^Cancelled/.test(await page.textContent('#rx-setup-msg')) && (await page.evaluate(() => document.activeElement?.id)) === 'rx-start',
+  'Discard: back to the start, the focus on Start: ' + await page.textContent('#rx-setup-msg'));
+ok((await rpc({ op: 'get_script' })).result.text === before, 'nothing was saved on the board');
+// during the playback: everything off, asked, Discard
+await pick(['rly2']);
+await page.click('#rx-start');
+await page.waitForFunction(() => /^Recording/.test(document.querySelector('#rx-status').textContent), null, { timeout: 3000 });
+await holdDown('rly2'); await page.waitForTimeout(1200); await page.mouse.up();
+await page.click('#rx-stop');
+await page.waitForFunction(() => document.querySelector('#rx-title').textContent === 'The board does it back', null, { timeout: 3000 });
+await waitLevel('RLY2', (l) => l === 1000, 3000);
+await page.click('#rx-cancel-live');
+ok((await waitLevel('RLY2', (l) => l === 0)) === 0 && await askShown(), 'Cancel during the playback: RLY2 off, then asked');
+await page.click('#rx-discard');
+await page.waitForTimeout(1500);
+ok((await level('RLY2')) === 0 && (await rpc({ op: 'get_script' })).result.text === before, 'the playback turns nothing back on, nothing saved');
+// the first screen with nothing recorded: Cancel goes back to the Live tab
+await page.click('#rx-cancel-setup');
+ok(await page.isVisible('#tab-live') && !(await page.isVisible('#tab-record')), 'Cancel on the first screen: back to the Live tab');
+await noHScroll('after cancel');
 
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
 await browser.close();

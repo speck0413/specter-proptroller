@@ -1,0 +1,5 @@
+effect a:
+  wait for trig1
+  out1 = on
+  sleep 1
+  out1 = off

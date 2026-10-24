@@ -16,31 +16,31 @@ test('writes seconds the way people do', () => {
   assert.equal(seconds(12340), '12.3');
 });
 
-test('rounds to 0.1 s on absolute times, cuts the quiet start and writes the sleeps between', () => {
+test('rounds to 0.1 s on absolute times, cuts the quiet start and writes the waits between', () => {
   const r = takeToScript(T([{ target: 'rly1', start: 1234, end: 3480 }, { target: 'out1', start: 2010, end: 2560 }]), opts);
   assert.equal(r.error, undefined);
   assert.deepEqual(bodyOf(r.text), [
     'effect siren and lamp:', '  wait for trig1',
-    '  rly1 = on', '  sleep 0.8', '  out1 = on', '  sleep 0.6', '  out1 = off', '  sleep 0.9', '  rly1 = off',
+    '  rly1 = on', '  wait 0.8', '  out1 = on', '  wait 0.6', '  out1 = off', '  wait 0.9', '  rly1 = off',
   ]);
   assert.equal(r.lengthMs, 2300);
-  const sum = linesOf(r).filter((l) => l.includes('sleep')).reduce((a, l) => a + Number(l.split(' ').pop()), 0);
+  const sum = linesOf(r).filter((l) => l.startsWith('  wait ')).reduce((a, l) => a + Number(l.split(' ').pop()), 0);
   assert.equal(Math.round(sum * 10) / 10, 2.3);  // no drift
   assert.match(r.text, /^# Recorded \(Record effect\): when TRIG1 is pressed/);
   assert.match(takeToScript(T([{ target: 'out1', start: 0, end: 100 }]), { ...opts, source: 'in Specter Studio' }).text, /^# Recorded in Specter Studio \(Record effect\)/);
 });
 
-test('keeps the quiet start when asked, and never writes sleep 0', () => {
+test('keeps the quiet start when asked, and never writes wait 0', () => {
   const r = takeToScript(T([{ target: 'out2', start: 1500, end: 2000 }, { target: 'rly2', start: 1520, end: 2030 }]), { ...opts, trimLead: false });
-  assert.deepEqual(linesOf(r), ['  sleep 1.5', '  out2 = on', '  rly2 = on', '  sleep 0.5', '  out2 = off', '  rly2 = off']);
-  assert.doesNotMatch(r.text, /sleep 0\n/);
+  assert.deepEqual(linesOf(r), ['  wait 1.5', '  out2 = on', '  rly2 = on', '  wait 0.5', '  out2 = off', '  rly2 = off']);
+  assert.doesNotMatch(r.text, /wait 0\n/);
 });
 
 test('a very short tap still lasts one step (a relay never switches faster than 100 ms)', () => {
-  assert.deepEqual(linesOf(takeToScript(T([{ target: 'cc1', start: 0, end: 20 }]), opts)), ['  cc1 = on', '  sleep 0.1', '  cc1 = off']);
+  assert.deepEqual(linesOf(takeToScript(T([{ target: 'cc1', start: 0, end: 20 }]), opts)), ['  cc1 = on', '  wait 0.1', '  cc1 = off']);
   // two quick taps 20 ms apart: one press (never off and on again within 0.1 s)
   const r = takeToScript(T([{ target: 'rly1', start: 0, end: 120 }, { target: 'rly1', start: 140, end: 260 }]), opts);
-  assert.deepEqual(linesOf(r), ['  rly1 = on', '  sleep 0.3', '  rly1 = off']);
+  assert.deepEqual(linesOf(r), ['  rly1 = on', '  wait 0.3', '  rly1 = off']);
 });
 
 test('joins holds of one output that overlap or touch (a second pass on top)', () => {
@@ -50,23 +50,23 @@ test('joins holds of one output that overlap or touch (a second pass on top)', (
 
 test('outputs side by side: offs before ons at the same moment', () => {
   const r = takeToScript(T([{ target: 'out1', start: 0, end: 1000 }, { target: 'out2', start: 1000, end: 2000 }]), opts);
-  assert.deepEqual(linesOf(r), ['  out1 = on', '  sleep 1', '  out1 = off', '  out2 = on', '  sleep 1', '  out2 = off']);
+  assert.deepEqual(linesOf(r), ['  out1 = on', '  wait 1', '  out1 = off', '  out2 = on', '  wait 1', '  out2 = off']);
 });
 
 test('cuts a hold at the maximum on-time and says so plainly', () => {
   const r = takeToScript(T([{ target: 'rly1', start: 0, end: 7200 }, { target: 'out1', start: 0, end: 7200 }]), { ...opts, maxOnMs: { rly1: 5050, out1: 0 }, labels: { rly1: 'siren' } });
-  assert.deepEqual(linesOf(r), ['  out1 = on', '  rly1 = on', '  sleep 5', '  rly1 = off', '  sleep 2.2', '  out1 = off']);
+  assert.deepEqual(linesOf(r), ['  out1 = on', '  rly1 = on', '  wait 5', '  rly1 = off', '  wait 2.2', '  out1 = off']);
   assert.deepEqual(r.notes, ['siren (RLY1) was held for 7.2 s, but this board turns it off after 5.1 s (its maximum on-time), so it stays on for 5 s.']);
   assert.equal(r.segments.find((s) => s.target === 'rly1').cut, true);
   // the recorder already let go at the limit: the note keeps how long the finger stayed down
   const c = takeToScript(T([{ target: 'rly1', start: 0, end: 3000, cut: true, heldMs: 4500 }]), { ...opts, maxOnMs: { rly1: 3000 } });
-  assert.deepEqual(linesOf(c), ['  rly1 = on', '  sleep 3', '  rly1 = off']);
+  assert.deepEqual(linesOf(c), ['  rly1 = on', '  wait 3', '  rly1 = off']);
   assert.equal(c.notes[0], 'RLY1 was held for 4.5 s, but this board turns it off after 3 s (its maximum on-time), so it stays on for 3 s.');
 });
 
-test('sound taps: audio_single by number, or by file name when the sound list has it', () => {
-  const r = takeToScript(T([{ target: 'out1', start: 500, end: 1500 }], [{ sound: 1, at: 520 }, { sound: 3, at: 1000 }]), { ...opts, soundNames: { 1: 'scream.mp3' } });
-  assert.deepEqual(linesOf(r), ['  out1 = on', '  audio_single = scream.mp3', '  sleep 0.5', '  audio_single = 3', '  sleep 0.5', '  out1 = off']);
+test('sound taps: audio_single by number', () => {
+  const r = takeToScript(T([{ target: 'out1', start: 500, end: 1500 }], [{ sound: 1, at: 520 }, { sound: 3, at: 1000 }]), opts);
+  assert.deepEqual(linesOf(r), ['  out1 = on', '  audio_single = 1', '  wait 0.5', '  audio_single = 3', '  wait 0.5', '  out1 = off']);
   assert.deepEqual(linesOf(takeToScript(T([], [{ sound: 2, at: 300 }]), opts)), ['  audio_single = 2']);
 });
 
@@ -80,17 +80,17 @@ test('a slider becomes levels in 5 % steps, at most one per 0.1 s, repeats merge
   ];
   const r = takeToScript(T([], [], levels, 4000), opts);
   assert.equal(r.error, undefined);
-  assert.deepEqual(linesOf(r), ['  out1 = 50%', '  sleep 2', '  out1 = on', '  sleep 1', '  out1 = 10%', '  sleep 1', '  out1 = off']);
+  assert.deepEqual(linesOf(r), ['  out1 = 50%', '  wait 2', '  out1 = on', '  wait 1', '  out1 = 10%', '  wait 1', '  out1 = off']);
   // a hold on a dimmed output is full on while held, then back to the slider's level
   const h = takeToScript(T([{ target: 'out2', start: 1000, end: 1500 }], [], [{ target: 'out2', at: 0, level: 30 }, { target: 'out2', at: 2500, level: 0 }]), opts);
-  assert.deepEqual(linesOf(h), ['  out2 = 30%', '  sleep 1', '  out2 = on', '  sleep 0.5', '  out2 = 30%', '  sleep 1', '  out2 = off']);
+  assert.deepEqual(linesOf(h), ['  out2 = 30%', '  wait 1', '  out2 = on', '  wait 0.5', '  out2 = 30%', '  wait 1', '  out2 = off']);
 });
 
 test('a smooth slider movement becomes one fade when nothing else happens meanwhile', () => {
   const levels = [{ target: 'out1', at: 0, level: 100 }];
   for (let k = 1; k <= 10; k++) levels.push({ target: 'out1', at: 1000 + k * 100, level: 100 - k * 10 });  // 90 … 0 over 1 s
   const r = takeToScript(T([], [], levels), opts);
-  assert.deepEqual(linesOf(r), ['  out1 = on', '  sleep 1.1', '  out1 = 90%', '  fade out1 to 0% over 0.9']);
+  assert.deepEqual(linesOf(r), ['  out1 = on', '  wait 1.1', '  out1 = 90%', '  fade out1 to 0% over 0.9']);
   // the playback follows the fade in 0.1 s steps
   const tl = r.timeline.filter((e) => e.target === 'out1');
   assert.deepEqual(tl.slice(0, 3), [{ at: 0, target: 'out1', level: 100 }, { at: 1100, target: 'out1', level: 90 }, { at: 1200, target: 'out1', level: 80 }]);
@@ -107,19 +107,19 @@ test('a fade takes its time: another output switching meanwhile keeps the slider
   assert.ok(linesOf(r).includes('  rly1 = on'));
   // the same movement alone fades; the relay at exactly the end of it is fine
   const ok = takeToScript(T([{ target: 'rly1', start: 400, end: 800 }], [], levels), opts);
-  assert.deepEqual(linesOf(ok), ['  out1 = 20%', '  fade out1 to 100% over 0.4', '  rly1 = on', '  sleep 0.4', '  rly1 = off', '  sleep 0.2', '  out1 = off']);
+  assert.deepEqual(linesOf(ok), ['  out1 = 20%', '  fade out1 to 100% over 0.4', '  rly1 = on', '  wait 0.4', '  rly1 = off', '  wait 0.2', '  out1 = off']);
   // times still add up: the fade's 0.4 s counts as time passed
   assert.equal(ok.lengthMs, 1000);
 });
 
 test('relays and contacts are on or off only, even from a level', () => {
   const r = takeToScript(T([], [], [{ target: 'rly2', at: 0, level: 70 }, { target: 'rly2', at: 500, level: 10 }]), opts);
-  assert.deepEqual(linesOf(r), ['  rly2 = on', '  sleep 0.5', '  rly2 = off']);
+  assert.deepEqual(linesOf(r), ['  rly2 = on', '  wait 0.5', '  rly2 = off']);
 });
 
 test('a slider respects the maximum on-time too', () => {
   const r = takeToScript(T([], [], [{ target: 'out3', at: 0, level: 60 }, { target: 'out3', at: 9000, level: 0 }]), { ...opts, maxOnMs: { out3: 4000 } });
-  assert.deepEqual(linesOf(r), ['  out3 = 60%', '  sleep 4', '  out3 = off']);
+  assert.deepEqual(linesOf(r), ['  out3 = 60%', '  wait 4', '  out3 = off']);
   assert.match(r.notes[0], /^OUT3 was on for 9 s, but this board turns it off after 4 s/);
 });
 
@@ -212,7 +212,7 @@ test('mergeScript replaces an effect of the same name in place (any case and spa
   assert.deepEqual(m.replaced, ['scare']);
   assert.deepEqual(m.clashes, []);
   assert.deepEqual(effectsIn(m.text).effects.map((e) => e.name), ['porch light', 'Scare']);
-  assert.ok(m.text.includes('sleep 2'));
+  assert.ok(m.text.includes('wait 2'));
   assert.ok(m.text.startsWith('# my haunt\neffect porch light:'));
   // a split recording replaced by a short one: every part goes
   const split = 'effect big - out1:\n  wait for trig1\n  out1 = on\n  sleep 1\n  out1 = off\neffect big - sound:\n  wait for trig1\n  audio_single = 1\neffect other:\n  wait for trig2\n  out3 = on\n  sleep 1\n  out3 = off\n';

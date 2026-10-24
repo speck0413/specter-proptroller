@@ -32,17 +32,17 @@ Wire a speaker to SPK and put your sounds on the memory card so a show can play 
 3. **One wire to each screw.** Put one speaker wire under each SPK screw. Either way round works.
 4. **Tug test.** Give each wire a gentle tug. If one pulls out, open the screw and do it again. Check that no stray strand touches the next screw.
 5. **Amplifiers: LINE OUT.** Both SPK wires carry sound, so joining one to an amplifier’s ground can damage the sound module. For an amplifier or a powered speaker, use the LINE OUT jack on the right edge instead, with an ordinary audio cable.
-6. **Sounds on the card: with Studio.** The easy way: in Specter Studio, add your sound files to the project and let Studio copy them to the card. It numbers them for you and fills in the board’s sound list, so your script can say `audio_single = chime.mp3`.
-7. **Without Studio: folders.** Without Studio, each sound gets its own folder. Make a folder called 01 and put your first sound in it, named 001.mp3. Your second sound goes in folder 02, also named 001.mp3. That is sound 1 and sound 2.
+6. **Sounds on the card: with Studio.** The easy way: in Specter Studio, open the SD card tool, add your sound files and put them in order. It erases the card, names the files and copies them in the right order: the first is sound 1, the second sound 2.
+7. **Without Studio: the mp3 folder.** Without Studio, make a folder called mp3 on an empty card. Copy your sounds into it one at a time, in order, named 0001-name.mp3, 0002-name.mp3. The player counts the files in the order they were copied (docs/SD-CARD.md).
 8. **Card in.** With the power off, slide the card into the slot on the sound module, at the right hand edge of the board, contacts first.
-9. **Test it.** Power the board and open its page. On the Live tab, in the Sound card, set Folder to one and Track to one, and press Play. Your first sound plays. The Volume slider sets how loud.
+9. **Test it.** Power the board and open its page. On the Live tab, in the Sound card, set Sound to one and press Play. Your first sound plays. The Volume slider sets how loud.
    (How to open the board’s page: [Meet your board](00-meet-your-board.md), step "Connect your phone".)
-10. **Use it in a show.** In a show script, `audio_single = 1` plays sound 1 once (or `audio_single = chime.mp3` with Studio), and `audio_loop = 2` loops sound 2. How loud: Settings > Sound > "Trigger sound volume" and "Ambient volume", then Save settings.
+10. **Use it in a show.** In a show script, `audio_single = 1` plays sound 1 once, `audio_loop = 2` loops sound 2, and `audio_volume = 60%` sets how loud the script plays them. The board's own sounds: Settings > Sound > "Trigger sound volume" and "Ambient volume", then Save settings.
 
 ## Not working?
 
-- No sound: is the card in all the way, contacts first? Without Studio: are the folders named 01, 02 and the files 001.mp3?
-- Still nothing: format the card again as FAT32 and copy the files fresh. Some computers add hidden files that begin with a dot; delete those.
+- No sound: is the card in all the way, contacts first? Without Studio: is there a folder named mp3 with files named 0001-….mp3, 0002-….mp3?
+- The wrong sound plays: the files were copied out of order. Studio's SD card tool (Check a card, then Fix) copies them again in order. Some computers add hidden files that begin with a dot; the tool removes those.
 - Hum or buzz through an amplifier on LINE OUT: use a 3.5 mm ground-loop isolator on the LINE OUT lead.
 - Quiet: raise the Volume slider on the Live tab, the volumes under Settings > Sound, or use LINE OUT with an amplifier.
 

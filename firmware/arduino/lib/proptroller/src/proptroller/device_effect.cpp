@@ -126,7 +126,13 @@ Response Controller::effectAction(const Request& r, const std::string& control) 
     reboot_ = true;
     return Response::done(r);
   }
-  if (!fx_) return Response::err(r, ErrorCode::NotFound, "no such action");  // the actions are the effect's
+  // a show script's effect, by its name (SS-R10)
+  if (control.compare(0, 7, "script:") == 0) return scriptStart(r, atoi(control.c_str() + 7));
+  if (control == "cancel" && !fx_ && script_run_ && script_prog_) {
+    if (script_run_->cancelRemote()) log("queued start cancelled");
+    return Response::done(r);
+  }
+  if (!fx_) return Response::err(r, ErrorCode::NotFound, "no such action");  // the other actions are the effect's
   if (control == "cancel") {
     if (fx_->cancelRemote()) log("queued run cancelled");
     return Response::done(r);
@@ -167,7 +173,7 @@ std::string Controller::doRecover() {
 }
 
 void Controller::effectStatus(std::vector<ParamValue>& out, bool aliased) const {
-  if (!fx_) return;
+  if (!fx_) { scriptStatus(out, aliased); return; }
   Millis now = now_;
   const EffectMachine& m = *fx_;
   auto add = [&](const char* k, const Value& v) { out.push_back(ParamValue{aliased ? aliasFor(AliasEntry::Kind::Status, k) : std::string(k), v}); };
@@ -197,15 +203,87 @@ void Controller::sessionClosed(uint32_t session) {
   for (int i = 0; i < CHANNEL_COUNT; i++)
     if (manual_session_[i] == session) { engine_.setManual(ALL_CHANNELS[i], false, 0); manual_session_[i] = 0; }
   if (pixel_session_ == session) { engine_.setManualPixel(nullptr); pixel_session_ = 0; }
+  for (int k = 0; k < INPUT_COUNT; k++)
+    if (test_session_[k] == session) testRelease(k, fxNow());
   // an enable given from a phone page ends with that page (SM-R2)
   if (fx_session_ == session && settings_.fx.remote_trigger_enable) {
     settings_.fx.remote_trigger_enable = false;
     fx_by_.clear();
     fx_session_ = 0;
     if (fx_) fx_->cancelRemote();
+    if (script_run_) script_run_->cancelRemote();
     log("remote trigger off: the phone page that turned it on is gone");
     events_.push("params_changed");
   }
+}
+
+// ---------------------------------------------------------------- a show script's effects started remotely (SS-R10)
+
+// The effect of the stored script with that control name (its name; "_" for a space), or -1.
+int Controller::scriptEffect(const std::string& name) const {
+  return script_run_ && script_prog_ ? script_run_->effectNamed(name) : -1;
+}
+
+// remote_free_effects as a bit per effect of the stored script
+uint8_t Controller::scriptFreeEffects() const {
+  uint8_t m = 0;
+  if (!script_run_ || !script_prog_) return m;
+  const std::string& list = settings_.remote_free_effects;
+  size_t a = 0;
+  while (a <= list.size()) {
+    size_t b = list.find(',', a);
+    if (b == std::string::npos) b = list.size();
+    int e = script_run_->effectNamed(list.substr(a, b - a));
+    if (e >= 0) m = (uint8_t)(m | (1u << e));
+    a = b + 1;
+  }
+  return m;
+}
+
+Response Controller::scriptStart(const Request& r, int e) {
+  Millis now = fxNow();
+  bool free = (scriptFreeEffects() >> e) & 1;
+  ScriptRunner::Answer a = script_run_->remoteStart(e, now, free || settings_.fx.remote_trigger_enable);
+  std::string fxname = std::string(script_prog_->fx[e].name);
+  switch (a) {
+    case ScriptRunner::Answer::Starts: log("remote start: effect \"" + fxname + "\""); return Response::done(r);
+    case ScriptRunner::Answer::Queued:
+      log("remote start queued: effect \"" + fxname + "\" starts when it can");
+      return Response::done(r);
+    case ScriptRunner::Answer::AlreadyQueued: return Response::err(r, ErrorCode::Refused, refusedText(EffectRefused::AlreadyQueued));
+    case ScriptRunner::Answer::Disabled: return Response::err(r, ErrorCode::Refused, refusedText(EffectRefused::RemoteDisabled));
+    case ScriptRunner::Answer::CooldownFull: {
+      std::string t = "cooling down, " + mmss(script_run_->cooldownRemaining(e, now)) + " left (effect \"" + fxname + "\" has used its runs)";
+      log("remote start refused: " + t);
+      return Response::err(r, ErrorCode::Refused, t);
+    }
+    case ScriptRunner::Answer::NoEffect:
+    default: return Response::err(r, ErrorCode::NotFound, "no such action");
+  }
+}
+
+// The effect's status values from the stored script (the same keys, so a profile's status aliases work):
+// run_count counts every effect's runs; ready, runs_left and cooldown_remaining_ms are the first effect's;
+// pulsing: OUT1 on, or a run that turns OUT2 on (its recovery) has not reached that line yet (a recover cycle's
+// OUT1 interval counts, as the pulse-and-recover effect's firmware once reported it); recovering: OUT2 on (SM-F6);
+// queued: a remote start waits (SS-R10).
+void Controller::scriptStatus(std::vector<ParamValue>& out, bool aliased) const {
+  if (!script_run_ || !script_prog_ || !script_prog_->effects) return;
+  Millis now = now_;
+  auto add = [&](const char* k, const Value& v) { out.push_back(ParamValue{aliased ? aliasFor(AliasEntry::Kind::Status, k) : std::string(k), v}); };
+  add("run_count", Value::integer(script_run_->totalRuns()));
+  if (script_run_->hasLimit(0)) {
+    add("runs_left", Value::integer(script_run_->runsLeft(0, now)));
+    add("cooldown_remaining_ms", Value::integer(script_run_->cooldownRemaining(0, now)));
+  }
+  bool pulsing = board_.levels()[index(Channel::Out1)] > 0;
+  for (int e = 0; e < script_prog_->effects; e++) pulsing |= script_run_->beforeRecovery(e);
+  add("pulsing", Value::boolean(pulsing));
+  add("recovering", Value::boolean(board_.levels()[index(Channel::Out2)] > 0));
+  add("ready", Value::boolean(script_run_->ready(0, now)));
+  add("remote_trigger_enable", Value::boolean(settings_.fx.remote_trigger_enable));
+  add("remote_trigger_by", Value::text(settings_.fx.remote_trigger_enable ? fx_by_ : ""));
+  add("queued", Value::boolean(script_run_->anyQueued()));
 }
 
 // ---------------------------------------------------------------- aliases
@@ -248,7 +326,7 @@ static bool aliasValue(const AliasEntry& a, const ParamDesc& d, Value& v, std::s
     if (v.i < lo || v.i > hi) {
       std::string u = a.unit.empty() ? "" : " " + a.unit;
       why = a.alias + ": " + (a.label.empty() ? d.label : a.label) + " is set to " + std::to_string((long long)v.i) + u + " but the board allows " +
-            std::to_string((long long)lo) + "-" + std::to_string((long long)hi) + u + "; " + (v.i > hi ? "lower" : "raise") + " it in Settings \xe2\x86\x92 " + d.group;
+            std::to_string((long long)lo) + "-" + std::to_string((long long)hi) + u + "; " + (v.i > hi ? "lower" : "raise") + " it in Settings \xe2\x86\x92 " + (a.group.empty() ? d.group : a.group);
       return false;
     }
     v.i *= a.scale;
@@ -292,8 +370,12 @@ bool Controller::aliasIn(const Profile& p, const char* body, size_t len, std::st
   std::string op = o["op"] | "";
   if (op == "set_params") {
     JsonArray values = o["values"];
-    for (JsonVariant pv : values) {
+    std::vector<std::pair<std::string, Value>> more;  // the keys of "also" lists, set with the same value
+    for (size_t i = 0; i < values.size();) {
+      JsonVariant pv = values[i];
       const AliasEntry* a = aliasNamed(pv["key"] | "");
+      if (a && a->kind == AliasEntry::Kind::Fixed) { values.remove(i); continue; }  // accepted, changes nothing
+      i++;
       if (!a || a->kind != AliasEntry::Kind::Key) continue;
       const ParamDesc* desc = Settings::find(a->target);
       Value v;
@@ -301,11 +383,13 @@ bool Controller::aliasIn(const Profile& p, const char* body, size_t len, std::st
       if (!aliasValue(*a, *desc, v, why)) return false;
       pv["key"] = a->target;
       v.toJson(pv.as<JsonObject>(), "value");
+      for (auto& k : a->also) more.push_back({k, v});
     }
-  }
-  if (op == "action") {
-    const AliasEntry* a = aliasNamed(o["key"] | "");
-    if (a && a->kind == AliasEntry::Kind::Control) o["key"] = a->target;
+    for (auto& m : more) {
+      JsonObject x = values.add<JsonObject>();
+      x["key"] = m.first;
+      m.second.toJson(x, "value");
+    }
   }
   out.clear();
   serializeJson(d, out);
@@ -335,12 +419,23 @@ static std::string secretShown(const Settings& st, const std::string& key) {
 // a several-line answer (status) has CR LF between its lines.
 static const char* const NL = "\r\n";
 
-// The name of a control (trigger, recover, cancel, restart, or a control alias), or "".
+// The name of a control: a show-script effect's name first ("script:<index>", SS-R10), then trigger, recover, cancel,
+// restart, or a control alias; "" when none.
 std::string Controller::resolveControl(const std::string& name) const {
+  int e = scriptEffect(name);
+  if (e >= 0) return "script:" + std::to_string(e);
   for (auto c : EFFECT_CONTROLS)
     if (name == c) return name;
   const AliasEntry* a = aliasNamed(name);
   return a && a->kind == AliasEntry::Kind::Control ? a->target : std::string();
+}
+
+// A value set under `a` (a key alias, or null for the key itself): the key, then the alias's "also" keys.
+std::vector<ParamValue> Controller::withAlso(const AliasEntry* a, const std::string& key, const Value& v) {
+  std::vector<ParamValue> out{ParamValue{key, v}};
+  if (a && a->kind == AliasEntry::Kind::Key)
+    for (auto& k : a->also) out.push_back(ParamValue{k, v});
+  return out;
 }
 
 // A setting's key from its name (the key or a key alias), or "".
@@ -442,6 +537,8 @@ std::string Controller::consoleAnswer(const std::string& line) {
     Value sv;
     if (statusRead(name, sv)) return name + "=" + sv.plain();
   }
+  const AliasEntry* fixed = aliasNamed(name);
+  if (fixed && fixed->kind == AliasEntry::Kind::Fixed) return name + "=" + fixed->target;  // a set changes nothing
   std::string key = resolveKey(name);
   if (key.empty()) return "error: unknown command or setting \"" + name + "\" (type help)";
   const ParamDesc* d = Settings::find(key);
@@ -457,7 +554,7 @@ std::string Controller::consoleAnswer(const std::string& line) {
   if (!d->parsePlain(val, v, e)) return "error: " + name + ": " + e;
   const AliasEntry* a = aliasNamed(name);
   if (a && a->kind == AliasEntry::Kind::Key && !aliasValue(*a, *d, v, e)) return "error: " + e;
-  Response r = setParams(req, {ParamValue{key, v}});
+  Response r = setParams(req, withAlso(a, key, v));
   if (!r.isOk()) return "error: " + r.errorMessage();
   if (d->isSecret()) return name + "=(set)";
   Value now;

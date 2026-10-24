@@ -1,0 +1,75 @@
+{
+  "board_package": 1,
+  "id": "proptroller",
+  "name": "Spectre Proptroller board",
+  "mcu": "pico",
+  "terminals": {
+    "OUT1": {
+      "pin": 15
+    },
+    "OUT2": {
+      "pin": 14
+    },
+    "OUT3": {
+      "pin": 12
+    },
+    "OUT4": {
+      "pin": 11
+    },
+    "RLY1": {
+      "pin": 20
+    },
+    "RLY2": {
+      "pin": 21
+    },
+    "CC1": {
+      "pin": 22
+    },
+    "CC2": {
+      "pin": 18
+    },
+    "TRIG1": {
+      "pin": 16,
+      "active": "low",
+      "pull": "board"
+    },
+    "TRIG2": {
+      "pin": 10,
+      "active": "low",
+      "pull": "board"
+    },
+    "USER1": {
+      "pin": 28,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER2": {
+      "pin": 27,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER3": {
+      "pin": 9,
+      "active": "low",
+      "pull": "chip"
+    }
+  },
+  "pixel": {
+    "pin": 19,
+    "inverted": true
+  },
+  "sound": {
+    "tx": 8,
+    "rx": 7
+  },
+  "i2c": {
+    "sda": 4,
+    "scl": 5
+  },
+  "analog": 26,
+  "expansion": {
+    "S4": 3,
+    "S5": 17
+  },
+  "status_led": "builtin"
+}

@@ -327,14 +327,20 @@ A profile can give the effect a project's own words without touching the generic
 
 - SM-AL1 An alias works everywhere its key does: web, WebSocket, MQTT (`<prefix>/<name>/config/set/<alias>`,
   `…/config/get/<alias>`, answer on `…/config/<alias>`), serial (`<alias>=value`, `<alias>`). Setting an alias sets
-  its key; reading either gives the same value. Controls and status keys may be aliased the same way.
+  its key; reading either gives the same value. Controls and status keys may be aliased the same way. A key alias
+  may list more keys in `also` (1-4, of the same kind, no secret): a value set under the alias goes to each of
+  them too (`{"alias": "bounce_ms", "key": "trig_debounce_ms", "also": ["trig_release_ms"]}`); reading it gives
+  its own key. A `fixed` alias stands for a name an older tool still uses that no setting is behind any more
+  (`{"alias": "knob_override", "fixed": "true"}`): it always reads its value (text, up to 32 characters), and a
+  value set under it is accepted and changes nothing.
 - SM-AL2 With aliases active, the board publishes status under the alias names (the generic names stay accepted for
   set/get); the web page shows the alias label and unit from the profile, and a control alias names its button with the
   board's word beside it (`go (Trigger)`).
 - SM-AL3 `invert` (bool only) exposes the opposite meaning; `scale` (for example seconds ↔ ms) is the only other
   transform. Range checks use the key's range, reported in the alias's units.
 - SM-AL4 The table is refused, with the reason, when an alias repeats another alias or any key, points at a key that
-  does not exist, or aliases a set-only secret so it could be read back.
+  does not exist, or aliases a set-only secret so it could be read back, or has an `also` that is not a list of
+  1-4 other existing keys of the same kind without a secret.
 - SM-AL5 The table is part of the profile: stored on the board, kept through a power cut, read back by the desktop
   app's wizard. Loading or removing aliases never changes a value.
 - SM-AL6 `topic_prefix` replaces `proptroller` in every MQTT topic, the broadcast topics included.

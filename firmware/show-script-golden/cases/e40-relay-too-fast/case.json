@@ -9,7 +9,7 @@
     "errors": [
       {
         "line": 7,
-        "message": "line 7: rly1 switches again after 50 ms. Relays and contacts switch at most every 100 ms: sleep at least 0.1 between its changes."
+        "message": "line 7: rly1 switches again after 50 ms. Relays and contacts switch at most every 100 ms: wait at least 0.1 between its changes."
       }
     ],
     "warnings": []

@@ -298,6 +298,8 @@ async function onConnected() {
 }
 
 function applyInfo() {
+  // a start button held right now keeps its element: the redraw waits until it is let go (or fires)
+  if (holding) { infoDeferred = true; return; }
   document.body.classList.add('ready');  // what the board has is known: its cards show (no flash of every card)
   releaseAll();  // the buttons are about to be redrawn: none may stay held down unseen
   $('dev-name').textContent = info.name;
@@ -306,6 +308,7 @@ function applyInfo() {
   // the page password box only while the page lock is on (SM-P1)
   renderLock();
   for (const n of document.querySelectorAll('[data-cap]')) n.classList.toggle('hidden', !n.dataset.cap.split('|').some(has));
+  if (info.stop_button === false) $('stop-all').classList.add('hidden');  // setting stop_button off: no STOP here
   $('outputs').replaceChildren();
   $('sim-hint').hidden = !has('sim');
   const acts = $('actions');
@@ -317,6 +320,7 @@ function applyInfo() {
       momentary(b, () => conn.call('action', { key: a.key, down: true }).catch((e) => actionRefused(a, e)), () => conn.call('action', { key: a.key, down: false }).catch(() => {}));
       return b;
     }
+    if (a.hold) return holdStart(a);
     return el('button', { text: a.label, 'data-key': a.key, onclick: async () => { if (a.confirm && !confirm(a.label + '?')) return; await call('action', { key: a.key }, 'actions-msg'); } });
   }));
   renderRemote();
@@ -328,6 +332,32 @@ function applyInfo() {
   renderFirmware();
   renderState();
   hook('info');
+}
+
+// A start button pressed and held (setting start_buttons = hold): it sends once the bar is full, after
+// PAGE_START_HOLD_MS; let go early and nothing is sent. Released on blur, page hide and a lost connection (the
+// momentary rules), and redrawn buttons let go.
+const PAGE_START_HOLD_MS = 1000;
+let holding = null, infoDeferred = false;  // the start button held now; a redraw that waits for it
+function holdStart(a) {
+  const fill = el('i', { class: 'fill' });
+  const b = el('button', { class: 'hold-start', 'data-key': a.key, 'aria-label': `${a.label} (press and hold about a second)` }, el('span', { text: a.label }), fill);
+  let timer = null, raf = 0, start = 0;
+  const tick = () => { fill.style.width = `${Math.min(100, ((performance.now() - start) / PAGE_START_HOLD_MS) * 100)}%`; raf = requestAnimationFrame(tick); };
+  const stop = () => {
+    clearTimeout(timer); cancelAnimationFrame(raf); timer = null; fill.style.width = '0';
+    if (holding !== b) return;
+    holding = null;
+    if (infoDeferred) { infoDeferred = false; setTimeout(() => { if (info) applyInfo(); }, 0); }
+  };
+  momentary(b, () => {
+    if (timer || !b.isConnected) return;  // momentary() repeats down() while held: the first press starts the timer
+    start = performance.now();
+    holding = b;
+    raf = requestAnimationFrame(tick);
+    timer = setTimeout(() => { stop(); call('action', { key: a.key }, 'actions-msg'); }, PAGE_START_HOLD_MS);
+  }, stop, false);
+  return b;
 }
 
 // a press-and-hold action refused (once per press, not every 500 ms)
@@ -403,9 +433,10 @@ function log(t) {
 
 // a firmware status line in plain words: "cooldown remaining 2:50" (not "cooldown remaining ms 170650"),
 // yes / no for true / false, "none" for nothing
-function statusLine({ key, value }) {
-  const ms = /_ms$/.test(key) && typeof value === 'number';
-  let k = key.replace(/_ms$/, '').replace(/_/g, ' ');
+// (a profile's label when it gives one; `unit: "ms"` marks a time left under any name: "Time left 2:33")
+function statusLine({ key, value, label, unit }) {
+  const ms = (/_ms$/.test(key) || unit === 'ms') && typeof value === 'number';
+  let k = label || key.replace(/_ms$/, '').replace(/_/g, ' ');
   k = k.charAt(0).toUpperCase() + k.slice(1);
   const v = ms ? (value >= 60000 ? fmtClock(value) : `${(value / 1000).toFixed(1)} s`) : value === true ? 'yes' : value === false ? 'no' : value === '' || value == null ? 'none' : String(value);
   return [k, v];
@@ -430,13 +461,16 @@ function renderState() {
     ['Network', state.net?.mode ? `${state.net.mode} ${state.net.ip || ''} ${state.net.ssid || ''}`.trim() : '—'],
     ['Up', fmtMs(state.uptime_ms)],
   ];
+  // the stored board package cannot be used: no pins are driven until a good one is sent (BOARD-PACKAGES.md)
+  if (state.board_problem) lines.unshift(['Board package', state.board_problem]);
   // the run counters: tonight = since the board was powered on (a show night), lifetime = kept in flash
   if (typeof state.runs_since_power_on === 'number') {
-    lines.push(['Runs tonight (since power on)', String(state.runs_since_power_on)], ['Lifetime runs', String(state.runs_lifetime ?? 0)]);
+    const rl = state.run_labels || {};  // a profile's names for them ("Presses tonight")
+    lines.push([rl.runs_since_power_on || 'Runs tonight (since power on)', String(state.runs_since_power_on)], [rl.runs_lifetime || 'Lifetime runs', String(state.runs_lifetime ?? 0)]);
     // the state comes when something changes: a clock time stays right between updates, "2 min ago" would not
     if (typeof state.last_run_uptime_ms === 'number') {
       if (lastRun.at !== state.last_run_uptime_ms) lastRun = { at: state.last_run_uptime_ms, clock: new Date(Date.now() - Math.max(0, state.uptime_ms - state.last_run_uptime_ms)).toLocaleTimeString() };
-      lines.push(['Last run', lastRun.clock]);
+      lines.push([rl.last_run_uptime_ms || 'Last run', lastRun.clock]);
     }
   }
   if (has('sound')) lines.push(['Sound', !state.sound_online ? 'player not answering' : state.sound_playing ? 'playing' : 'idle']);
@@ -569,7 +603,7 @@ $('resume').onclick = async () => {
   b.disabled = true;
   try { await call('pause', { on: false }); } catch { /* call() said why (the page lock: Unlock) */ } finally { b.disabled = false; }
 };
-$('snd-play').onclick = () => call('sound', { cmd: 'play_folder', folder: +$('snd-folder').value, track: +$('snd-track').value });
+$('snd-play').onclick = () => call('sound', { cmd: 'play_mp3', track: +$('snd-track').value });
 $('snd-stop').onclick = () => call('sound', { cmd: 'stop' });
 $('snd-vol').onchange = () => call('sound', { cmd: 'volume', volume: +$('snd-vol').value });
 $('px-go').onclick = () => {
@@ -615,7 +649,9 @@ const targetIds = () => [...outputIds(), 'PIXEL', 'SOUND', 'NET'];
 const ACTIONS = {
   on: [], off: [], level: [['level', 500]], ramp: [['to', 1000], ['ms', 300]], pulse: [['ms', 500]],
   blink: [['on_ms', 250], ['off_ms', 250], ['count', 0]],
-  play: [['folder', 1], ['track', 1]], loop_folder: [['folder', 1]], volume: [['volume', 20]],
+  // play: folder 0 is sound N (track N: the card's mp3/NNNN-….mp3, as in a script); a folder 1-99 is shown only on
+  // an older cue that has one
+  play: [['folder', 0], ['track', 1]], loop_folder: [['folder', 1]], volume: [['volume', 20]],
   fill: [['color', '#ff6000']], chase: [['color', '#ff6000'], ['step_ms', 60], ['width', 3]], rainbow: [['period_ms', 3000]],
   flash: [['color', '#ffffff'], ['period_ms', 400]], fade: [['color', '#ff6000'], ['ms', 1500]], flicker: [['color', '#ff6000']],
   emit: [['cue', 'next']],
@@ -753,10 +789,10 @@ function renderEditor() {
 
 // plain words for the show format's keywords (the stored words stay the format's)
 const TRIGGER_WORDS = { input: 'an input is pressed', release: 'an input is let go', every: 'every so often', boot: 'power-on', cue: 'a cue arrives', after: 'another show ends' };
-const ACTION_WORDS = { on: 'on', off: 'off', level: 'set a level', ramp: 'fade to a level', pulse: 'pulse', blink: 'blink', play: 'play a track',
+const ACTION_WORDS = { on: 'on', off: 'off', level: 'set a level', ramp: 'fade to a level', pulse: 'pulse', blink: 'blink', play: 'play a sound',
   loop_folder: 'loop a folder', volume: 'set the volume', fill: 'one colour', flicker: 'flicker', chase: 'chase', flash: 'flash', fade: 'fade in', rainbow: 'rainbow', emit: 'send a cue' };
 const FIELD_WORDS = { level: 'level (%)', to: 'to (%)', ms: 'time (s)', on_ms: 'on for (s)', off_ms: 'off for (s)', count: 'times (0 = no end)', period_ms: 'every (s)',
-  delay_ms: 'after (s)', step_ms: 'step (s)', name: 'cue name', cue: 'cue name', show: 'show number', input: 'input', color: 'colour' };
+  delay_ms: 'after (s)', step_ms: 'step (s)', name: 'cue name', cue: 'cue name', show: 'show number', input: 'input', color: 'colour', track: 'sound' };
 function field(obj, key, def, onchange) {
   if (obj[key] === undefined) obj[key] = def;
   let input;
@@ -802,7 +838,7 @@ function renderTracks() {
       const at = el('input', { type: 'number', min: 0, step: 0.1, value: c.at / 1000 });
       at.oninput = () => { c.at = toMs(+at.value); drawTimeline(); syncJson(); };
       box.append(el('div', { class: 'cue' }, el('label', {}, 'at (s)', at), el('label', {}, 'do', sel),
-        el('div', { class: 'params' }, ...(ACTIONS[c.do] || []).map(([k, d]) => field(c, k, d, () => { drawTimeline(); syncJson(); }))),
+        el('div', { class: 'params' }, ...(ACTIONS[c.do] || []).filter(([k]) => !(c.do === 'play' && k === 'folder' && !c.folder)).map(([k, d]) => field(c, k, d, () => { drawTimeline(); syncJson(); }))),
         el('button', { class: 'small', text: '✕', 'aria-label': 'Remove this cue', title: 'Remove this cue', onclick: () => { t.cues.splice(ci, 1); renderEditor(); } })));
     });
     return box;
@@ -873,7 +909,7 @@ function drawTimeline() {
         g.fillStyle = c.do === 'off' ? col('--dim') : (c.color || col('--accent'));
         g.fillRect(x(c.at) - 2, y0 + 2, 4, rowH - 8);
         g.fillStyle = col('--dim');
-        g.fillText(c.do === 'play' ? `${c.folder}/${c.track}` : c.do === 'emit' ? c.cue : c.do, x(c.at) + 4, y0 + 13);
+        g.fillText(c.do === 'play' ? (c.folder ? `${c.folder}/${c.track}` : `sound ${c.track}`) : c.do === 'emit' ? c.cue : c.do, x(c.at) + 4, y0 + 13);
       }
     }
   });
@@ -1477,31 +1513,19 @@ $('evlog-clear').onclick = () => { evlog.length = 0; $('evlog').replaceChildren(
 // ------------------------------------------------------------------ show script
 
 // The text is the script (SHOW-SCRIPT.md): the board checks it and keeps it exactly as written.
-let scriptSaved = { text: '', sounds: {} };
+let scriptSaved = { text: '' };
 let scriptLoaded = false;  // never save over a stored script the page could not read
 let scriptConflict = false;  // the stored script changed on another phone while this page had edits
-const scriptDirty = () => $('script-text').value !== scriptSaved.text || $('script-sounds').value !== soundsText(scriptSaved.sounds);
-function soundsText(m) { return Object.entries(m || {}).sort((a, b) => a[1] - b[1]).map(([k, v]) => `${k} = ${v}`).join('\n'); }
-function soundsOf(text) {
-  const m = {};
-  for (const line of text.split('\n')) {
-    const i = line.lastIndexOf('=');
-    if (i < 0) continue;
-    const name = line.slice(0, i).trim(), n = parseInt(line.slice(i + 1), 10);
-    if (name && n >= 1 && n <= 99) m[name] = n;
-  }
-  return m;
-}
+const scriptDirty = () => $('script-text').value !== scriptSaved.text;
 async function loadScript(force) {
   try {
     const r = await conn.call('get_script');
     scriptLoaded = true;
     const wasDirty = scriptDirty();
-    const changed = r.text !== scriptSaved.text || soundsText(r.sounds) !== soundsText(scriptSaved.sounds);
-    scriptSaved = { text: r.text, sounds: r.sounds || {} };
+    const changed = r.text !== scriptSaved.text;
+    scriptSaved = { text: r.text };
     if (force || !wasDirty) {
       $('script-text').value = r.text;
-      $('script-sounds').value = soundsText(r.sounds);
       scriptConflict = false;
       hook('script');
     } else if (changed) {
@@ -1559,7 +1583,7 @@ function showScriptCheck(c) {
   for (const m of c.warnings) add(m, 'warn');
 }
 async function scriptCall(op) {
-  const args = { text: $('script-text').value, sounds: soundsOf($('script-sounds').value) };
+  const args = { text: $('script-text').value };
   if (op === 'set_script') {
     if (!scriptLoaded) return showMsg('script-msg', 'the stored effect script could not be loaded: press Revert first, nothing saved', false);
     if (scriptSaved?.text && !/^\s*effect\b/mi.test(args.text) && !scriptCall.sure) {

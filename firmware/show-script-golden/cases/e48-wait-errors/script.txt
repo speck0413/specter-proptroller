@@ -1,0 +1,11 @@
+effect a:
+wait 2
+effect b:
+wait for trig1
+wait 2 hours
+wait for soon
+wait soon
+wait for 30 h
+wait runs_per_cooldown
+wait for runs_per_cooldown
+wait trig2

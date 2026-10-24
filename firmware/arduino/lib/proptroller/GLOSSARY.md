@@ -15,7 +15,7 @@ and CONTACT2.
 **Cooldown.** Rest time after an effect has run before it can run again. Presses during the cooldown are
 ignored. In a sketch: `prop.advanced().when(TRIG1)...cooldown(seconds(30)).allowRunsPerCooldown(3)` lets it run up
 to three times before it rests (advanced layer, `#include <ProptrollerAdvanced.h>`). In an effect script, a
-`sleep` at the end of the effect is its rest.
+`wait` at the end of the effect is its rest.
 
 **Cue.** A name that starts effects (advanced layer): `prop.advanced().when(TRIG1).sendCue("lights")` on one
 board starts every effect made with `prop.advanced().onCue("lights")` on the boards around it.

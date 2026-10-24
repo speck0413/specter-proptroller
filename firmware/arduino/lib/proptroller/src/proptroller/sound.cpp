@@ -2,8 +2,12 @@
 
 namespace pt {
 
+SoundCommand soundPlay(uint16_t n, bool mp3) { return mp3 ? SoundCommand::playMp3(n) : SoundCommand::playIndex(n); }
+SoundCommand soundLoop(uint16_t n, bool mp3) { return mp3 ? SoundCommand::loopMp3(n) : SoundCommand::loopIndex(n); }
+uint8_t soundVolume(uint16_t permille) { return (uint8_t)(((uint32_t)(permille > 1000 ? 1000 : permille) * 30 + 500) / 1000); }
+
 Commands SoundDirector::setConfig(const SoundConfig& c, Millis now) {
-  bool changed = c.ambient != cfg.ambient || c.ambient_folder != cfg.ambient_folder || c.ambient_track != cfg.ambient_track;
+  bool changed = c.ambient != cfg.ambient || c.ambient_track != cfg.ambient_track;
   cfg = c;
   if (changed) {
     ambient_missing_ = false;
@@ -19,7 +23,32 @@ Commands SoundDirector::setConfig(const SoundConfig& c, Millis now) {
 Commands SoundDirector::ambientCmds() {
   playing_ = Playing();
   playing_.kind = Playing::Kind::Ambient;
-  return {SoundCommand::volume(cfg.ambient_volume), SoundCommand::playFolder(cfg.ambient_folder, cfg.ambient_track)};
+  return {SoundCommand::volume(cfg.ambient_volume), soundPlay(cfg.ambient_track)};  // played again when it finishes
+}
+
+Commands SoundDirector::loopCmds() {
+  playing_ = Playing();
+  playing_.kind = Playing::Kind::Loop;
+  playing_.track = loop_;
+  return {SoundCommand::volume(script_volume >= 0 ? (uint8_t)script_volume : cfg.ambient_volume), soundLoop(loop_, loop_mp3_)};
+}
+
+Commands SoundDirector::scriptLoop(uint16_t n, Millis now, bool mp3) {
+  if (n == 0) {
+    loop_ = 0;
+    if (playing_.kind != Playing::Kind::Loop) return {};
+    playing_ = Playing();
+    resumeAt(now + RESUME_MS);  // the ambient, when there is one
+    return {SoundCommand::simple(SoundCommand::Kind::Stop)};
+  }
+  if (loop_ == n && loop_mp3_ == mp3 && playing_.kind == Playing::Kind::Loop) return {};  // already looping that one
+  loop_ = n;
+  loop_mp3_ = mp3;
+  // a sound playing over it (a script's audio_single, a show's sound, the trigger sound) finishes first
+  if (playing_.kind == Playing::Kind::Show || playing_.kind == Playing::Kind::Trigger) return {};
+  if (!loopWanted()) { resumeAt(now); return {}; }
+  has_resume_ = false;
+  return loopCmds();
 }
 
 Commands SoundDirector::trigger(uint16_t n) {
@@ -29,7 +58,7 @@ Commands SoundDirector::trigger(uint16_t n) {
   playing_.kind = Playing::Kind::Trigger;
   playing_.track = track;
   has_resume_ = false;
-  return {SoundCommand::volume(cfg.trigger_volume), SoundCommand::playMp3(track)};
+  return {SoundCommand::volume(cfg.trigger_volume), soundPlay(track)};
 }
 
 void SoundDirector::observeShow(const SoundCommand& c, Millis now) {
@@ -66,18 +95,21 @@ Commands SoundDirector::onEvent(const DfEvent& e, Millis now) {
       resumeAt(now);
       break;
     case DfEvent::Kind::Finished:
-      // ambient loops; anything else returns to ambient after a short pause
+      if (playing_.kind == Playing::Kind::Loop) {
+        if (loop_mp3_) return {soundLoop(loop_, true)};  // the mp3 folder has no loop command: play it again
+        break;  // the player loops the root file itself
+      }
+      // ambient loops; anything else returns to the loop or the ambient after a short pause
       resumeAt(playing_.kind == Playing::Kind::Ambient ? now : now + RESUME_MS);
       playing_ = Playing();
       break;
     case DfEvent::Kind::Error:
       if (e.value == 6 || e.value == 5) {
-        if (playing_.kind == Playing::Kind::Trigger && !playing_.fallback) {
-          // not in /mp3: play the N-th file on the card instead
-          playing_.fallback = true;
-          return {SoundCommand::playIndex(playing_.track)};
-        } else if (playing_.kind == Playing::Kind::Ambient) {
+        if (playing_.kind == Playing::Kind::Ambient) {
           ambient_missing_ = true;
+          playing_ = Playing();
+        } else if (playing_.kind == Playing::Kind::Loop) {
+          loop_ = 0;  // the loop's file is not on the card: no loop until the script sets one again
           playing_ = Playing();
         } else {
           playing_ = Playing();
@@ -105,6 +137,7 @@ Commands SoundDirector::onEvent(const DfEvent& e, Millis now) {
 Commands SoundDirector::tick(Millis now) {
   if (has_resume_ && now >= resume_at_ && playing_.kind == Playing::Kind::Idle) {
     has_resume_ = false;
+    if (loopWanted()) return loopCmds();  // a script's loop goes before the ambient
     if (ambientWanted()) return ambientCmds();
   }
   return {};

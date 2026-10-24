@@ -1,0 +1,1 @@
+{"v":1,"id":105,"ok":false,"error":{"code":"bad_request","message":"set_board takes one of `package` (a board package), `preset` (a built-in board's id) or `forget`: true"}}

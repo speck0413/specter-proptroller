@@ -1,6 +1,6 @@
 effect rain:
 wait for trig1
-audio_loop = rain.mp3
+audio_loop = 2
 out1 = on
 sleep 1
 out1 = off

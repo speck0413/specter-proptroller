@@ -1,0 +1,6 @@
+effect a:
+  wait for trig1
+  limit 2 runs per 5
+  out1 = on
+  sleep 0.5
+  out1 = off

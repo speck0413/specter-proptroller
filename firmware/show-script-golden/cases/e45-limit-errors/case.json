@@ -1,0 +1,46 @@
+{
+  "spec": [
+    "SS-G3",
+    "SS-G6"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: write it as \"limit 3 runs per 3 min\"."
+      },
+      {
+        "line": 4,
+        "message": "line 4: \"three\" is not a number of runs. Use 1 to 20, or the setting runs_per_cooldown."
+      },
+      {
+        "line": 5,
+        "message": "line 5: \"21\" is not a number of runs. Use 1 to 20, or the setting runs_per_cooldown."
+      },
+      {
+        "line": 6,
+        "message": "line 6: \"soon\" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min."
+      },
+      {
+        "line": 7,
+        "message": "line 7: a limit's time is at most 60 minutes."
+      },
+      {
+        "line": 9,
+        "message": "line 9: effect \"a\" already has a limit (line 8). An effect has one."
+      },
+      {
+        "line": 10,
+        "message": "line 10: runs_per_cooldown is a number of runs, not a time."
+      },
+      {
+        "line": 11,
+        "message": "line 11: runs_per_cooldown is a number of runs, not a time."
+      }
+    ],
+    "warnings": []
+  }
+}

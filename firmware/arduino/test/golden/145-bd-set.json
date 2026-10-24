@@ -1,0 +1,1 @@
+{"v":1,"id":106,"ok":true,"result":{"kind":"board_set","id":"relay-board","name":"Relay board","restart_needed":true,"warnings":["USER1: GPIO 5 is read at power-on (a boot-strapping pin): what is wired to it must not pull it the wrong way while the board starts"]}}

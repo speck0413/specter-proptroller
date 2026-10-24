@@ -2,9 +2,7 @@
   "spec": [
     "SS-R7"
   ],
-  "sounds": {
-    "rain.mp3": 2
-  },
+  "sounds": {},
   "settings": {},
   "trace": {
     "settings": {

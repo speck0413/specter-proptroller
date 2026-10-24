@@ -10,13 +10,14 @@ The other tests take the same arguments, each against a fresh board: `settings-t
 `wifi-test.mjs` (Settings → Wi-Fi at 390 px: the board's address, the network combo box with the simulator's
 network list, pick or type a name, Rescan and its 10 s limit),
 `alias-test.mjs` (a profile's words), `script-test.mjs` (the Script tab: check, the messages, save, run, kept
-after a restart), `shows-test.mjs` (at 390 px: a fresh board with no shows, Add an example show, Link on while
+after a restart), `remote-script-test.mjs` (a script's effects started by name: a button per effect and Cancel on
+the Live tab, the remote trigger switch, an effect that starts without it, the switch off when the page closes; then start buttons held about a second with their bar (a redraw from another phone's save waits until the hold ends), no STOP, a profile's button and status words, a time left as m:ss), `shows-test.mjs` (at 390 px: a fresh board with no shows, Add an example show, Link on while
 held and for a time, + New, replace with Save as, delete from the list and the editor asked in the page, two
 phones: board-picked numbers, "changed on another phone"), `record-test.mjs` (Record effect at 390 px: TRIG1, a
 slider on OUT1 and RLY1 held, the board following live, Stop and the board doing it back, Keep into the stored
 script beside an effect already there and passing the board's check, TRIG1 running it, the same name asked before
 it is replaced, an output another effect uses refused, STOP during the playback, focus lost and a dropped
-connection while recording), `views-test.mjs` (the Script tab's Script and blocks / Script only / Blocks only:
+connection while recording, Cancel and Escape at every step with "Discard this recording?" only for a take), `views-test.mjs` (the Script tab's Script and blocks / Script only / Blocks only:
 remembered, stacked at 390 px and side by side when wide, block edits writing the text with comments and blank
 lines kept, a recorded effect opening in the blocks, drag by ⠿), `live-test.mjs` (at 390 px: the framing headers, a dead
 connection seen within 8 s with the age of the values, STOP confirmed or "STOP not confirmed", errors in the alert

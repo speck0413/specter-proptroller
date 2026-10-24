@@ -13,7 +13,9 @@ bool parseRecoverMode(const std::string& s, RecoverMode& out) {
 static uint32_t clampRuns(uint8_t n) { return n < EFFECT_RUNS_MIN ? EFFECT_RUNS_MIN : n; }
 
 EffectMachine::EffectMachine(const EffectConfig& c, Millis now)
-    : safety_on(!c.auto_arm), boot_until_(now + EFFECT_BOOT_LOCKOUT_MS), max_runs_(clampRuns(c.runs_per_cooldown)) {}
+    : safety_on(!c.auto_arm), boot_until_(now + EFFECT_BOOT_LOCKOUT_MS) {
+  setMaxRuns(clampRuns(c.runs_per_cooldown));
+}
 
 EffectRefused EffectMachine::refusalInner(Millis now, bool window) const {
   if (safety_on) return EffectRefused::Safety;
@@ -25,16 +27,11 @@ EffectRefused EffectMachine::refusalInner(Millis now, bool window) const {
 }
 
 EffectEvent EffectMachine::start(Millis now, const EffectConfig& c) {
-  queued_remote = false;
-  released = false;  // the next local run needs a new release (SM-T6)
-  confirming = false;
+  started(now, c.cooldown_ms);  // the gate: queue empty, a new release needed (SM-T6), the window counts (SM-L1)
   run_count++;
   recover_cycle_ = false;
   phase = EffectPhase::Pulse;
   phase_until = now + c.out1_on_ms;
-  // the window opens at the first run and keeps its end; later runs only count (SM-L1)
-  window_.countRun(now);
-  window_.open(now, c.cooldown_ms);
   EffectEvent e;
   e.kind = EffectEvent::Kind::Started;
   e.value = run_count;
@@ -42,7 +39,7 @@ EffectEvent EffectMachine::start(Millis now, const EffectConfig& c) {
 }
 
 EffectRefused EffectMachine::remoteTrigger(Millis now, const EffectConfig& c, EffectEvent& started) {
-  max_runs_ = clampRuns(c.runs_per_cooldown);
+  setMaxRuns(clampRuns(c.runs_per_cooldown));
   started = EffectEvent();
   if (!c.remote_trigger_enable) return EffectRefused::RemoteDisabled;  // SM-Q4
   EffectRefused r = refusal(now);
@@ -52,8 +49,7 @@ EffectRefused EffectMachine::remoteTrigger(Millis now, const EffectConfig& c, Ef
     return r;
   }
   if (r == EffectRefused::Safety || r == EffectRefused::CooldownFull) return r;  // SM-L5
-  if (queued_remote) return EffectRefused::AlreadyQueued;                         // SM-Q1
-  queued_remote = true;
+  if (!queue()) return EffectRefused::AlreadyQueued;                             // SM-Q1
   return EffectRefused::None;
 }
 
@@ -113,10 +109,9 @@ EffectEvent EffectMachine::afterGap(Millis now, const EffectConfig& c, bool cycl
 
 std::vector<EffectEvent> EffectMachine::tick(Millis now, const EffectConfig& c, bool trig1_closed) {
   // raw TRIG1 (SM-T1): an open sample breaks a closure, a closed sample breaks an opening
-  if (!trig1_closed && raw_closed) open_since = now;
-  raw_closed = trig1_closed;
+  sampleRaw(now, trig1_closed);
   std::vector<EffectEvent> out;
-  max_runs_ = clampRuns(c.runs_per_cooldown);
+  setMaxRuns(clampRuns(c.runs_per_cooldown));
   if (now >= boot_until_) booted_ = true;
   if (recovery_bg && now >= recovery_bg_until) recovery_bg = false;
   if (recover != RecoverRun::NoRecover && now >= recover_until) recover = RecoverRun::NoRecover;
@@ -155,20 +150,9 @@ std::vector<EffectEvent> EffectMachine::tick(Millis now, const EffectConfig& c, 
       break;
   }
   if (e.kind != EffectEvent::Kind::None) out.push_back(e);
-  if (!c.remote_trigger_enable) queued_remote = false;  // SM-Q5
-  bool full = windowFull(now);
-  if (full) queued_remote = false;
-  // a release registers only outside a Full window (SM-T7): open without a break for the release time
-  if (!full && !trig1_closed && now - open_since >= c.release_ms && seen_open_) released = true;
-  if (!trig1_closed) seen_open_ = true;
+  // the gate (gate.h): the queue's cancellations, the release outside a Full window, the hold to confirm
   bool rdy = ready(now);
-  // hold to confirm (SM-T1a): closed on every sample for confirm_ms, counted only while Ready after a release
-  if (trig1_closed && released && rdy) {
-    if (!confirming) { confirming = true; confirm_since = now; }
-  } else {
-    confirming = false;
-  }
-  bool local = confirming && now - confirm_since >= c.confirm_ms;
+  bool local = update(now, trig1_closed, c.remote_trigger_enable, rdy, c.release_ms, c.confirm_ms);
   // one thing starts per tick: a queued remote run, then TRIG1, then a remembered recover (§13)
   if (rdy && (queued_remote || local)) {
     bool remote = queued_remote;

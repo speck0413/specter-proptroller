@@ -48,13 +48,16 @@ TXT:
 | `fwv` | firmware version |
 | `fwi` | firmware implementation: `cpp` |
 | `mcu` | `esp32-devkit`, `pico`, `sim` |
+| `board` | the board package the board runs ([BOARD-PACKAGES.md](BOARD-PACKAGES.md)): the stored package's `id`, else the image's own board (`proptroller`, the Proptroller board's own pin map, or the `PROPTROLLER_BOARD_ID` of a board support package compiled in); `none` when the stored package cannot be used and no pins are driven |
+
+A board that does not report `board` (older firmware) counts as `proptroller`.
 
 **UDP broadcast fallback** (networks that block multicast, the setup access point): send
 `{"proptroller":"discover","v":1}` to UDP port **47800** (broadcast or unicast). Each device answers to the
 sender with
 
 ```json
-{"proptroller":"announce","v":1,"id":"a0b1c2d3e4f5","name":"Front door","fw":"generic","fw_version":"0.1.0","fw_impl":"cpp","mcu":"esp32-devkit","port":80}
+{"proptroller":"announce","v":1,"id":"a0b1c2d3e4f5","name":"Front door","fw":"generic","fw_version":"0.1.0","fw_impl":"cpp","mcu":"esp32-devkit","board":"proptroller","port":80}
 ```
 
 The HTTP address is the answer's source IP with `port`.
@@ -115,21 +118,26 @@ of silence, and what it was given ends with it: the remote trigger enable, manua
 | `cue` | `name` | `done` (sends a named cue on this device) |
 | `set_output` | `channel`, `level` (0-1000, or `null` to release), `ms` (optional: a pulse, at most 600000) | `done` (manual test; relays and contacts are on/off). From plain HTTP or MQTT a level above 0 needs `ms` (else `refused`); a level above 0 is `refused` while the board is paused (nothing set during a pause comes on at its release); what a phone page holds is released when its WebSocket closes |
 | `pixel` | `action` (a pixel [action](#actions), or `null`) | `done` |
-| `sound` | `cmd` + fields: `play_folder` (`folder`, `track`), `play_index` (`index`), `loop_folder` (`folder`), `loop_index` (`index`), `volume` (`volume` 0-30), `stop`, `pause`, `resume`, `next`, `reset`, `select_sd` | `done` |
+| `sound` | `cmd` + fields: `play_mp3` (`track`: the card's `/mp3/NNNN…`, command 0x12), `loop_mp3` (`track`: the same, played again each time it ends; `stop` ends it), `play_index` (`index`: the N-th file written to the card's root, 0x03), `loop_index` (`index`, 0x08), `play_folder` (`folder`, `track`: `/FF/TTT.mp3`), `loop_folder` (`folder`), `volume` (`volume` 0-30), `stop`, `pause`, `resume`, `next`, `reset`, `select_sd` | `done` |
 | `get_params` | | `params` |
 | `set_params` | `values`: `[{"key":..,"value":..}]` (all checked, none applied if one fails; an empty secret keeps the old one, except that a change of `wifi_ssid` without a non-empty `wifi_pass` in the same `set_params` clears the stored `wifi_pass`: the new network is joined as an open one. Set a network and its password together, or the network first) | `done`; `internal` (`storage full: ...`) when a text value (a name) would make the settings record too big for the board's 12 KB |
 | `action` | `key` (from `info.actions`, or a control alias) | `done` |
 | `get_profile` | | `profile`: `topic_prefix` (absent: `proptroller`), `aliases` |
 | `set_profile` | `data`: a profile (see [Profiles](#profiles-a-projects-own-words)); an empty one removes it | `done`, or `bad_request` with the reason; `internal` (`storage full: ...`) when the settings record would no longer fit the board's 12 KB. Never changes a value |
-| `get_script` | | `script`: `text` (exactly as written; empty when none), `sounds` (file name → number), `check` (its check with the current settings) |
-| `check_script` | `text`, `sounds` (optional) | `script_check`: `ok`, `errors`, `warnings` and, when `ok`, `effects` (how many effects; see [Show scripts](#show-scripts)) |
-| `set_script` | `text`, `sounds` (optional), `bytes` (optional: the text's length in UTF-8 bytes as sent; when it differs from what arrived, `bad_request` and nothing is checked or stored) | `script_check`, as `check_script`. Stored only when `ok`; a text with no effects removes the stored script. `refused` (`... factory reset first, then set the script`) while a stored script from a newer firmware, or one that could not be read, is kept, and while a new firmware waits for its self-check (up to 30 s after an update); `internal` when it could not be stored or removed. Needs the page password while the page lock is on |
+| `get_script` | | `script`: `text` (exactly as written; empty when none), `sounds` (the list stored with it, as sent; never read: a sound is its number), `check` (its check with the current settings) |
+| `check_script` | `text`, `sounds` (optional; accepted and not read: scripts name sounds by number) | `script_check`: `ok`, `errors`, `warnings` and, when `ok`, `effects` (how many effects; see [Show scripts](#show-scripts)) |
+| `set_script` | `text`, `sounds` (optional; stored with the text, not read), `bytes` (optional: the text's length in UTF-8 bytes as sent; when it differs from what arrived, `bad_request` and nothing is checked or stored) | `script_check`, as `check_script`. Stored only when `ok`; a text with no effects removes the stored script. `refused` (`... factory reset first, then set the script`) while a stored script from a newer firmware, or one that could not be read, is kept, and while a new firmware waits for its self-check (up to 30 s after an update); `internal` when it could not be stored or removed. Needs the page password while the page lock is on |
 | `get_backup` | | `backup` ([Backups](#backups)) |
 | `wifi_scan` | `rescan` (optional, default `false`) | `wifi_scan`: the Wi-Fi networks the board can see, see [Wi-Fi scan](#wi-fi-scan). `unsupported` on a board without Wi-Fi (no `wifi_scan` capability: the plain Pico); `refused` during a firmware update. A read: no page password needed |
 | `put_backup` | `data` (a backup), `keep_name` (optional, default `true`) | `restored` (`skipped`: setting keys this firmware does not have), or `invalid` with the first problem; nothing is changed when anything fails (also when the stored settings are kept, see `store` in `state`). `internal` when everything was applied but the script could not be stored. Needs the page password while the page lock is on |
 | `reboot` | | `done` (the lifetime run count is written first) |
-| `factory_reset` | | `done` (erases settings with the Wi-Fi, shows and the show script, restarts; a power cut part way never brings an older record back; the lifetime run count is kept), or `internal` when the flash could not be cleared (nothing restarts) |
+| `factory_reset` | `forget_board` (optional, default `false`), `keep_wifi` (optional, default `false`) | `done` (erases settings with the Wi-Fi, shows and the show script, restarts; a power cut part way never brings an older record back; the lifetime run count and the board package are kept, and the board starts with the package's defaults; `forget_board: true` also removes the board package; `keep_wifi: true` keeps the name (so the board's `name.local`), the Wi-Fi network and its password and the setup hotspot's password: everything else goes back to the defaults, and the board comes back on its network), or `internal` when the flash could not be cleared (nothing restarts) |
+| `get_board` | `preset` (optional: a built-in board's id) | `board`: `mcu` (`esp32-devkit` or `pico`: the chip socket a package must name), `running` (`id`, `name`, `source`: `built-in`, `stored` or `none`, and `problem` in plain words when the stored package cannot be used), `stored` (only when a package is stored or one was just forgotten: its `id` and `name`, `pending`: a restart is still to apply the store), `presets` (the image's built-in boards, `id` and `name`, its default first); with `preset`, `package`: that built-in board as a board package. `not_found` for an unknown preset. A read: no page password. `unsupported` on a firmware that takes no board packages (no `board_package` capability). See [Board packages](BOARD-PACKAGES.md) |
+| `set_board` | one of `package` (a [board package](BOARD-PACKAGES.md)), `preset` (a built-in board's id) or `forget: true`; `defaults` (optional: `apply` applies the package's defaults once at the next power-on, on top of the board's settings; `keep`, the default, leaves the settings) | `board_set`: `id`, `name`, `restart_needed` (the board runs on the board it started with until it restarts: send `reboot` once the person confirms), `warnings` (boot-strapping pins, in plain words). `invalid` with the first problem, naming the field (`board package: OUT3: GPIO 35 is input-only on the ESP32 and cannot drive an output`): nothing stored; `internal` when it is too big packed or could not be stored (the board keeps the one it had); `refused` over MQTT, during a firmware update and while a new image waits for its self-check. Needs the page password while the page lock is on (not on the USB serial port) |
+| `get_defaults` | | `defaults`: the running board's defaults, what a fresh board starts with: `source` (`board_package`: the stored board package's; `firmware`: the image's own, compiled in; `none`), `board` (the running board's id), and when they have them `profile` (set_profile's data), `settings` (setting name to value), `script` (the text) and `script_name` (what it is called). `refused` while a new board package waits for its restart and the running one's defaults are no longer stored. A read: no page password |
+| `apply_defaults` | `only` (optional: any of `"profile"`, `"settings"`, `"script"`; default all three) | `defaults_applied`: `source`, `applied` (the parts there were and that were applied, in the order profile, settings, script), `refused` (one plain line per value or script the board refused; the rest applied). Applied now, no restart: a firmware type change can take the new firmware's script (and the profile its words come from) and keep the board's other settings, Wi-Fi and name. `not_found` when the board has none of the parts asked for; `refused` while a new board package waits for its restart and while a new image waits for its self-check. Needs the page password while the page lock is on |
 | `reset_runs` | | `done`: the lifetime run count goes back to 0 (`runs_since_power_on` stays), written to flash at once. Needs the page password while the page lock is on. See [Run counters](#run-counters) |
+| `test_input` | `input` (TRIG1, TRIG2, USER1-3), `active`, `ms` (optional: let go after this, at most 30000) | `done`. A test press, "hold to test" for an input: held until `active: false`, its `ms`, 30 s at the most (`TEST_PRESS_MAX_MS`), or the WebSocket session that pressed it closing. While remote starts are allowed (`remote_trigger_enable`) it joins the pin's reading (OR) on the 1 ms samples, so shows, script effects and the pulse-and-recover effect react exactly as to a real press. With remote starts off it shows on the input (`test` in the state) and starts nothing, except the script effects named in `remote_free_effects`. From plain HTTP or MQTT a press needs `ms` (else `refused`). Letting go never needs the page password; a press does while the page lock is on. `refused` during a firmware update (a held press is ignored then). Capability `test_input` |
 | `sim_input` | `input`, `active` | simulator only |
 | `custom` | `name`, `data` (any JSON) | `custom` with `data`: answered by the firmware's own code (`prop.advanced().onRequest(fn)`, GOING-FURTHER.md); `not_found` when none answers. Needs the page password while the page lock is on |
 
@@ -155,7 +163,7 @@ Show validation problems (`show_error.problem`): `bad_id`, `bad_name`, `too_big`
 
 ```json
 {"v":1,"id":"a0b1c2d3e4f5","name":"Front door","fw":"generic","fw_version":"0.1.0","fw_impl":"cpp",
- "fw_build":"cf0f971","mcu":"esp32-devkit",
+ "fw_build":"cf0f971","mcu":"esp32-devkit","board":"proptroller",
  "update":{"slot":"app0","max_bytes":1966080,"state":"valid","rolled_back":false},
  "capabilities":["shows","outputs","sound","pixels","params"],
  "channels":["OUT1","OUT2","OUT3","OUT4","RLY1","RLY2","CC1","CC2"],
@@ -164,14 +172,19 @@ Show validation problems (`show_error.problem`): `bad_id`, `bad_name`, `too_big`
 ```
 
 Capabilities: `shows`, `outputs` (manual output tests), `outputs_ro` (outputs shown, not
-driven), `sound`, `pixels`, `params`, `pin` (the page lock is on), `sim`, `update` (over-the-air updates, see `update`), `backup`,
-`wifi_scan` (the board can list the Wi-Fi networks it sees: ESP32, Pico W, Pico 2 W and the simulator). A UI
-shows only what the device has.
+driven), `sound`, `pixels`, `params`, `pin` (the page lock is on), `sim`, `test_input` (test presses on the inputs), `update` (over-the-air updates, see `update`), `backup`,
+`wifi_scan` (the board can list the Wi-Fi networks it sees: ESP32, Pico W, Pico 2 W and the simulator),
+`board_package` (the board takes board packages: `get_board`, `set_board`, [BOARD-PACKAGES.md](BOARD-PACKAGES.md)),
+`defaults` (`get_defaults`, `apply_defaults`). A UI shows only what the device has.
 
 `actions` are buttons for the firmware's own controls (`key`, `label`, `confirm`: ask first, `momentary`: a
 press-and-hold button that sends `action` with `down: true`, repeated while held, and `down: false` on release;
-the built-in effect's Recover is momentary while `recover_mode` is `hold`). A control alias of the profile names
-the button with the board's word beside it: `go (Trigger)`.
+the built-in effect's Recover is momentary while `recover_mode` is `hold`; `hold`, only when true: a show-script
+start that the page sends once the button has been held for its hold time, about a second, with the setting
+`start_buttons` = `hold`). A control alias of the profile names the button with the board's word beside it:
+`go (Trigger)`; for a show script's effects, a control alias named like the effect with a `label` names its
+button, and a labelled alias of `cancel` names Cancel (the label alone). `stop_button: false` (only then): the
+setting `stop_button` is off and the page shows no STOP.
 
 `fw` is the firmware's name (`generic` unless the build sets `PROPTROLLER_FW_NAME`); `fw_version` the release
 version (`firmware/VERSION`); `fw_build` the
@@ -191,7 +204,7 @@ longest that may take, in seconds; a client waits that long plus the restart bef
  "shows":[{"id":1,"name":"Door","state":"running","elapsed_ms":1200,"length_ms":4000},{"id":2,"name":"Fog","state":"cooldown","remaining_ms":800}],
  "paused":false,
  "runs_since_power_on":12,"runs_lifetime":4810,"last_run_uptime_ms":118300,
- "sound":{"playing":true,"track":"/01/001","source":"ambient","online":true,"ambient_missing":false},
+ "sound":{"playing":true,"track":"/mp3/0002","source":"ambient","online":true,"ambient_missing":false},
  "pattern":"fast_blink",
  "status":[{"key":"run_count","value":3}],
  "net":{"mode":"sta","ip":"192.168.1.50","ssid":"Office","host":"proptroller.local","rssi":-58}}
@@ -200,13 +213,18 @@ longest that may take, in seconds; a client waits that long plus the restart bef
 `net.mode` is `sta` (on a network; `hotspot` names its own Wi-Fi, up at the same time at 192.168.4.1), `ap` (not on a network: only its own hotspot, `ssid` its name, at 192.168.4.1), `usb`, `sim` or
 `down`; `host` is the mDNS name the board answers to (see [Discovery](#discovery)), present once it has one.
 
-Levels are permille (0-1000). `waiting` = a trigger that is held and must be released before it
+Levels are permille (0-1000). An input held by a test press (`test_input`) has `test: true` and `test_starts`
+(whether it starts things: remote starts on, else it only shows). `waiting` = a trigger that is held and must be released before it
 can start a show. `pattern` is the status LED pattern (`off`, `steady`, `fast_blink`, `slow_blink`, `double_blink`,
 `triple_blink`, `flicker`, `heartbeat`, `{"count":n}`). `sound.track` and `sound.source` (`ambient`, `trigger`, `show`)
-are there only while something plays. `status` carries firmware-specific values. Only when
+are there only while something plays. `status` carries firmware-specific values (`key`, `value`; `label` when a
+profile's status alias gives one; `unit: "ms"` on a time left, whatever its name: shown as m:ss);
+`run_labels` (only with a profile that labels them) the run counters' labels. Only when
 something is wrong with the flash: `store` (plain text: the stored settings, or the stored show script, are from
 a newer firmware or could not be read, and are kept unchanged until a factory reset; changes to them are not saved) and `store_errors` (failed
-writes since power-on; a failed save is tried again, 2 s doubling to 60 s). Settings and shows are written 2 s
+writes since power-on; a failed save is tried again, 2 s doubling to 60 s). `board_problem` (only then): the stored
+board package cannot be used (damaged, from a newer firmware, or not for this chip), so no pins are driven and no
+terminal exists until a good package is sent or the stored one forgotten ([BOARD-PACKAGES.md](BOARD-PACKAGES.md)). Settings and shows are written 2 s
 after the last change once nothing runs, at most once every 30 s and at the latest 60 s after the first unsaved
 change; a change that leaves the stored record as it was (the same value again, a retained MQTT `config/set`
 redelivered, `remote_trigger_enable`) writes nothing, and the `save` action writes only when something changed.
@@ -355,7 +373,7 @@ a target the show has not reached yet is left to the others.
 |---|---|---|
 | OUT1-4 | `on`, `off`, `pulse`, `blink`, `level`, `ramp` | `pulse`: `ms`; `blink`: `on_ms`, `off_ms`, `count` (0 = until the next cue); `level`: `level`; `ramp`: `to`, `ms` |
 | RLY1-2, CC1-2 | `on`, `off`, `pulse`, `blink` | `blink`: `on_ms` and `off_ms` at least 100 (a relay or contact switches at most every 100 ms; one that went off comes on again no sooner) |
-| SOUND | `play`, `loop_folder`, `volume`, `off` | `folder` 1-99, `track` 1-255, `volume` 0-30 |
+| SOUND | `play`, `loop_folder`, `volume`, `off` | `play`: `folder` 0 and `track` 1-3000 is sound N (the card's `/mp3/NNNN…`, as in a script), `folder` 1-99 and `track` 1-255 the file `/FF/TTT.mp3`; `loop_folder`: `folder` 1-99; `volume` 0-30 |
 | PIXEL | `fill`, `flicker`, `chase`, `flash`, `fade`, `rainbow`, `off` | `color` `"#rrggbb"`, `step_ms`, `width`, `period_ms`, `ms` |
 | NET | `emit` | `cue` (1-24 characters) |
 
@@ -409,8 +427,11 @@ app's New-controller wizard from a profile file), stored with the settings and r
 ```
 
 * Each alias names exactly one `key` (a setting), `control` (`trigger`, `recover`, `cancel`, `restart`),
-  `status` (a status line) or `terminal`. `label` and `unit` are what the page shows; `invert` (true /
-  false settings) gives the opposite meaning; `scale` (number settings) is key = alias × scale.
+  `status` (a status line), `terminal` or `fixed` (a name an older tool still asks for: it always reads that
+  text, and a value set under it is accepted and changes nothing). `label` and `unit` are what the page shows
+  (and refusals say: `Valve open time is set to …`); `group` (a key alias) the Settings group it is listed in;
+  `invert` (true / false settings) gives the opposite meaning; `scale` (number settings) is key = alias × scale;
+  `also` (a key alias) lists 1-4 more keys of the same kind that a value set under the alias goes to as well.
 * Settings: `get_params` lists an aliased setting under its alias, with its label, unit and range in the
   alias's units; `set_params`, MQTT and the serial console take the alias or the generic key.
 * Status lines are reported under their aliases (State, MQTT `status/<alias>`, serial).
@@ -421,7 +442,8 @@ app's New-controller wizard from a profile file), stored with the settings and r
 * `topic_prefix` replaces `proptroller` in every MQTT topic, the broadcast topics included.
 * Refused, with the reason (nothing changes): an alias used twice, an alias equal to a setting key, a
   control, a status name or a terminal name, an unknown key / control / status / terminal, an alias of a
-  secret (`pin`, `wifi_pass`, `ap_pass`), more than 64 aliases. Key, control and status aliases: 1-32
+  secret (`pin`, `wifi_pass`, `ap_pass`), an `also` that is not other keys of the same kind (or names a
+  secret), more than 64 aliases. Key, control and status aliases: 1-32
   letters, digits or `_`; terminal aliases: 1-16 capital letters, digits or `_`, compared without case.
 
 ## Show scripts
@@ -437,6 +459,19 @@ is refused (`invalid`: `rly1_role: the stored script uses rly1. Change the scrip
 call a terminal by its wiring name (`out1_name`) or profile alias (SHOW-SCRIPT.md SS-N); renaming, removing or
 moving to another terminal a name it uses is refused the same way (`out1_name: the stored script uses lamp. ...`, and from `set_profile`
 `profile: the stored script uses fog. ...`).
+
+Every effect of a stored script can be started by its name (SHOW-SCRIPT.md SS-R10; spaces as `_`): op `action`
+with `key` the name, MQTT `…/control/<name>`, the serial console's `<name>`; `cancel` empties the waiting starts.
+A name wins over a profile's control alias. A remote start needs `remote_trigger_enable` (refusals in the
+pulse-and-recover effect's words; one start waits while the effect cannot start), except for the effects named
+in `remote_free_effects`. `info.actions` lists every effect (`Start <name>`) and `cancel`. With the built-in
+effect off, a stored script gives the effect's status lines (`run_count` of every effect; `ready`, `runs_left`
+and `cooldown_remaining_ms` of the first; `pulsing`, `recovering` as OUT1 / OUT2 on; `queued`;
+`remote_trigger_enable`, `remote_trigger_by`: SS-R13), so a profile's status aliases apply, and `out4_ready_lamp`
+makes OUT4 the first effect's ready lamp. `trig1_wait` / `trig2_wait` (`ready`, the default, or `return`) choose
+how a first `wait for` on that input starts its effect (SS-R4). Lines may name a setting for a time
+(`wait out1_on_ms`), read when they run. The stored table's format is 2; a table stored by an earlier firmware is
+checked again at power-on.
 
 The step table the checker makes stays on the board: a `script_check` (the answer of `check_script` and
 `set_script`, `get_script`'s `check`, MQTT `script/result`) carries `ok`, `errors`, `warnings` and, when `ok`,
@@ -501,10 +536,10 @@ the mDNS label of the device name (`Front Door` → `front-door`). A profile's `
 | `<p>/error` | out | why a `config/set` was refused (unknown key, out of range, bad value) |
 | `<p>/cue` | in | a cue name: sends it, like a radio cue from another controller |
 | `<p>/control/restart` | in | anything: restarts the board |
-| `<p>/control/trigger`, `…/recover`, `…/cancel` | in | the pulse-and-recover effect (a trigger needs `remote_trigger_enable`); refusals on `<p>/error` |
-| `<p>/status/<key>` | out, retained | the [run counters](#run-counters) (always, as soon as they change) and the effect's status lines (while it is on, when they change, at most once a second) |
+| `<p>/control/trigger`, `…/recover`, `…/cancel`, `…/<script effect>` | in | the pulse-and-recover effect, or a show-script effect by its name (a start needs `remote_trigger_enable` unless the effect is in `remote_free_effects`); refusals on `<p>/error` |
+| `<p>/status/<key>` | out, retained | the [run counters](#run-counters) (always, as soon as they change) and the effect's status lines (while it is on or a script is stored, when they change, at most every 0.1 s; a time left at most once a second) |
 | `<p>/status/get/<key>` | in | anything: that status value is published again |
-| `<p>/script/set` | in | `{"text": "...", "sounds": {"chime.mp3": 1}}`: checks and stores the show script |
+| `<p>/script/set` | in | `{"text": "..."}`: checks and stores the show script |
 | `<p>/script/check` | in | the same: checks it only |
 | `<p>/script/result` | out | the `script_check` result |
 
@@ -587,13 +622,14 @@ A release publishes its images and one manifest, `proptroller-firmware.json`:
 
 ```json
 {"version": "0.2.0",
- "images": [{"fw": "generic", "impl": "cpp", "mcu": "esp32-devkit", "file": "generic-esp32-devkit-0.2.0.bin",
-             "bytes": 1119456, "sha256": "…64 hex digits…"}]}
+ "images": [{"fw": "generic", "impl": "cpp", "mcu": "esp32-devkit", "board": "proptroller",
+             "file": "generic-esp32-devkit-0.2.0.bin", "bytes": 1119456, "sha256": "…64 hex digits…"}]}
 ```
 
 `fw` is the firmware's name (`info.fw`: `generic` for the stock firmware, a workspace project's folder name for
-one's own, set with `-DPROPTROLLER_FW_NAME`), `impl` its implementation (`cpp`), `mcu` the board's `info.mcu`.
-A client compares `fw_version` with `version` and offers the image whose `fw`, `impl` and `mcu` match the board;
+one's own, set with `-DPROPTROLLER_FW_NAME`), `impl` its implementation (`cpp`), `mcu` the board's `info.mcu`,
+`board` its `info.board` (an entry or a board without `board` counts as `proptroller`).
+A client compares `fw_version` with `version` and offers the image whose `fw`, `impl`, `board` and `mcu` match the board;
 the update image is `firmware.bin` (`POST /api/v1/update` with its `sha256`).
 
 First-flash images (USB), one per board, listed in the same manifest with `"first_flash": true`:
@@ -608,8 +644,9 @@ The update images come first in `images`, the first-flash entries after them, so
 entry whose `fw`, `impl` and `mcu` match gets the update image. The stock release
 (`.github/workflows/release.yml`, on a tag `v<firmware/VERSION>`; packaged by `firmware/arduino/tools/release.py`)
 names them `generic-<mcu>-<version>.bin` (update) and `first-flash-esp32-devkit-<version>.bin`,
-`first-flash-pico-w-<version>.uf2`, `first-flash-pico2-w-<version>.uf2`, for the ESP32 DevKit, the Pico W and the
-Pico 2 W (the plain Pico is built from source). The images are not signed: `sha256` is a transfer check. The browser
+`first-flash-pico-w-<version>.uf2`, `first-flash-pico2-w-<version>.uf2`, `first-flash-pico-<version>.uf2`, for the
+ESP32 DevKit, the Pico W, the Pico 2 W and the plain Pico (which has a first-flash entry only: it has no update
+capability and takes a newer `firmware.uf2` over USB). The images are not signed: `sha256` is a transfer check. The browser
 flasher for the ESP32 (ESP Web Tools) is published to GitHub Pages with its own copy of the first-flash image,
 because release downloads carry no CORS headers.
 
@@ -621,11 +658,11 @@ another board with `put_backup`:
 
 ```json
 {"format":"proptroller-backup","format_version":1,
- "from":{"id":"a0b1c2d3e4f5","name":"Front door","fw":"generic","fw_version":"0.1.0","fw_impl":"cpp","mcu":"esp32-devkit"},
+ "from":{"id":"a0b1c2d3e4f5","name":"Front door","fw":"generic","fw_version":"0.1.0","fw_impl":"cpp","mcu":"esp32-devkit","board":"proptroller"},
  "name":"Front door",
  "settings":[{"key":"debounce_ms","value":100}],
  "shows":[{"id":1,"name":"Doorbell","enabled":true,"tracks":[]}],
- "script":{"text":"effect1: ...","sounds":{"scream.mp3":1}},
+ "script":{"text":"effect1: ...","sounds":{}},
  "profile":null}
 ```
 

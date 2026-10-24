@@ -4,13 +4,13 @@
 // network); tested by firmware/web-test/take-test.mjs (node --test).
 //
 // Rules (firmware/docs/RECORD-EFFECT.md):
-// - times are rounded to a 0.1 s grid as absolute times, then written as the sleeps between them, so rounding
+// - times are rounded to a 0.1 s grid as absolute times, then written as the waits between them, so rounding
 //   never adds up over a long take; every hold lasts at least one step;
 // - two holds of one output that touch or overlap (a second pass on top of the first) become one;
 // - at the same moment, offs go before ons, then levels, then sounds, then a fade;
 // - a slider (dimmable outputs out1-out4) becomes `outN = NN%` lines in 5 % steps, at most one per 0.1 s, with
 //   repeats merged; a smooth movement becomes `fade outN to NN% over S` when nothing else in that effect happens
-//   while it fades (a fade takes its time, like sleep). Relays and contacts are on/off only; on the 0.1 s grid
+//   while it fades (a fade takes its time, like wait). Relays and contacts are on/off only; on the 0.1 s grid
 //   they never switch faster than their 100 ms minimum;
 // - a hold longer than the board's maximum on-time for that output (`<output>_max_on_ms`, 0 = no limit) is cut
 //   to the longest whole step within it, and a note says so in plain words;
@@ -212,7 +212,7 @@ function fadeCandidates(target, st) {
 const ORDER = { off: 0, set: 1, sound: 2, fade: 3 };
 
 // The events of one effect: sets (and fades where nothing else happens meanwhile), sounds.
-function effectEvents(steps, sounds, soundNames) {
+function effectEvents(steps, sounds) {
   const targets = Object.keys(steps);
   const cands = targets.flatMap((t) => fadeCandidates(t, steps[t]));
   // longest first: a long smooth movement is worth more lines than a short one
@@ -237,7 +237,7 @@ function effectEvents(steps, sounds, soundNames) {
     }
   }
   for (const f of accepted) evs.push({ t: f.start, order: ORDER.fade, kind: 'fade', target: f.target, level: f.to, dur: f.end - f.start, line: `fade ${f.target} to ${f.to}% over ${seconds(f.end - f.start)}` });
-  for (const s of sounds) evs.push({ t: s.at, order: ORDER.sound, kind: 'sound', sound: s.sound, line: `audio_single = ${soundNames[s.sound] || s.sound}` });
+  for (const s of sounds) evs.push({ t: s.at, order: ORDER.sound, kind: 'sound', sound: s.sound, line: `audio_single = ${s.sound}` });
   evs.sort((a, b) => a.t - b.t || a.order - b.order || String(a.target).localeCompare(String(b.target)));
   return evs;
 }
@@ -246,7 +246,7 @@ function bodyLines(evs) {
   const out = [];
   let now = 0;
   for (const e of evs) {
-    if (e.t > now) { out.push(`sleep ${seconds(e.t - now)}`); now = e.t; }
+    if (e.t > now) { out.push(`wait ${seconds(e.t - now)}`); now = e.t; }
     out.push(e.line);
     if (e.dur) now += e.dur;
   }
@@ -280,15 +280,14 @@ function effectName(base, suffix = '') {
 
 function build(take, o, detail) {
   const p = plan(take, o, detail);
-  const names = o.soundNames || {};
   const effect = (name, lines) => [`effect ${name}:`, `  wait for ${o.trigger}`, ...lines.map((l) => `  ${l}`)];
-  const allEvs = effectEvents(p.steps, p.sounds, names);
+  const allEvs = effectEvents(p.steps, p.sounds);
   const one = bodyLines(allEvs);
   if (one.length + 2 <= LIMITS.effectLines) return { p, effects: [effect(effectName(o.name), one)], evs: [allEvs] };
   // one effect per output (and one for sounds): each output belongs to one effect, and they start together
   const effects = [], evs = [];
   for (const t of Object.keys(p.steps).sort()) {
-    const e = effectEvents({ [t]: p.steps[t] }, [], names);
+    const e = effectEvents({ [t]: p.steps[t] }, []);
     const lines = bodyLines(e);
     if (lines.length + 2 > LIMITS.effectLines) {
       const st = p.steps[t];
@@ -301,7 +300,7 @@ function build(take, o, detail) {
     evs.push(e);
   }
   if (p.sounds.length) {
-    const e = effectEvents({}, p.sounds, names);
+    const e = effectEvents({}, p.sounds);
     const lines = bodyLines(e);
     if (lines.length + 2 > LIMITS.effectLines) return { p, error: `That is too much for one board: ${p.sounds.length} sounds in one take. Try a shorter take.` };
     effects.push(effect(effectName(o.name, 'sound'), lines));
@@ -313,7 +312,7 @@ function build(take, o, detail) {
 
 /** The take as an effect script.
  * Options: name, trigger ('trig1' … 'user3'), maxOnMs { out1: ms }, labels { out1: 'lamp' },
- * soundNames { 1: 'scream.mp3' }, step (ms, 100), trimLead (true), source (where it was recorded, for the comment at the
+ * step (ms, 100), trimLead (true), source (where it was recorded, for the comment at the
  * top: 'in Specter Studio', 'on the phone page').
  * Result: { text, error?, effects (count), notes, steps, segments, sounds, lengthMs, timeline }. */
 export function takeToScript(take, o) {

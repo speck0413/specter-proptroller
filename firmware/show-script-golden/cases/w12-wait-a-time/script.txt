@@ -1,0 +1,12 @@
+effect t:
+wait for trig1
+wait 0.4
+wait 200 ms
+WAIT 3 min
+wait for 2 s
+wait for 2 seconds
+Wait For 1.5
+wait out1_on_ms
+wait for cooldown_ms
+wait2
+sleep 1

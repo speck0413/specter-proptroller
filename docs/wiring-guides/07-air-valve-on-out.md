@@ -36,7 +36,7 @@ Wire a DC 12 V air valve (or a push solenoid) to OUT1 for a jump scare, with a d
 7. **Test it.** Power the board. On the Live tab, in the Outputs card, press On next to OUT1. The valve clicks, and the light by OUT1 comes on. Then press Auto.
    (How to open the board’s page: [Meet your board](00-meet-your-board.md), step "Connect your phone".)
 8. **A safety limit.** Air valves may stay on. A push solenoid is made for short pulses and gets hot. For a solenoid: Settings > Watchdogs > "OUT1 max on" = 2000 (ms) > Save settings. The board then switches it off after 2 s, whatever the show says.
-9. **Use it in a show.** In a show script: `out1 = on`, `sleep 0.5`, `out1 = off` gives a half-second blast.
+9. **Use it in a show.** In a show script: `out1 = on`, `wait 0.5`, `out1 = off` gives a half-second blast.
 
 ## Not working?
 

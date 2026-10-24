@@ -1,0 +1,80 @@
+{
+  "spec": [
+    "SS-R4",
+    "SS-R8"
+  ],
+  "sounds": {},
+  "settings": {
+    "trig1_wait": "return"
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 1500,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 2300,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 3500,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 3650,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 3800,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 3950,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 6000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            3100,
+            0
+          ],
+          [
+            3600,
+            1000
+          ],
+          [
+            4600,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

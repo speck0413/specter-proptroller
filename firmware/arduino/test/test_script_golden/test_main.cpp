@@ -98,7 +98,12 @@ struct GoldenBoard {
     for (; df_seen < fr.size(); df_seen++) {
       Millis t = fr[df_seen].t + bootAt();
       uint8_t c = fr[df_seen].cmd;
-      if (t >= t0 && (c == 0x0F || c == 0x17 || c == 0x16)) sound.push_back({t - t0, {c, fr[df_seen].param}});
+      uint16_t prm = fr[df_seen].param;
+      // a loop in the mp3 folder is the same 0x12 again when its track ends (sound.h): not a frame of its own here
+      bool again = false;
+      if (c == 0x12)
+        for (auto& f : sim.world().df.finished) again |= f.second == prm && fr[df_seen].t >= f.first && fr[df_seen].t - f.first <= 100;
+      if (t >= t0 && !again && (c == 0x12 || c == 0x03 || c == 0x08 || c == 0x16)) sound.push_back({t - t0, {c, prm}});
     }
     auto& dm = sim.world().dmx_frames;
     for (; dmx_seen < dm.size(); dmx_seen++) {
@@ -174,7 +179,25 @@ static bool runTrace(const std::string& name, JsonDocument& cs, const std::strin
     Millis at = b.t0 + e.first;
     if (at > sim.now()) sim.step(at - sim.now());
     if (e.second["power_on"] | false) b.powerCycle();
-    else {
+    else if (!e.second["control"].isNull()) {
+      // a control from the web, MQTT or serial (README "The trace": trigger, recover, cancel)
+      JsonDocument q;
+      q["op"] = "action";
+      q["key"] = e.second["control"];
+      std::string qs;
+      serializeJson(q, qs);
+      (void)sim.request(qs);
+    } else if (!e.second["set"].isNull()) {
+      // a setting changed (as on the serial console: key=value)
+      for (JsonPairConst kv : e.second["set"].as<JsonObjectConst>()) {
+        std::string v;
+        if (kv.value().is<bool>()) v = kv.value().as<bool>() ? "true" : "false";
+        else if (kv.value().is<long>()) v = std::to_string(kv.value().as<long>());
+        else v = kv.value().as<std::string>();
+        std::string out = sim.serial(std::string(kv.key().c_str()) + "=" + v);
+        if (out.compare(0, 6, "error:") == 0) { fail(name, "set refused: " + out); return false; }
+      }
+    } else {
       Input in;
       (void)parseInput(e.second["in"] | "", in);
       sim.setInput(in, e.second["closed"] | false);
@@ -282,8 +305,10 @@ static bool runTrace(const std::string& name, JsonDocument& cs, const std::strin
       std::string kind = want[i][1];
       uint8_t c = got[i].second.first;
       uint16_t p = got[i].second.second;
-      bool k = (kind == "play" && c == 0x0F && (p >> 8) == want[i][2].as<int>() && (p & 0xFF) == 1) ||
-               (kind == "loop" && c == 0x17 && p == want[i][2].as<int>()) || (kind == "stop" && c == 0x16);
+      // sound N: 0x12 N in the mp3 folder (0x03 N to play, 0x08 N to loop with SoundMode::Root)
+      bool mp3 = SOUND_MODE == SoundMode::Mp3;
+      bool k = (kind == "play" && c == (mp3 ? 0x12 : 0x03) && p == want[i][2].as<int>()) ||
+               (kind == "loop" && c == (mp3 ? 0x12 : 0x08) && p == want[i][2].as<int>()) || (kind == "stop" && c == 0x16);
       same = k && got[i].first >= t && got[i].first <= t + SOUND_SLACK_MS;
     }
     if (!same) {

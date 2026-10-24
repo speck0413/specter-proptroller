@@ -12,6 +12,6 @@
 effect prop:
   wait for trig1
   rly1 = on        # presses the prop's button
-  sleep 0.5
+  wait 0.5
   rly1 = off
-  sleep 60         # rest before the next scare
+  wait 60          # rest before the next scare

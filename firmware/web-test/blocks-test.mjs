@@ -31,7 +31,20 @@ test('a changed block rewrites only its line (indentation and comment kept)', ()
   const m = textToBlocks('effect fog:   # the porch\n  wait for trig2\n  rly1 = on    # the remote\n  sleep 3.\n  rly1 = off\n');
   all(m).find((b) => b.type === 'ps_sleep').f.TIME = '5';
   all(m).find((b) => b.type === 'ps_set').f.LEVEL = '50%';
-  assert.equal(blocksToText(m), 'effect fog:   # the porch\n  wait for trig2\n  rly1 = 50%    # the remote\n  sleep 5\n  rly1 = off\n');
+  assert.equal(blocksToText(m), 'effect fog:   # the porch\n  wait for trig2\n  rly1 = 50%    # the remote\n  wait 5\n  rly1 = off\n');
+});
+
+test('wait <time> and wait for <time> are a time block, wait for <input> an input block, sleep still a time block', () => {
+  for (const [l, t, v] of [['wait 2', 'ps_sleep', '2'], ['WAIT 200 ms', 'ps_sleep', '200 ms'], ['wait for 2 s', 'ps_sleep', '2 s'],
+    ['wait out1_on_ms', 'ps_sleep', 'out1_on_ms'], ['wait for cooldown_ms', 'ps_sleep', 'cooldown_ms'], ['sleep 1', 'ps_sleep', '1']]) {
+    assert.equal(parse(l).type, t, l);
+    assert.equal(parse(l).f.TIME, v, l);
+  }
+  assert.equal(parse('wait for trig1').type, 'ps_wait');
+  assert.equal(parse('wait for door').f.INPUT, 'door');
+  assert.equal(parse('wait trig1').type, 'ps_raw');
+  assert.equal(parse('wait air_on_time').type, 'ps_sleep');  // a setting's alias: the board knows it
+  assert.deepEqual(KINDS.ps_sleep.words, ['wait', 'TIME']);
 });
 
 test('sorts lines into kinds', () => {
@@ -42,6 +55,19 @@ test('sorts lines into kinds', () => {
   assert.equal(parse('hello there').type, 'ps_raw');
   assert.equal(parse('audio_stop').type, 'ps_audio_stop');
   assert.deepEqual(parse('  flicker lamp for 5 # spooky').f, { TARGET: 'lamp', TIME: '5' });
+  // the advanced lines (SHOW-SCRIPT.md §9)
+  assert.deepEqual(parse('  pulse cc1 for 200 ms').f, { TARGET: 'cc1', TIME: '200 ms' });
+  assert.equal(parse('pulse cc1 for 200 ms').type, 'ps_pulse');
+  assert.deepEqual(parse('limit 3 runs per 3 min').f, { RUNS: '3', TIME: '3 min' });
+  assert.deepEqual(parse('LIMIT runs_per_cooldown RUNS PER cooldown_ms').f, { RUNS: 'runs_per_cooldown', TIME: 'cooldown_ms' });
+  assert.deepEqual(parse('audio_loop = off').f, { SOUND: 'off' });
+});
+
+test('the advanced lines as new blocks write their plain form', () => {
+  const m = textToBlocks('effect a:\n  wait for trig1\n  out1 = on\n');
+  const e = m.blocks[0];
+  e.lines.splice(1, 0, newBlock('ps_limit', { RUNS: '1', TIME: '30' }), newBlock('ps_pulse'));
+  assert.equal(blocksToText(m), 'effect a:\n  wait for trig1\n  limit 1 run per 30\n  pulse cc1 for 200 ms\n  out1 = on\n');
 });
 
 test('blank lines get no block and stay where they were, also after a change', () => {
@@ -67,13 +93,26 @@ test('new, moved and removed blocks', () => {
   // a new block keeps the script's own line endings
   const w = textToBlocks('effect a:\r\n  wait for trig1\r\n');
   w.blocks[0].lines.push(newBlock('ps_sleep'));
-  assert.equal(blocksToText(w), 'effect a:\r\n  wait for trig1\r\n  sleep 1\r\n');
+  assert.equal(blocksToText(w), 'effect a:\r\n  wait for trig1\r\n  wait 1\r\n');
 });
 
 test('the words of every kind are the words Studio shows', () => {
   const words = (t, f) => KINDS[t].words.map((w) => (w in KINDS[t].fields ? f[w] : w)).join(' ');
-  assert.equal(words('ps_audio_single', { SOUND: 'chime.mp3' }), 'play sound chime.mp3 once');
-  assert.equal(words('ps_audio_loop', { SOUND: 'rain.mp3' }), 'play sound rain.mp3 over and over');
+  assert.equal(words('ps_audio_single', { SOUND: '3' }), 'play sound 3 once');
+  assert.equal(words('ps_audio_loop', { SOUND: '2' }), 'play sound 2 over and over');
+  assert.equal(words('ps_audio_volume', { VOLUME: '60%' }), 'sound volume 60%');
   assert.equal(words('ps_audio_stop', {}), 'stop the sound');
   assert.deepEqual(fieldsOf('ps_fade'), ['TARGET', 'LEVEL', 'TIME']);
+});
+
+test('sound blocks default to numbers, and no block names a file except the card layout 0001-….mp3', () => {
+  assert.match(KINDS.ps_audio_single.fields.SOUND, /^\d+$/);
+  assert.match(KINDS.ps_audio_loop.fields.SOUND, /^\d+$/);
+  assert.deepEqual(KINDS.ps_audio_volume.slider.VOLUME, [0, 100, '%']);
+  assert.equal(parse('audio_volume = 40%').type, 'ps_audio_volume');
+  assert.equal(blocksToText({ eol: '\n', blocks: [newBlock('ps_audio_volume')] }), 'audio_volume = 60%\n');
+  for (const [t, k] of Object.entries(KINDS)) {
+    const all = [k.tip, ...k.words, ...Object.values(k.fields)].join(' ');
+    for (const m of all.match(/\S*\.mp3/g) || []) assert.match(m, /^[0-9N]{4}-…\.mp3$/, `${t}: ${m}`);
+  }
 });

@@ -11,6 +11,7 @@
 // ByteStream, PixelOut and Storage implementations.
 #pragma once
 #include "board.h"
+#include "board_package.h"
 #include "netapp.h"
 #include "script.h"
 #include "settings.h"
@@ -35,6 +36,17 @@ ScriptBoard scriptBoardFor(const Settings& s);
 std::string scriptSubject(const std::string& message);
 // The DFPlayer driver settings (boot: with the power-on delay).
 DfConfig dfConfig(const Settings& s, bool boot);
+
+// What a board support package gives a fresh board (nothing stored yet, or after a factory reset): any of an
+// alias profile (set_profile's JSON), settings ("key=value" lines, as on the serial console; key aliases of
+// that profile work) and a show script. Applied in that order; null or "" leaves that part out. The board
+// keeps them like anything set by hand (a later change is not undone at the next power-on).
+struct FactoryDefaults {
+  const char* profile = nullptr;
+  const char* settings = nullptr;
+  const char* script = nullptr;
+  const char* script_name = nullptr;  // what the script is called (get_defaults), optional
+};
 
 class Controller : public Firmware {
  public:
@@ -114,6 +126,21 @@ class Controller : public Firmware {
   // for the loop to do: the step never writes the flash itself. Call it after tick(), from the loop, holding the
   // lock: it gives the lock back while the flash is written (setLockHooks), so the step keeps its 10 ms.
   void background();
+  // A board support package's defaults (FactoryDefaults): applied only when the board had no stored settings
+  // at power-on (call after setScriptStore). Returns what was refused, one line each ("" when everything took).
+  // `force`: also on a board that has stored settings (a board package's defaults asked for with set_board).
+  std::string applyFactoryDefaults(const FactoryDefaults& d, bool force = false);
+  // Board packages (board_package.h, BOARD-PACKAGES.md): the package's own store (nullptr: this firmware takes none,
+  // get_board / set_board answer unsupported), what the board runs with since power-on, the chip's pin rules and
+  // the image's built-in boards. A stored package that could not be used counts as an unreadable record (a new
+  // image then fails its self-check).
+  void setBoardPackages(Storage* store, const BoardBoot& running, const ChipRules& chip, const std::vector<BuiltinBoard>& builtins);
+  // The board's defaults at power-on (call after setScriptStore and setBoardPackages): the stored package's on a
+  // fresh board or once after set_board asked for them, else `image` (a board support package compiled in) on a
+  // fresh board. Returns what was refused, one line each ("" when everything took).
+  std::string applyBoardDefaults(const FactoryDefaults* image);
+  const BoardBoot& boardRunning() const { return board_boot_; }
+  bool freshBoard() const { return fresh_; }
   // Shows defined by the sketch: not stored (the sketch adds them again at every boot).
   ShowError addCodeShow(const Show& s);
 
@@ -251,6 +278,12 @@ class Controller : public Firmware {
   std::string doRecover();
   std::string refusedText(EffectRefused why) const;
   void effectStatus(std::vector<ParamValue>& out, bool aliased = true) const;
+  // a show script with an effect that says "or remote" / "or remote recover": its controls and status
+  int scriptEffect(const std::string& name) const;
+  uint8_t scriptFreeEffects() const;
+  Response scriptStart(const Request& r, int effect);
+  void scriptStatus(std::vector<ParamValue>& out, bool aliased) const;
+  void scriptValues();  // the settings a script line may name, to the runner
   // the run counters as status values (runs_since_power_on, runs_lifetime, last_run_uptime_ms when there was one)
   void runStatus(std::vector<ParamValue>& out, bool aliased = true) const;
   // a run started (runs.h): counted, and a "run" event (MQTT <p>/event/run) says what started it
@@ -268,6 +301,7 @@ class Controller : public Firmware {
   bool getOut(const std::string& name, Value& out) const;
   std::string consoleAnswer(const std::string& line);
   std::string aliasFor(AliasEntry::Kind k, const std::string& target) const;
+  static std::vector<ParamValue> withAlso(const AliasEntry* a, const std::string& key, const Value& v);
   const AliasEntry* aliasNamed(const std::string& alias) const;
   std::string topicRoot() const;
   void noticeOut(const Notice& n);
@@ -324,6 +358,18 @@ class Controller : public Firmware {
   Millis manual_until_[CHANNEL_COUNT] = {0};      // a manual pulse ends at (0: held)
   uint32_t manual_session_[CHANNEL_COUNT] = {0};  // the phone page holding a manual output (0: none)
   uint32_t pixel_session_ = 0;
+  // test presses (op test_input): held until let go, its time is up (at most TEST_PRESS_MAX_MS) or the page holding
+  // it closes. They join the pins' readings in readInputs, as a real press, when a remote start is allowed
+  // (remote_trigger_enable); without it they show on the input and start nothing, except the script effects named
+  // in remote_free_effects (scriptInputs)
+  Millis test_until_[INPUT_COUNT] = {0, 0, 0, 0, 0};    // a held test press ends at (0: none held)
+  uint32_t test_session_[INPUT_COUNT] = {0, 0, 0, 0, 0}; // the page holding it (0: none)
+  Millis test_on_since_[INPUT_COUNT] = {0, 0, 0, 0, 0};  // when it was pressed
+  Millis test_off_since_[INPUT_COUNT] = {0, 0, 0, 0, 0}; // when it was let go
+  bool testHeld(int k) const { return test_until_[k] != 0 && !updating(); }
+  bool testStarts() const { return settings_.fx.remote_trigger_enable; }
+  void testRelease(int k, Millis now);
+  void expireTests(Millis now);
   Millis pin_wait_ms_ = 0, pin_wait_until_ = 0;  // the page password's throttle
   size_t (*heap_probe_)() = nullptr;
   size_t (*block_probe_)() = nullptr;
@@ -388,10 +434,13 @@ class Controller : public Firmware {
     std::string host;
     uint16_t port = 0;
     uint32_t epoch = 0;
-    Millis status_at = 0;
+    Millis status_at = 0, time_left_at = 0;
   } mqtt_;
   // every setting as MQTT messages, built from a copy without the lock
   std::vector<MqttMsg> configMsgsUnlocked(const std::string& prefix, const std::vector<ParamValue>& status);
+  // the effect's status values go out when they change, at most every MQTT_STATUS_MIN_MS (a short gap between two
+  // runs still shows); a time left (counting down every ms) at most every MQTT_STATUS_PERIOD_MS
+  static const Millis MQTT_STATUS_MIN_MS = 100;
   static const Millis MQTT_STATUS_PERIOD_MS = 1000;
   // show scripts
   Storage* script_store_ = nullptr;
@@ -446,6 +495,7 @@ class Controller : public Firmware {
   bool records_ok_ = true;
   bool self_check_done_ = false;
   bool store_migrated_ = false;   // the settings record was converted from an older format (in RAM)
+  bool fresh_ = false;            // nothing was stored at power-on (a new board, or after a factory reset)
   int store_newer_ = 0;           // the settings record's format when it is from a newer firmware (kept)
   bool store_unreadable_ = false; // the settings record could not be read (kept until a factory reset)
   bool wiped_ = false;             // a factory reset cleared the flash: nothing is written until the restart
@@ -463,6 +513,25 @@ class Controller : public Firmware {
   void selfCheckVerdict();
   void updateStateJson(JsonObject o) const;
   Response backupOp(Request& r);
+  Response boardOp(Request& r);
+  // get_defaults / apply_defaults: the running board's defaults (its board package's, else the image's own)
+  Response defaultsOp(Request& r);
+  // the running board's defaults as text; false when they cannot be read (`source`: "board_package", "firmware" or
+  // "none"; `why` when false)
+  bool runningDefaults(std::string& source, std::string& profile, std::string& settings, std::string& script, std::string& script_name,
+                       std::string& why);
+  FactoryDefaults image_defaults_;  // the image's own (compiled in), kept from applyBoardDefaults
+  // factory_reset keep_wifi: what the reset kept (name, Wi-Fi, hotspot password), put back after the defaults
+  std::unique_ptr<Settings> reset_kept_;
+  void restoreKept();
+  // board packages
+  Storage* board_store_ = nullptr;
+  BoardBoot board_boot_;
+  ChipRules chip_;
+  std::vector<BuiltinBoard> builtins_;
+  bool board_stored_ = false;             // a package is in the store (as this board last read or wrote it) ...
+  std::string board_stored_id_, board_stored_name_;  // ... this one
+  bool board_pending_ = false;            // the store differs from what runs: a restart applies it
   std::string restore(Request& r, bool keep_name, std::vector<std::string>& skipped);
 };
 

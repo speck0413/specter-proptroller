@@ -1,0 +1,10 @@
+effect one:
+  wait for trig1
+  out1 = on
+  sleep 1
+  out1 = off
+effect two:
+  wait for trig1
+  out1 = 50%
+  sleep 1
+  out1 = off

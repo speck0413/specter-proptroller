@@ -34,7 +34,6 @@ EngineConfig Settings::engine() const {
 SoundConfig Settings::sound() const {
   SoundConfig c;
   c.ambient = ambient;
-  c.ambient_folder = ambient_folder;
   c.ambient_track = ambient_track;
   c.ambient_volume = ambient_volume;
   c.trigger_track = trigger_track;
@@ -56,12 +55,14 @@ static std::string lower(const char* s) {
 
 // Every limit of the settings, named.
 static const uint16_t NAME_MAX_LEN = 32, PAGE_PASSWORD_MAX_LEN = 32, SSID_MAX_LEN = 32, WIFI_PASS_MAX_LEN = 63, BROKER_MAX_LEN = 64;
+// remote_free_effects: a few effect names (an effect name has up to 32 characters)
+static const uint16_t REMOTE_FREE_MAX_LEN = 128;
 static const uint16_t TERMINAL_NAME_MAX_LEN = 24;
 static const uint32_t SOFT_START_MAX_MS = 2000, MAX_ON_MAX_MS = 3600000;
 // the reference's range for both (STATE-MACHINE.md): 10-1000 ms
 static const uint32_t TRIG_DEBOUNCE_MIN_MS = 10, TRIG_DEBOUNCE_MAX_MS = 1000, TRIG_RELEASE_MIN_MS = 10, TRIG_RELEASE_MAX_MS = 1000;
 static const uint32_t PIXEL_COUNT_MAX = 600;
-static const uint32_t FOLDER_MAX = 99, TRACK_MAX = 255, VOLUME_MAX = 30, SOUND_TRACK_MAX = 3000, PORT_MAX = 65535;
+static const uint32_t VOLUME_MAX = 30, PORT_MAX = 65535;
 static const uint32_t ROLE_PULSE_MIN_MS = 20, ROLE_PULSE_MAX_MS = 5000;
 
 // One row of the settings table: what ParamDesc::integer / boolean / text / choice and withHelp / needsReboot
@@ -97,25 +98,37 @@ static const ParamRow DEVICE_ROWS[] = {
   "switch: switch, button or relay contact (closes to ground). sensor_high: powered sensor (its signal goes high), "   \
   "fed from the jack's ring (3.3 V, 15 mA at most); it must drive its signal low when idle, or it reads as always "    \
   "on. In sensor_high an unplugged cable counts as a trigger: use switch for anything safety-related"
+// the help of trig1_wait / trig2_wait (SHOW-SCRIPT.md SS-R4)
+#define TRIG_WAIT_HELP                                                                                              \
+  "How a show script's first \"wait for\" on this input starts its effect. ready: released since the effect's last " \
+  "run, then held for the debounce while the effect could start (a press held through a run starts the next one "  \
+  "as soon as it can; taps while it cannot start are not saved). return: a press after a release of about 0.2 s; "  \
+  "one while the effect cannot start (its own run too) is saved and starts it when it can if still held then"
 static const ParamRow BOARD_ROWS[] = {
   {P_BOOL("interlock_relays", "RLY1 / RLY2 never together", "Outputs"), "For reversing a motor with the two relays", false},
   {P_CHOICE("trig2", "TRIG2 role", "Inputs", "trigger|pause"), "", false},
   {P_CHOICE("trig1_input", "TRIG1 input type", "Inputs", "switch|sensor_high"), TRIG_INPUT_HELP, false},
   {P_CHOICE("trig2_input", "TRIG2 input type", "Inputs", "switch|sensor_high"), TRIG_INPUT_HELP, false},
+  {P_CHOICE("trig1_wait", "TRIG1 starts a script effect", "Inputs", "ready|return"), TRIG_WAIT_HELP, false},
+  {P_CHOICE("trig2_wait", "TRIG2 starts a script effect", "Inputs", "ready|return"), TRIG_WAIT_HELP, false},
+  {P_TEXT("remote_free_effects", "Script effects started remotely without the remote trigger", "Inputs", REMOTE_FREE_MAX_LEN, false),
+   "Names of show-script effects, separated by commas, that the web page, MQTT and serial may start without "
+   "remote_trigger_enable (one start waits while they are busy). Every other effect needs it", false},
   {P_INT("trig_debounce_ms", "Trigger debounce", "Inputs", TRIG_DEBOUNCE_MIN_MS, TRIG_DEBOUNCE_MAX_MS, "ms"), "For the pulse-and-recover effect: the hold-to-confirm time (TRIG1 closed this long while ready starts a run)", false},
   {P_INT("trig_release_ms", "Trigger re-arm after release", "Inputs", TRIG_RELEASE_MIN_MS, TRIG_RELEASE_MAX_MS, "ms"), "", false},
   {P_INT("pixel_count", "Pixels", "Pixels", 0, PIXEL_COUNT_MAX, ""), "", false},
   {P_INT("pixel_brightness", "Pixel brightness", "Pixels", 0, PIXEL_BRIGHTNESS_MAX, "%"), "A cap on every colour (100 = full); the firmware does not measure pixel current", false},
   {P_CHOICE("dmx_port", "DMX port", "Expansion", "off|s4"), "s4 sends DMX to a MAX485 module on expansion S4 (SHOW-SCRIPT.md \xc2\xa7" "7.4)", false},
-  {P_BOOL("ambient", "Ambient sound while idle", "Sound"), "Loops /01/001.mp3 (folder 01, file 001); skipped when the card has no such file", false},
-  {P_INT("ambient_folder", "Ambient folder", "Sound", 1, FOLDER_MAX, ""), "", false},
-  {P_INT("ambient_track", "Ambient file in that folder", "Sound", 1, TRACK_MAX, ""), "", false},
+  {P_BOOL("ambient", "Ambient sound while idle", "Sound"), "Loops the ambient sound; skipped when the card has no such file", false},
+  {P_INT("ambient_track", "Ambient sound", "Sound", 1, SOUND_MAX_TRACK, ""), "Sound 1 is the card's mp3/0001-<name>.mp3, sound 2 mp3/0002-<name>.mp3, \xe2\x80\xa6", false},
   {P_INT("ambient_volume", "Ambient volume", "Sound", 0, VOLUME_MAX, ""), "", false},
-  {P_INT("trigger_track", "Trigger sound", "Sound", 1, SOUND_TRACK_MAX, ""), "Plays /mp3/0001.mp3 for 1; if the file is not there, the first file on the card", false},
+  {P_INT("trigger_track", "Trigger sound", "Sound", 1, SOUND_MAX_TRACK, ""), "Sound 1 is the card's mp3/0001-<name>.mp3, sound 2 mp3/0002-<name>.mp3, \xe2\x80\xa6", false},
   {P_INT("trigger_volume", "Trigger sound volume", "Sound", 0, VOLUME_MAX, ""), "", false},
   {P_BOOL("df_ack", "Ask the player for ACKs", "Sound"), "Turn off for clones that never answer", false},
   {P_BOOL("df_checksum", "Send checksums", "Sound"), "", false},
   {P_BOOL("status_led", "Status LED", "Device"), "", false},
+  {P_BOOL("stop_button", "STOP button on the page", "Device"), "Off hides the phone page's STOP (for a prop whose emergency stop is pulling the power)", false},
+  {P_CHOICE("start_buttons", "Start buttons on the page", "Device", "click|hold"), "How the phone page's buttons start a script effect: a click, or a press held about a second (letting go early sends nothing)", false},
   {P_TEXT("mqtt_broker", "MQTT broker", "MQTT", BROKER_MAX_LEN, false), "Host name or address; empty = MQTT off. Topics: proptroller/<name>/\xe2\x80\xa6", true},
   {P_INT("mqtt_port", "MQTT port", "MQTT", 1, PORT_MAX, ""), "", true},
 };
@@ -279,13 +292,14 @@ bool Settings::get(const std::string& key, Value& out) const {
   else if (key == "interlock_relays") out = Value::boolean(interlock_relays);
   else if (key == "trig2") out = Value::text(trig2 == Trig2Role::Pause ? "pause" : "trigger");
   else if (key == "trig1_input" || key == "trig2_input") out = Value::text(trig_sensor_high[key[4] - '1'] ? "sensor_high" : "switch");
+  else if (key == "trig1_wait" || key == "trig2_wait") out = Value::text(trig_wait_return[key[4] - '1'] ? "return" : "ready");
+  else if (key == "remote_free_effects") out = Value::text(remote_free_effects);
   else if (key == "trig_debounce_ms") out = Value::integer(trig_debounce_ms);
   else if (key == "trig_release_ms") out = Value::integer(trig_release_ms);
   else if (key == "dmx_port") out = Value::text(dmx_s4 ? "s4" : "off");
   else if (key == "pixel_count") out = Value::integer(pixel_count);
   else if (key == "pixel_brightness") out = Value::integer(pixel_brightness);
   else if (key == "ambient") out = Value::boolean(ambient);
-  else if (key == "ambient_folder") out = Value::integer(ambient_folder);
   else if (key == "ambient_track") out = Value::integer(ambient_track);
   else if (key == "ambient_volume") out = Value::integer(ambient_volume);
   else if (key == "trigger_track") out = Value::integer(trigger_track);
@@ -294,6 +308,8 @@ bool Settings::get(const std::string& key, Value& out) const {
   else if (key == "df_ack") out = Value::boolean(df_ack);
   else if (key == "df_checksum") out = Value::boolean(df_checksum);
   else if (key == "status_led") out = Value::boolean(status_led);
+  else if (key == "stop_button") out = Value::boolean(stop_button);
+  else if (key == "start_buttons") out = Value::text(start_hold ? "hold" : "click");
   else if (key == "mqtt_broker") out = Value::text(mqtt_broker);
   else if (key == "mqtt_port") out = Value::integer(mqtt_port);
   else if (key == "effect") out = Value::text(effect_on ? "pulse_and_recover" : "none");
@@ -366,11 +382,11 @@ const char* Settings::set(const std::string& key, const Value& v) {
     return nullptr;
   }
   struct S { const char* k; std::string* p; };
-  S texts[] = { {"wifi_ssid", &wifi_ssid}, {"wifi_pass", &wifi_pass}, {"mqtt_broker", &mqtt_broker}};
+  S texts[] = { {"wifi_ssid", &wifi_ssid}, {"wifi_pass", &wifi_pass}, {"mqtt_broker", &mqtt_broker}, {"remote_free_effects", &remote_free_effects}};
   for (auto& t : texts)
     if (key == t.k) { if (!isText) return "wrong type"; *t.p = v.s; return nullptr; }
   struct B { const char* k; bool* p; };
-  B bools[] = {{"page_lock", &page_lock}, {"interlock_relays", &interlock_relays}, {"ambient", &ambient}, {"df_ack", &df_ack}, {"df_checksum", &df_checksum}, {"status_led", &status_led}};
+  B bools[] = {{"page_lock", &page_lock}, {"interlock_relays", &interlock_relays}, {"ambient", &ambient}, {"df_ack", &df_ack}, {"df_checksum", &df_checksum}, {"status_led", &status_led}, {"stop_button", &stop_button}};
   for (auto& b : bools)
     if (key == b.k) { if (!isBool) return "wrong type"; *b.p = v.b; return nullptr; }
   if (key == "effect") { if (!isText) return "wrong type"; effect_on = v.s == "pulse_and_recover"; return nullptr; }
@@ -394,9 +410,15 @@ const char* Settings::set(const std::string& key, const Value& v) {
     trig_sensor_high[key[4] - '1'] = v.s == "sensor_high";
     return nullptr;
   }
+  if (key == "trig1_wait" || key == "trig2_wait") {
+    if (!isText) return "wrong type";
+    trig_wait_return[key[4] - '1'] = v.s == "return";
+    return nullptr;
+  }
   if (key == "dmx_port") { if (!isText) return "wrong type"; dmx_s4 = v.s == "s4"; return nullptr; }
+  if (key == "start_buttons") { if (!isText) return "wrong type"; start_hold = v.s == "hold"; return nullptr; }
   static const char* const INT_KEYS[] = {"trig_debounce_ms", "trig_release_ms", "pixel_count",
-                                         "pixel_brightness", "ambient_folder", "ambient_track", "ambient_volume", "trigger_track",
+                                         "pixel_brightness", "ambient_track", "ambient_volume", "trigger_track",
                                          "trigger_volume", "role_pulse_ms", "mqtt_port"};
   bool known = false;
   for (auto k : INT_KEYS) known |= key == k;
@@ -407,8 +429,7 @@ const char* Settings::set(const std::string& key, const Value& v) {
   else if (key == "trig_release_ms") trig_release_ms = (uint32_t)x;
   else if (key == "pixel_count") pixel_count = (uint16_t)x;
   else if (key == "pixel_brightness") pixel_brightness = (uint8_t)x;
-  else if (key == "ambient_folder") ambient_folder = (uint8_t)x;
-  else if (key == "ambient_track") ambient_track = (uint8_t)x;
+  else if (key == "ambient_track") ambient_track = (uint16_t)x;
   else if (key == "ambient_volume") ambient_volume = (uint8_t)x;
   else if (key == "trigger_track") trigger_track = (uint16_t)x;
   else if (key == "trigger_volume") trigger_volume = (uint8_t)x;
@@ -445,13 +466,15 @@ void Settings::toJson(JsonObject o) const {
   // only when not the default: a record from before the setting is written back unchanged
   if (trig_sensor_high[0]) o["trig1_input"] = "sensor_high";
   if (trig_sensor_high[1]) o["trig2_input"] = "sensor_high";
+  if (trig_wait_return[0]) o["trig1_wait"] = "return";
+  if (trig_wait_return[1]) o["trig2_wait"] = "return";
+  if (!remote_free_effects.empty()) o["remote_free_effects"] = remote_free_effects;
   o["trig_debounce_ms"] = trig_debounce_ms;
   o["trig_release_ms"] = trig_release_ms;
   o["dmx_port"] = dmx_s4 ? "s4" : "off";
   o["pixel_count"] = pixel_count;
   o["pixel_brightness"] = pixel_brightness;
   o["ambient"] = ambient;
-  o["ambient_folder"] = ambient_folder;
   o["ambient_track"] = ambient_track;
   o["ambient_volume"] = ambient_volume;
   o["trigger_track"] = trigger_track;
@@ -464,6 +487,9 @@ void Settings::toJson(JsonObject o) const {
   o["df_ack"] = df_ack;
   o["df_checksum"] = df_checksum;
   o["status_led"] = status_led;
+  // only when not the default: a record from before the setting is written back unchanged
+  if (!stop_button) o["stop_button"] = false;
+  if (start_hold) o["start_buttons"] = "hold";
   o["mqtt_broker"] = mqtt_broker;
   o["mqtt_port"] = mqtt_port;
   // the effect (remote_trigger_enable is never stored, SM-R1)
@@ -504,6 +530,9 @@ void Settings::fromJson(JsonVariantConst v) {
   if (v["trig2"].is<const char*>()) trig2 = !strcmp(v["trig2"], "pause") ? Trig2Role::Pause : Trig2Role::Trigger;
   if (v["trig1_input"].is<const char*>()) trig_sensor_high[0] = !strcmp(v["trig1_input"], "sensor_high");
   if (v["trig2_input"].is<const char*>()) trig_sensor_high[1] = !strcmp(v["trig2_input"], "sensor_high");
+  if (v["trig1_wait"].is<const char*>()) trig_wait_return[0] = !strcmp(v["trig1_wait"], "return");
+  if (v["trig2_wait"].is<const char*>()) trig_wait_return[1] = !strcmp(v["trig2_wait"], "return");
+  if (v["remote_free_effects"].is<const char*>()) remote_free_effects = v["remote_free_effects"].as<const char*>();
   u("trig_debounce_ms", trig_debounce_ms);
   u("trig_release_ms", trig_release_ms);
   if (v["dmx_port"].is<const char*>()) dmx_s4 = !strcmp(v["dmx_port"], "s4");
@@ -511,7 +540,6 @@ void Settings::fromJson(JsonVariantConst v) {
   u("pixel_brightness", pixel_brightness);
   if (pixel_brightness > PIXEL_BRIGHTNESS_MAX) pixel_brightness = PIXEL_BRIGHTNESS_MAX;
   b("ambient", ambient);
-  u("ambient_folder", ambient_folder);
   u("ambient_track", ambient_track);
   u("ambient_volume", ambient_volume);
   u("trigger_track", trigger_track);
@@ -524,6 +552,8 @@ void Settings::fromJson(JsonVariantConst v) {
   b("df_ack", df_ack);
   b("df_checksum", df_checksum);
   b("status_led", status_led);
+  b("stop_button", stop_button);
+  if (v["start_buttons"].is<const char*>()) start_hold = !strcmp(v["start_buttons"], "hold");
   s("mqtt_broker", mqtt_broker);
   u("mqtt_port", mqtt_port);
   for (auto& d : params()) {

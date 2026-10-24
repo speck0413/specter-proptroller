@@ -42,7 +42,7 @@ def busy_script(effects=8):
             if e < 4:
                 t += f"  fade {out} to 37.5% over 0.25 s # c\n  fade {out} to 0% over 0.25 s # cc\n"
             else:
-                t += f"  {out} = {'on ' if i % 2 == 0 else 'off'} # a comment to fill\n  sleep 0.25  # a comment to fill\n"
+                t += f"  {out} = {'on ' if i % 2 == 0 else 'off'} # a comment to fill\n  wait 0.25  # a comment to fill\n"
     return t
 
 

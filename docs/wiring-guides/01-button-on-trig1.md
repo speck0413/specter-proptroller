@@ -34,7 +34,7 @@ Wire a big push button (or a step mat) to the TRIG1 input and see the board noti
 6. **Tug test.** Give each wire a gentle tug. If one pulls out, open the screw and do it again. Check that no stray strand touches the next screw.
 7. **Test it.** Power the board and open its page on your phone. Stay on the Live tab. Press the button. In the Inputs card, the TRIG1 box lights up orange while you hold it, and goes dark when you let go.
    (How to open the board’s page: [Meet your board](00-meet-your-board.md), step "Connect your phone".)
-8. **Use it in a show.** In a show script, `wait for trig1` waits for your button. For example: `effect hello:`, then `wait for trig1`, `out1 = on`, `sleep 2`, `out1 = off`. Or, on the Shows tab, pick TRIG1 under "Starts on".
+8. **Use it in a show.** In a show script, `wait for trig1` waits for your button. For example: `effect hello:`, then `wait for trig1`, `out1 = on`, `wait 2`, `out1 = off`. Or, on the Shows tab, pick TRIG1 under "Starts on".
 
 ## Not working?
 

@@ -82,9 +82,15 @@ class NetApp {
   virtual void updateAbort() {}
 };
 
+// Identity::board and Info::board exist (a firmware built on this library can test for them with #ifdef)
+#define PROPTROLLER_HAS_BOARD_ID 1
+
 struct Identity {
   std::string id;          // unique id (MAC hex)
   std::string mcu;         // "esp32-devkit", "pico", "pico-w", "pico2-w", "sim"
+  // the board package (BSP) the firmware was built for: "proptroller" (the Proptroller board's own map), or the
+  // PROPTROLLER_BOARD_ID of a board support package (Proptroller.cpp)
+  std::string board = "proptroller";
   std::string fw_version = PROPTROLLER_FW_VERSION_STR;  // the release (firmware/VERSION)
   std::string fw_build = PROPTROLLER_FW_BUILD;          // the source revision (git short hash)
   std::vector<std::string> extra_caps;  // "sim"
@@ -98,6 +104,9 @@ class AnalogIn {
 };
 
 class BoardPins;
+struct BoardBoot;
+struct BuiltinBoard;
+struct ChipRules;
 class ByteStream;
 class PixelOut;
 class Storage;
@@ -113,6 +122,12 @@ struct BoardParts {
   class DmxOut* dmx = nullptr;      // the DMX port on expansion S4
   AnalogIn* analog = nullptr;
   UpdateTarget* update = nullptr;   // over-the-air updates (ESP32, Pico W, Pico 2 W); null: none
+  // board packages (board_package.h): the package's own record, what the board runs with since power-on, the
+  // chip's pin rules and the image's built-in boards (all null: none)
+  Storage* board_store = nullptr;
+  const BoardBoot* board_boot = nullptr;
+  const ChipRules* chip = nullptr;
+  const std::vector<BuiltinBoard>* builtins = nullptr;
   Identity identity;
 };
 

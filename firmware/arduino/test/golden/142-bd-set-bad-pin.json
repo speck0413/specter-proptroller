@@ -1,0 +1,1 @@
+{"v":1,"id":103,"ok":false,"error":{"code":"invalid","message":"board package: OUT3: GPIO 35 is input-only on the ESP32 and cannot drive an output"}}

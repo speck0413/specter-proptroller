@@ -24,28 +24,40 @@ export const KINDS = {
     tip: 'Waits until the input is pressed (held for the debounce time), after it was released.' },
   ps_set: { words: ['TARGET', '=', 'LEVEL'], fields: { TARGET: 'out1', LEVEL: 'on' }, colour: '#5ba65b',
     tip: 'Sets an output: on, off or a percentage (out1-out4 and dmx channels dim; rly and cc are on / off).' },
-  ps_sleep: { words: ['sleep', 'TIME'], fields: { TIME: '1' }, colour: '#745ba6',
+  ps_sleep: { words: ['wait', 'TIME'], fields: { TIME: '1' }, colour: '#745ba6',
     tip: 'Waits this long: seconds, or with a unit (200 ms, 3 min).' },
   ps_fade: { words: ['fade', 'TARGET', 'to', 'LEVEL', 'over', 'TIME'], fields: { TARGET: 'out1', LEVEL: '0%', TIME: '2' }, colour: '#745ba6',
     tip: 'Goes smoothly to a level.' },
   ps_flicker: { words: ['flicker', 'TARGET', 'for', 'TIME'], fields: { TARGET: 'out1', TIME: '3' }, colour: '#745ba6',
     tip: 'Flickers like a candle or a failing bulb, then gives the level back.' },
-  ps_audio_single: { words: ['play sound', 'SOUND', 'once'], fields: { SOUND: 'chime.mp3' }, colour: '#a65b80',
-    tip: 'Plays a sound once.' },
-  ps_audio_loop: { words: ['play sound', 'SOUND', 'over and over'], fields: { SOUND: 'rain.mp3' }, colour: '#a65b80',
-    tip: 'Plays a sound over and over, until another sound line.' },
+  ps_pulse: { words: ['pulse', 'TARGET', 'for', 'TIME'], fields: { TARGET: 'cc1', TIME: '200 ms' }, colour: '#5ba65b',
+    tip: 'Turns an output on now and off after the time; the next line does not wait.' },
+  ps_limit: { words: ['limit', 'RUNS', 'runs per', 'TIME'], fields: { RUNS: '3', TIME: '3 min' }, colour: '#5b8da6',
+    tip: 'At most this many runs in a window that starts at the first run.' },
+  ps_audio_single: { words: ['play sound', 'SOUND', 'once'], fields: { SOUND: '1' }, colour: '#a65b80',
+    tip: 'Plays sound N once: the file 000N-….mp3 in the card\'s mp3 folder.' },
+  ps_audio_loop: { words: ['play sound', 'SOUND', 'over and over'], fields: { SOUND: '2' }, colour: '#a65b80',
+    tip: 'Plays a sound over and over in the background; a sound played once over it comes back to it. off turns it off.' },
   ps_audio_stop: { words: ['stop the sound'], fields: {}, colour: '#a65b80', tip: 'Stops the sound.' },
+  ps_audio_volume: { words: ['sound volume', 'VOLUME'], fields: { VOLUME: '60%' }, slider: { VOLUME: [0, 100, '%'] }, colour: '#a65b80',
+    tip: 'How loud the script\'s sounds play from here on: 0% (silent) to 100%.' },
   ps_comment: { words: ['#', 'TEXT'], fields: { TEXT: '' }, colour: '#6d6d6d', tip: 'A comment or a blank line: the board skips it.' },
   ps_raw: { words: ['line', 'TEXT'], fields: { TEXT: '' }, colour: '#a65b5b', tip: 'A line the blocks do not know: Check says what is wrong with it.' },
 };
 /** The kinds a person can add inside an effect, in the order of a menu (with their menu words). */
 export const ADDABLE = [
-  ['ps_wait', 'wait for an input'], ['ps_set', 'set an output'], ['ps_sleep', 'sleep'], ['ps_fade', 'fade'],
-  ['ps_flicker', 'flicker'], ['ps_audio_single', 'play a sound once'], ['ps_audio_loop', 'play a sound over and over'],
-  ['ps_audio_stop', 'stop the sound'], ['ps_comment', 'a comment'],
+  ['ps_wait', 'wait for an input'], ['ps_set', 'set an output'], ['ps_sleep', 'wait a time'], ['ps_fade', 'fade'],
+  ['ps_flicker', 'flicker'], ['ps_pulse', 'pulse an output'], ['ps_limit', 'limit the runs'],
+  ['ps_audio_single', 'play a sound once'], ['ps_audio_loop', 'play a sound over and over'],
+  ['ps_audio_stop', 'stop the sound'], ['ps_audio_volume', 'set the sound volume'], ['ps_comment', 'a comment'],
 ];
 
 // ---------------------------------------------------------------- one line → kind and fields
+
+// the settings a line may name for a time (SHOW-SCRIPT.md SS-G6)
+const TIME_SETTINGS = ['out1_on_ms', 'out2_on_ms', 'out3_on_ms', 'recover_time_ms', 'cooldown_ms', 'trigger_out_pulse_ms', 'role_pulse_ms'];
+const INPUTS = ['trig1', 'trig2', 'user1', 'user2', 'user3'];
+const isTime = (v) => /^[0-9.]/.test(v) || TIME_SETTINGS.includes(v.toLowerCase());
 
 // a keyword at the start, case and spaces inside it ignored (as the board reads it)
 function kw(s, word) {
@@ -84,13 +96,24 @@ export function parse(raw) {
     const i = part.indexOf(':');
     return { type: 'ps_effect', f: { NAME: (i >= 0 ? part.slice(0, i) : part).trim() } };
   }
-  if ((r = kw(low, 'waitfor')) !== null) return { type: 'ps_wait', f: { INPUT: r.trim() } };
+  // wait <time> and wait for <time> are a time block, wait for <input> an input block (after wait for, a time
+  // starts with a digit or is a time setting; after a bare wait, any word but an input; the board decides names)
+  if ((r = kw(low, 'wait')) !== null) {
+    const rest = kw(r, 'for');
+    const v = (rest !== null ? rest : r).trim();
+    if (isTime(v) || (rest === null && v && !INPUTS.includes(v.toLowerCase()))) return { type: 'ps_sleep', f: { TIME: v } };
+    if (rest !== null) return { type: 'ps_wait', f: { INPUT: v } };
+  }
   if ((r = kw(low, 'audio_stop')) !== null && !r.trim()) return { type: 'ps_audio_stop', f: {} };
   for (const [w, type] of [['audio_single', 'ps_audio_single'], ['audio_loop', 'ps_audio_loop']]) {
     if ((r = kw(low, w)) !== null) {
       const v = r.trim();
       if (v === '' || v[0] === '=' || v[0] === ':') return { type, f: { SOUND: v.slice(1).trim() } };
     }
+  }
+  if ((r = kw(low, 'audio_volume')) !== null) {
+    const v = r.trim();
+    if (v === '' || v[0] === '=' || v[0] === ':') return { type: 'ps_audio_volume', f: { VOLUME: v.slice(1).trim() } };
   }
   if ((r = kw(low, 'sleep')) !== null) return { type: 'ps_sleep', f: { TIME: r.trim() } };
   if ((r = kw(low, 'fade')) !== null) {
@@ -100,6 +123,14 @@ export function parse(raw) {
   if ((r = kw(low, 'flicker')) !== null) {
     const m = r.match(/^\s*([A-Za-z_]+\d*)\s*[Ff][Oo][Rr]\s*(.+)$/);
     if (m) return { type: 'ps_flicker', f: { TARGET: m[1], TIME: m[2].trim() } };
+  }
+  if ((r = kw(low, 'pulse')) !== null) {
+    const m = r.match(/^\s*([A-Za-z_]+\d*)\s*[Ff][Oo][Rr]\s*(.+)$/);
+    if (m) return { type: 'ps_pulse', f: { TARGET: m[1], TIME: m[2].trim() } };
+  }
+  if ((r = kw(low, 'limit')) !== null) {
+    const m = r.match(/^\s*(\S+)\s+[Rr][Uu][Nn][Ss]?\s+[Pp][Ee][Rr]\s+(.+)$/);
+    if (m) return { type: 'ps_limit', f: { RUNS: m[1], TIME: m[2].trim() } };
   }
   const eq = low.search(/[=:]/);
   if (eq > 0 && /^[A-Za-z_]+\d*$/.test(low.slice(0, eq).replace(/ /g, '')) && !/^\s*wait/i.test(low)) {
@@ -114,12 +145,15 @@ export function lineOf(type, f) {
     case 'ps_effect': return `effect ${f.NAME}:`;
     case 'ps_wait': return `wait for ${f.INPUT}`;
     case 'ps_set': return `${f.TARGET} = ${f.LEVEL}`;
-    case 'ps_sleep': return `sleep ${f.TIME}`;
+    case 'ps_sleep': return `wait ${f.TIME}`;
     case 'ps_fade': return `fade ${f.TARGET} to ${f.LEVEL} over ${f.TIME}`;
     case 'ps_flicker': return `flicker ${f.TARGET} for ${f.TIME}`;
+    case 'ps_pulse': return `pulse ${f.TARGET} for ${f.TIME}`;
+    case 'ps_limit': return `limit ${f.RUNS} ${f.RUNS === '1' ? 'run' : 'runs'} per ${f.TIME}`;
     case 'ps_audio_single': return `audio_single = ${f.SOUND}`;
     case 'ps_audio_loop': return `audio_loop = ${f.SOUND}`;
     case 'ps_audio_stop': return 'audio_stop';
+    case 'ps_audio_volume': return `audio_volume = ${f.VOLUME}`;
     case 'ps_comment': return f.TEXT ? `# ${f.TEXT}` : '';
     default: return f.TEXT || '';
   }

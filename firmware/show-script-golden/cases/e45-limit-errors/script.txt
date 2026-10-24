@@ -1,0 +1,11 @@
+effect a:
+  wait for trig1
+  limit 3 per 60
+  limit three runs per 60
+  limit 21 runs per 60
+  limit 3 runs per soon
+  limit 3 runs per 61 min
+  limit 3 runs per 1 min
+  limit 1 run per 5
+  sleep runs_per_cooldown
+  limit 2 runs per runs_per_cooldown

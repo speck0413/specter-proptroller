@@ -1,7 +1,7 @@
 EFFECT Porch Light:
   WAIT FOR TRIG1
   OUT1 = ON
-  AUDIO_SINGLE = chime.mp3
+  AUDIO_SINGLE = 1
   Sleep 30
   FADE Out1 TO 0% OVER 2
 

@@ -1,0 +1,65 @@
+{
+  "spec": [
+    "SS-G6"
+  ],
+  "sounds": {},
+  "settings": {
+    "out1_on_ms": 300
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 2000,
+        "set": {
+          "out1_on_ms": 600
+        }
+      },
+      {
+        "t": 3000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 3150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 5000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            1400,
+            0
+          ],
+          [
+            3100,
+            1000
+          ],
+          [
+            3700,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

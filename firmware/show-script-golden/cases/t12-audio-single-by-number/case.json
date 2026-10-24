@@ -1,0 +1,44 @@
+{
+  "spec": [
+    "SS-C4"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 7000,
+    "expect": {
+      "sound": [
+        [
+          1100,
+          "play",
+          1
+        ],
+        [
+          3100,
+          "play",
+          3
+        ],
+        [
+          5100,
+          "play",
+          5
+        ]
+      ]
+    }
+  }
+}

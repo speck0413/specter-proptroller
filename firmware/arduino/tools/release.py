@@ -2,22 +2,24 @@
 """Package a firmware release from finished builds (PROTOCOL.md "Releases"). Builds nothing and never writes to a
 board: run it from firmware/arduino after
 
-    pio run -e esp32dev -e picow -e pico2w -e boot_rp2040 -e boot_rp2350
+    pio run -e esp32dev -e pico -e picow -e pico2w -e boot_rp2040 -e boot_rp2350
     python3 tools/picoboot_image.py merge pico-w && python3 tools/picoboot_image.py merge pico2-w
 
-    python3 tools/release.py OUT_DIR [--version 0.1.0]
+    python3 tools/release.py OUT_DIR [--version 0.1.0] [--build-root DIR]
 
 OUT_DIR/assets/ gets the release assets (attached to the GitHub Release):
   generic-esp32-devkit-<v>.bin, generic-pico-w-<v>.bin, generic-pico2-w-<v>.bin   update images (the board's page,
                                                                                    Firmware tab, or Specter Studio)
   first-flash-esp32-devkit-<v>.bin   bootloader, partition table, otadata and firmware merged, written from 0x0
   first-flash-pico-w-<v>.uf2, first-flash-pico2-w-<v>.uf2   bootloader and firmware, for the BOOTSEL drive
+  first-flash-pico-<v>.uf2           the plain Pico's firmware.uf2 (no bootloader, no update image: it has no
+                                     update target and is updated over USB with a newer first-flash file)
   proptroller-firmware.json          the manifest Specter Studio reads: the update images first, then the
                                      first-flash images ("first_flash": true)
 OUT_DIR/flasher/ gets the browser flasher (ESP Web Tools): index.html, manifest.json and the first-flash ESP32 image,
 served from one origin (GitHub Pages), because GitHub's release downloads send no CORS headers.
 
-The version defaults to firmware/VERSION. Unsigned: the SHA-256 in the manifest is a transfer check, not a signature.
+The version defaults to firmware/VERSION; --build-root names the folder holding <env>/ (default .pio/build). Unsigned: the SHA-256 in the manifest is a transfer check, not a signature.
 """
 import hashlib
 import json
@@ -31,19 +33,26 @@ PROJ = os.path.dirname(HERE)
 BUILD = os.path.join(PROJ, ".pio", "build")
 PIO_HOME = os.environ.get("PLATFORMIO_CORE_DIR", os.path.join(os.path.expanduser("~"), ".platformio"))
 
-# ESP32 first flash (FLASH-MAP.md): offset -> file
-ESP32_PARTS = [
-    (0x1000, os.path.join(BUILD, "esp32dev", "bootloader.bin")),
-    (0x8000, os.path.join(BUILD, "esp32dev", "partitions.bin")),
-    (0xE000, os.path.join(PIO_HOME, "packages", "framework-arduinoespressif32", "tools", "partitions", "boot_app0.bin")),
-    (0x10000, os.path.join(BUILD, "esp32dev", "firmware.bin")),
-]
-# board (info.mcu) -> (update image, first-flash image)
-IMAGES = {
-    "esp32-devkit": (os.path.join(BUILD, "esp32dev", "firmware.bin"), None),  # first flash: merged below
-    "pico-w": (os.path.join(BUILD, "picow", "firmware.bin"), os.path.join(BUILD, "picoboot-pico-w", "flash.uf2")),
-    "pico2-w": (os.path.join(BUILD, "pico2w", "firmware.bin"), os.path.join(BUILD, "picoboot-pico2-w", "flash.uf2")),
-}
+
+def esp32_parts(build):
+    """ESP32 first flash (FLASH-MAP.md): (offset, file)"""
+    return [
+        (0x1000, os.path.join(build, "esp32dev", "bootloader.bin")),
+        (0x8000, os.path.join(build, "esp32dev", "partitions.bin")),
+        (0xE000, os.path.join(PIO_HOME, "packages", "framework-arduinoespressif32", "tools", "partitions", "boot_app0.bin")),
+        (0x10000, os.path.join(build, "esp32dev", "firmware.bin")),
+    ]
+
+
+def images(build):
+    """board (info.mcu) -> (update image or None, first-flash image or None)"""
+    return {
+        "esp32-devkit": (os.path.join(build, "esp32dev", "firmware.bin"), None),  # first flash: merged below
+        "pico-w": (os.path.join(build, "picow", "firmware.bin"), os.path.join(build, "picoboot-pico-w", "flash.uf2")),
+        "pico2-w": (os.path.join(build, "pico2w", "firmware.bin"), os.path.join(build, "picoboot-pico2-w", "flash.uf2")),
+        # the plain Pico: USB only (no update capability), arduino-pico's own UF2 is the whole first flash
+        "pico": (None, os.path.join(build, "pico", "firmware.uf2")),
+    }
 # a version at least two weeks old, pinned (the flasher page loads it from the CDN)
 ESP_WEB_TOOLS = "https://unpkg.com/esp-web-tools@10.1.1/dist/web/install-button.js?module"
 
@@ -54,8 +63,9 @@ def die(msg):
 
 
 def entry(path, mcu, first_flash=False):
-    data = open(path, "rb").read()
-    e = {"fw": "generic", "impl": "cpp", "mcu": mcu, "file": os.path.basename(path), "bytes": len(data),
+    with open(path, "rb") as f:
+        data = f.read()
+    e = {"fw": "generic", "impl": "cpp", "mcu": mcu, "board": "proptroller", "file": os.path.basename(path), "bytes": len(data),
          "sha256": hashlib.sha256(data).hexdigest()}
     if first_flash:
         e["first_flash"] = True
@@ -104,23 +114,26 @@ connect? Hold the DevKit's BOOT button while you connect. A Pico W or Pico 2 W i
 
 def main(argv):
     args = list(argv)
-    version = None
-    if "--version" in args:
-        i = args.index("--version")
-        if i + 1 >= len(args):
-            die("--version needs a value")
-        version = args[i + 1]
-        del args[i:i + 2]
+    opts = {"--version": None, "--build-root": BUILD}
+    for opt in opts:
+        if opt in args:
+            i = args.index(opt)
+            if i + 1 >= len(args):
+                die(opt + " needs a value")
+            opts[opt] = args[i + 1]
+            del args[i:i + 2]
+    version, build = opts["--version"], os.path.abspath(opts["--build-root"])
     if len(args) != 1 or args[0].startswith("-"):
         print(__doc__)
         return 2
     out = os.path.abspath(args[0])
     if version is None:
         version = open(os.path.join(PROJ, "..", "VERSION")).read().strip()
-    for _, p in ESP32_PARTS:
+    parts, imgs = esp32_parts(build), images(build)
+    for _, p in parts:
         if not os.path.exists(p):
             die(p + " is missing: build first (see the top of this file)")
-    for upd, first in IMAGES.values():
+    for upd, first in imgs.values():
         for p in (upd, first):
             if p and not os.path.exists(p):
                 die(p + " is missing: build first (see the top of this file)")
@@ -131,10 +144,11 @@ def main(argv):
         os.makedirs(d)
 
     updates, firsts = [], []
-    for mcu, (upd, first) in IMAGES.items():
-        dst = os.path.join(assets, "generic-%s-%s.bin" % (mcu, version))
-        shutil.copyfile(upd, dst)
-        updates.append(entry(dst, mcu))
+    for mcu, (upd, first) in imgs.items():
+        if upd:
+            dst = os.path.join(assets, "generic-%s-%s.bin" % (mcu, version))
+            shutil.copyfile(upd, dst)
+            updates.append(entry(dst, mcu))
         if first:
             dst = os.path.join(assets, "first-flash-%s-%s.uf2" % (mcu, version))
             shutil.copyfile(first, dst)
@@ -143,7 +157,7 @@ def main(argv):
     merged = os.path.join(assets, "first-flash-esp32-devkit-%s.bin" % version)
     cmd = esptool() + ["--chip", "esp32", "merge_bin", "-o", merged, "--flash_mode", "dio", "--flash_freq", "40m",
                        "--flash_size", "4MB"]
-    for off, p in ESP32_PARTS:
+    for off, p in parts:
         cmd += ["0x%x" % off, p]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
     firsts.insert(0, entry(merged, "esp32-devkit", first_flash=True))

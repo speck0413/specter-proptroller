@@ -77,19 +77,31 @@ class Sim : public NetApp {
   static const Millis TICK_MS = 10;
   // fw_build: what info.fw_build reports (fixed "sim" by default, so the golden files do not change with
   // every commit; `pio run -e sim` gives the real build)
-  // `map`: a board profile (absent terminals, input polarity); none = the Proptroller board
-  explicit Sim(const std::string& id = "sim", const std::string& fw_build = "sim", const PinMap* map = nullptr);
+  // `map`: the image's own board (a board support package compiled in: absent terminals, input polarity), named
+  // `board_id`; none = the Proptroller board. A board package stored with set_board replaces it from the next
+  // power-on, as on the boards (BOARD-PACKAGES.md).
+  explicit Sim(const std::string& id = "sim", const std::string& fw_build = "sim", const PinMap* map = nullptr,
+               const char* board_id = nullptr);
   Controller& ctl() { return *ctl_; }
   SimWorld& world() { return world_; }
   MemStorage& flash() { return flash_; }
   MemStorage& scriptFlash() { return script_flash_; }
   MemStorage& runsFlash() { return runs_flash_; }  // the lifetime run count (runs.h)
+  MemStorage& boardFlash() { return board_flash_; }  // the board package (board_package.h)
+  // the chip the simulated board has (default: an ESP32 DevKit), from the next power-on
+  void setChip(const ChipRules& c) { chip_ = c; }
+  const BoardBoot& boardBoot() const { return ctl_->boardRunning(); }
+  const SimPins& pins() const { return pins_; }
   // Tests: run on other stores (ABStorage over a file layer, as the boards do) from the next power-on;
   // nullptr goes back to flash() / scriptFlash().
   void useStores(Storage* settings, Storage* script) {
     store_ = settings ? settings : &flash_;
     script_store_ = script ? script : &script_flash_;
   }
+  // A board support package's defaults (device.h FactoryDefaults), applied at every power-on that finds nothing
+  // stored, from the next one (or now: powerCycle()). Null: none. The texts must outlive the Sim.
+  void setFactoryDefaults(const FactoryDefaults* d) { defaults_ = d; }
+  std::string factoryRefused;  // what the last power-on's defaults refused
   Millis now() const { return now_; }
   Millis uptime() const { return now_ - powered_at_; }
   void tick();   // to the next 10 ms step (TRIG1 / TRIG2 sampled every 1 ms on the way)
@@ -164,6 +176,11 @@ class Sim : public NetApp {
   MemStorage flash_;
   MemStorage script_flash_{SCRIPT_STORE_CAPACITY};
   MemStorage runs_flash_{RUNS_STORE_CAPACITY};
+  MemStorage board_flash_{BOARD_STORE_CAPACITY};
+  ChipRules chip_;
+  bool has_image_board_ = false;
+  BuiltinBoard image_board_{};
+  std::string image_board_id_;
   Storage* store_ = &flash_;
   Storage* script_store_ = &script_flash_;
   SimDmx dmx_{world_};
@@ -171,6 +188,7 @@ class Sim : public NetApp {
   SimSlots slots_;
   SimTarget target_{slots_};
   std::unique_ptr<Controller> ctl_;
+  const FactoryDefaults* defaults_ = nullptr;
   Millis now_ = 0, powered_at_ = 0;
   Millis scan_due_ = 0;  // a simulated Wi-Fi scan reports then (0 = none running)
   Level last_[CHANNEL_COUNT] = {0};

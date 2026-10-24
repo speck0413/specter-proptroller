@@ -1,0 +1,75 @@
+{
+  "board_package": 1,
+  "id": "proptroller",
+  "name": "Spectre Proptroller board",
+  "mcu": "esp32-devkit",
+  "terminals": {
+    "OUT1": {
+      "pin": 23
+    },
+    "OUT2": {
+      "pin": 22
+    },
+    "OUT3": {
+      "pin": 21
+    },
+    "OUT4": {
+      "pin": 19
+    },
+    "RLY1": {
+      "pin": 25
+    },
+    "RLY2": {
+      "pin": 26
+    },
+    "CC1": {
+      "pin": 27
+    },
+    "CC2": {
+      "pin": 32
+    },
+    "TRIG1": {
+      "pin": 36,
+      "active": "low",
+      "pull": "board"
+    },
+    "TRIG2": {
+      "pin": 18,
+      "active": "low",
+      "pull": "board"
+    },
+    "USER1": {
+      "pin": 13,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER2": {
+      "pin": 14,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER3": {
+      "pin": 5,
+      "active": "low",
+      "pull": "chip"
+    }
+  },
+  "pixel": {
+    "pin": 33,
+    "inverted": true
+  },
+  "sound": {
+    "tx": 17,
+    "rx": 34
+  },
+  "i2c": {
+    "sda": 4,
+    "scl": 16
+  },
+  "analog": 39,
+  "expansion": {
+    "S4": 15,
+    "S5": 35
+  },
+  "status_led": 2
+}

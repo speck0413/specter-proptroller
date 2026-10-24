@@ -1,0 +1,46 @@
+{
+  "spec": [
+    "SS-L",
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 1,
+        "message": "line 1: effect \"a\" must start with \"wait for\", for example \"wait for trig1\"."
+      },
+      {
+        "line": 5,
+        "message": "line 5: \"2 hours\" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min."
+      },
+      {
+        "line": 6,
+        "message": "line 6: there is no soon on this board. The inputs are trig1, trig2 and user1 to user3."
+      },
+      {
+        "line": 7,
+        "message": "line 7: \"soon\" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min."
+      },
+      {
+        "line": 8,
+        "message": "line 8: \"30 h\" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min."
+      },
+      {
+        "line": 9,
+        "message": "line 9: runs_per_cooldown is a number of runs, not a time."
+      },
+      {
+        "line": 10,
+        "message": "line 10: runs_per_cooldown is a number of runs, not a time."
+      },
+      {
+        "line": 11,
+        "message": "line 11: write it as \"wait for trig1\"."
+      }
+    ],
+    "warnings": []
+  }
+}

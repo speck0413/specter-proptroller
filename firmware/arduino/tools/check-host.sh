@@ -50,7 +50,7 @@ node --test ../web-test/take-test.mjs ../web-test/blocks-test.mjs
 # program --check: show-script messages as FILE:LINE:COL: error: message (VS Code's "Check effect scripts" task
 # turns them into clickable problems with the pattern in .vscode/tasks.json, checked here against the output)
 printf 'effect porch:\n  wait for trig1\n  out5 = on\n\n    rly1 = 50%%\n' >"$WORK/bad script.txt"
-printf 'effect porch:\n  wait for trig1\n  out1 = on\n  sleep 1\n  out1 = off\n' >"$WORK/good.txt"
+printf 'effect porch:\n  wait for trig1\n  out1 = on\n  wait 1\n  out1 = off\n' >"$WORK/good.txt"
 set +e
 .pio/build/sim/program --check "$WORK/good.txt" "$WORK/bad script.txt" >"$WORK/check.out" 2>&1
 rc=$?
@@ -86,7 +86,7 @@ if [ -n "$CHROMIUM" ]; then
   export PTCLIENT="$here/tools/ptclient.py"
   # update-swap-test: a board that installs the update at the restart, as the Pico W bootloader swaps it in
   # (off the network for 20 s of board time, 2 s at 10x)
-  for t in ui-test live-test shows-test settings-test wifi-test alias-test script-test record-test views-test update-test update-swap-test; do
+  for t in ui-test live-test shows-test settings-test wifi-test alias-test script-test remote-script-test record-test views-test update-test update-swap-test; do
     kill $pid 2>/dev/null; wait $pid 2>/dev/null || true
     opts="--speed 1"
     [ "$t" = update-test ] && opts="--speed 10"

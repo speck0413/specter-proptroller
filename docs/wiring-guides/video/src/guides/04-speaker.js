@@ -1,6 +1,6 @@
 // Guide 4: a speaker and sound files. DFPlayer facts (hardware/README.md): SPK 3 W into 4 ohm, bridge-tied (never
-// ground a speaker wire), LINE OUT for an amplifier; sound N is /NN/001.mp3; Specter Studio copies named sounds to the
-// card (SHOW-SCRIPT SS-C4). The case's SPK jack has no defined wiring yet (enclosure, owner): the guide stays safe.
+// ground a speaker wire), LINE OUT for an amplifier; sound N is the card's mp3/NNNN-….mp3, numbered in write order; Studio's SD card
+// tool fills the card (SHOW-SCRIPT SS-C4, docs/SD-CARD.md). The case's SPK jack has no defined wiring yet (enclosure, owner): the guide stays safe.
 import { view } from '../scene/view.js';
 import { intro, need, before, tug, trouble, next } from './template.js';
 
@@ -37,26 +37,26 @@ export default {
     tug(view([125, 10, -20], 150, 150, 35)),
     { kind: 'wire', title: 'Amplifiers: LINE OUT', say: 'Both SPK wires carry sound, so joining one to an amplifier’s ground can damage the sound module. For an amplifier or a powered speaker, use the LINE OUT jack on the right edge instead, with an ordinary audio cable.',
       cam: view([130, 15, 20], 260, 110, 40), show: ['lineout'], focus: ['LINE OUT'] },
-    { kind: 'tell', title: 'Sounds on the card: with Studio', say: 'The easy way: in Specter Studio, add your sound files to the project and let Studio copy them to the card. It names and numbers them for you, so your script can say a sound by its name.',
-      text: 'The easy way: in Specter Studio, add your sound files to the project and let Studio copy them to the card. It numbers them for you and fills in the board’s sound list, so your script can say `audio_single = chime.mp3`.',
+    { kind: 'tell', title: 'Sounds on the card: with Studio', say: 'The easy way: in Specter Studio, open the SD card tool, add your sound files and put them in order. It erases the card, names the files and copies them in the right order. The first file is sound one, the second sound two.',
+      text: 'The easy way: in Specter Studio, open the SD card tool, add your sound files and put them in order. It erases the card, names the files and copies them in the right order: the first is sound 1, the second sound 2.',
       cam: view([128, 25, 28], 160, 70, 35), hide: ['lineout'], focus: ['DFPLAYER'] },
-    { kind: 'tell', title: 'Without Studio: folders', say: 'Without Studio, each sound gets its own folder. Make a folder called zero one, and put your first sound in it, named zero zero one dot M P 3. Your second sound goes in folder zero two, also named zero zero one. That is sound one and sound two.',
-      text: 'Without Studio, each sound gets its own folder. Make a folder called 01 and put your first sound in it, named 001.mp3. Your second sound goes in folder 02, also named 001.mp3. That is sound 1 and sound 2.',
+    { kind: 'tell', title: 'Without Studio: the mp3 folder', say: 'Without Studio, make a folder called M P 3 on an empty card. Copy your sounds into it one at a time, in order, named zero zero zero one dash and a name, then zero zero zero two dash and a name. The player counts the files in the order they were copied.',
+      text: 'Without Studio, make a folder called mp3 on an empty card. Copy your sounds into it one at a time, in order, named 0001-name.mp3, 0002-name.mp3. The player counts the files in the order they were copied (docs/SD-CARD.md).',
       cam: view([128, 25, 28], 160, 70, 35), inset: { type: 'folders' } },
     { kind: 'wire', title: 'Card in', say: 'With the power off, slide the card into the slot on the sound module, at the right hand edge of the board, contacts first.',
       cam: view([128, 25, 28], 140, 70, 35), show: ['card'], focus: ['DFPLAYER'] },
-    { kind: 'test', title: 'Test it', say: 'Power the board and open its page. On the Live tab, in the Sound card, set Folder to one and Track to one, and press Play. Your first sound plays. The Volume slider sets how loud.',
+    { kind: 'test', title: 'Test it', say: 'Power the board and open its page. On the Live tab, in the Sound card, set Sound to one and press Play. Your first sound plays. The Volume slider sets how loud.',
       cam: view([130, 15, -20], 300, 150, 40), live: { speaker: 1 },
-      inset: { type: 'phone', tab: 'Live', cardTitle: 'Sound', body: '<div class="wg-ph-set"><label>Folder</label><span class="wg-ph-sel">1</span><label>Track</label><span class="wg-ph-sel">1</span></div><div class="wg-ph-out"><span class="pressed">Play</span><span>Stop</span><b style="text-align:right">Volume ━━●━</b></div>', note: 'Folder 1, Track 1, <b>Play</b>.' } },
-    { kind: 'show', title: 'Use it in a show', text: 'In a show script, `audio_single = 1` plays sound 1 once (or `audio_single = chime.mp3` with Studio), and `audio_loop = 2` loops sound 2. How loud: Settings > Sound > "Trigger sound volume" and "Ambient volume", then Save settings.',
+      inset: { type: 'phone', tab: 'Live', cardTitle: 'Sound', body: '<div class="wg-ph-set"><label>Sound</label><span class="wg-ph-sel">1</span></div><div class="wg-ph-out"><span class="pressed">Play</span><span>Stop</span><b style="text-align:right">Volume ━━●━</b></div>', note: 'Sound 1, <b>Play</b>.' } },
+    { kind: 'show', title: 'Use it in a show', text: 'In a show script, `audio_single = 1` plays sound 1 once, `audio_loop = 2` loops sound 2, and `audio_volume = 60%` sets how loud the script plays them. The board\'s own sounds: Settings > Sound > "Trigger sound volume" and "Ambient volume", then Save settings.',
       say: 'In a show script, audio single equals one plays sound one once. How loud it plays is set under Settings, Sound: trigger sound volume and ambient volume.',
       cam: view([130, 15, -20], 300, 150, 40) },
     trouble(view([130, 15, -20], 300, 150, 40)),
     next(view([110, 15, -10], 280, 150, 40)),
   ],
   trouble: [
-    'No sound: is the card in all the way, contacts first? Without Studio: are the folders named 01, 02 and the files 001.mp3?',
-    'Still nothing: format the card again as FAT32 and copy the files fresh. Some computers add hidden files that begin with a dot; delete those.',
+    'No sound: is the card in all the way, contacts first? Without Studio: is there a folder named mp3 with files named 0001-….mp3, 0002-….mp3?',
+    'The wrong sound plays: the files were copied out of order. Studio\'s SD card tool (Check a card, then Fix) copies them again in order. Some computers add hidden files that begin with a dot; the tool removes those.',
     'Hum or buzz through an amplifier on LINE OUT: use a 3.5 mm ground-loop isolator on the LINE OUT lead.',
     'Quiet: raise the Volume slider on the Live tab, the volumes under Settings > Sound, or use LINE OUT with an amplifier.',
   ],

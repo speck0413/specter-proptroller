@@ -59,16 +59,13 @@ a newer release. Your settings, shows and script are kept.
 
 ## 3. The sound card
 
-The sound player plays files by **number**, not by name:
+The sound player plays files by **number**: sound 1 is `mp3/0001-….mp3` on the card, sound 2 is
+`mp3/0002-….mp3`, and so on, numbered in the order the files were written to the card. Let Studio's **SD card**
+tool fill the card: it erases it, names the files and copies them in the right order. To do it by hand, follow
+[docs/SD-CARD.md](docs/SD-CARD.md) ("Setting up the SD card for the DFPlayer").
 
-1. Format the microSD card as **FAT32** (32 GB or smaller).
-2. Make folders named with two digits: `01`, `02`, … up to `99`.
-3. Put one sound in each folder, named starting with three digits: `01/001.mp3`, `02/001 thunder.mp3`.
-4. Copy the files onto a freshly formatted card in that order; the player can get confused by files that were
-   deleted and replaced.
-
-In an effect script, `audio_single = 1` plays `01/001.mp3`, `= 2` plays `02/001.mp3`, and so on. Put the card in the
-DFPlayer Mini before you power the board.
+In an effect script, `audio_single = 1` plays sound 1, `= 2` sound 2, and so on. Put the card in the DFPlayer
+Mini before you power the board.
 
 ## 4. Wire it up
 
@@ -114,17 +111,17 @@ Open the **Script** tab, delete what is in the box, and type (or paste):
 effect porch light:
   wait for trig1
   out1 = on
-  audio_single = 1     # plays 01/001.mp3
-  sleep 10
+  audio_single = 1     # plays sound 1 (mp3/0001-….mp3)
+  wait 10
   fade out1 to 0% over 2
-  sleep 5              # a rest before it can run again
+  wait 5               # a rest before it can run again
 ```
 
 Press **Check**: the board says what is wrong in plain words, with the line number. Press **Save**, then press
 your trigger. The light comes on, the sound plays, and after 10 s the light fades out.
 
 That is the whole idea: each effect waits for its input, runs its lines from top to bottom, then waits again.
-There are nine kinds of line; [firmware/SHOW-SCRIPT.md](firmware/SHOW-SCRIPT.md) explains them all, and
+There are ten kinds of line; [firmware/SHOW-SCRIPT.md](firmware/SHOW-SCRIPT.md) explains them all, and
 [firmware/show-script-examples/](firmware/show-script-examples/) has ready-made scripts with wiring notes (a
 light-up ghost, doll eyes, a flickering lamp, a store prop's button on a relay, fog over DMX, a 12 V animatronic,
 a doorbell chime).
@@ -142,5 +139,8 @@ a doorbell chime).
 
 - Write effects in code: [firmware/arduino/lib/proptroller/README.md](firmware/arduino/lib/proptroller/README.md).
 - Change the firmware itself: the developer quick start in the [README](README.md#developer-quick-start-vs-code).
+- Build the firmware and flash it by hand, make a release folder, update over Wi-Fi:
+  [docs/FIRMWARE-BUILD.md](docs/FIRMWARE-BUILD.md).
 - The desktop app, Specter Studio, is a separate project: it finds your boards, copies sounds to the card and
-  edits scripts with blocks.
+  edits scripts with blocks. [docs/DEV-SETUP.md](docs/DEV-SETUP.md) goes from a computer with nothing installed
+  to Studio built from source and a board running the stock firmware.

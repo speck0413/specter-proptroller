@@ -5,6 +5,10 @@
 set -e
 here=$(cd "$(dirname "$0")/.." && pwd)
 log="${TMPDIR:-/tmp}/proptroller-example.log"
+rp2_platform="https://github.com/maxgerhardt/platform-raspberrypi.git#5d4561a05e3b212660ac6fdd3fbfb328d1988aa1"
+# pio ci checks -b against the installed platforms' boards before it reads -O platform=, so on a fresh machine
+# (CI) the Pico W board is unknown until its platform is installed
+pio pkg install -g -p "$rp2_platform" >"$log" 2>&1 || { tail -30 "$log"; exit 1; }
 for ex in "$here"/lib/proptroller/examples/*/; do
   for board in esp32dev rpipicow; do
     echo "== $(basename "$ex") on $board"
@@ -15,7 +19,7 @@ for ex in "$here"/lib/proptroller/examples/*/; do
       deps="bblanchon/ArduinoJson@7.4.2, bertmelis/espMqttClient@1.7.3, ESP32Async/AsyncTCP@3.5.0"
       flags="-DARDUINOJSON_USE_LONG_LONG=1 -DCONFIG_ASYNC_TCP_RUNNING_CORE=0 -DCONFIG_ASYNC_TCP_PRIORITY=3 -DEMC_ALLOW_NOT_CONNECTED_PUBLISH=0"
     else
-      opts="-O platform=https://github.com/maxgerhardt/platform-raspberrypi.git#5d4561a05e3b212660ac6fdd3fbfb328d1988aa1 -O board_build.core=earlephilhower"
+      opts="-O platform=$rp2_platform -O board_build.core=earlephilhower"
       deps="bblanchon/ArduinoJson@7.4.2, knolleary/PubSubClient@2.8"
       flags="-DARDUINOJSON_USE_LONG_LONG=1"
     fi

@@ -235,7 +235,7 @@ static Commands online(SoundDirector& d) {
   d.onEvent(dfe(DfEvent::Kind::Online, 2), 1500);
   return d.tick(1500);
 }
-static const Commands AMBIENT = {SoundCommand::volume(15), SoundCommand::playFolder(1, 1)};
+static const Commands AMBIENT = {SoundCommand::volume(15), SoundCommand::playMp3(2)};  // ambient_track 2, the mp3 folder
 
 void ambient_trigger_ambient() {
   SoundDirector d;
@@ -262,16 +262,45 @@ void one_file_card() {
   TEST_ASSERT_TRUE(d.tick(9000).empty());
 }
 
-void file_not_in_mp3_falls_back_to_card_order() {
+void a_missing_trigger_sound_plays_nothing_and_the_ambient_comes_back() {
+  SoundConfig c;
+  SoundDirector d(c);
+  online(d);
+  d.trigger();
+  TEST_ASSERT_TRUE(d.onEvent(dfe(DfEvent::Kind::Error, 6), 2000).empty());  // no other file is tried
+  TEST_ASSERT_TRUE(d.playing().kind == Playing::Kind::Idle);
+  TEST_ASSERT_TRUE(cmdsEq(d.tick(2400), AMBIENT));
+}
+
+void an_mp3_loop_is_played_again_when_it_finishes() {
   SoundConfig c;
   c.ambient = false;
   SoundDirector d(c);
   online(d);
-  d.trigger();
-  TEST_ASSERT_TRUE(cmdsEq(d.onEvent(dfe(DfEvent::Kind::Error, 6), 2000), {SoundCommand::playIndex(1)}));
-  TEST_ASSERT_TRUE(d.playing().kind == Playing::Kind::Trigger && d.playing().fallback && d.playing().track == 1);
-  TEST_ASSERT_TRUE(d.onEvent(dfe(DfEvent::Kind::Error, 6), 2100).empty());
-  TEST_ASSERT_TRUE(d.playing().kind == Playing::Kind::Idle);
+  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(7, 2000), {SoundCommand::volume(c.ambient_volume), SoundCommand::loopMp3(7)}));
+  TEST_ASSERT_TRUE(cmdsEq(d.onEvent(dfe(DfEvent::Kind::Finished, 7), 5000), {SoundCommand::loopMp3(7)}));
+  d.script_volume = 12;  // a script's audio_volume: its loop's volume
+  TEST_ASSERT_TRUE(d.scriptLoop(0, 6000).size() == 1);
+  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(3, 6100), {SoundCommand::volume(12), SoundCommand::loopMp3(3)}));
+  // the root mode loops with the player's own repeat
+  TEST_ASSERT_TRUE(d.scriptLoop(0, 6200).size() == 1);
+  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(4, 6300, false), {SoundCommand::volume(12), SoundCommand::loopIndex(4)}));
+  TEST_ASSERT_TRUE(d.onEvent(dfe(DfEvent::Kind::Finished, 4), 9000).empty());
+}
+
+void sound_numbers_volumes_and_modes() {
+  TEST_ASSERT_TRUE(soundPlay(5) == SoundCommand::playMp3(5));  // SOUND_MODE: the mp3 folder
+  TEST_ASSERT_TRUE(soundPlay(5, false) == SoundCommand::playIndex(5));
+  TEST_ASSERT_EQUAL(0, soundVolume(0));
+  TEST_ASSERT_EQUAL(15, soundVolume(500));
+  TEST_ASSERT_EQUAL(18, soundVolume(600));
+  TEST_ASSERT_EQUAL(30, soundVolume(1000));
+  uint8_t cmd = 0;
+  uint16_t p = 0;
+  SoundCommand::loopMp3(3000).encode(cmd, p);
+  TEST_ASSERT_EQUAL_HEX8(0x12, cmd);
+  TEST_ASSERT_EQUAL(3000, p);
+  TEST_ASSERT_EQUAL_STRING("loop_mp3", SoundCommand::loopMp3(1).name());
 }
 
 void shows_and_suspend() {
@@ -389,7 +418,9 @@ int main() {
   RUN_TEST(max_on_watchdog);
   RUN_TEST(ambient_trigger_ambient);
   RUN_TEST(one_file_card);
-  RUN_TEST(file_not_in_mp3_falls_back_to_card_order);
+  RUN_TEST(a_missing_trigger_sound_plays_nothing_and_the_ambient_comes_back);
+  RUN_TEST(an_mp3_loop_is_played_again_when_it_finishes);
+  RUN_TEST(sound_numbers_volumes_and_modes);
   RUN_TEST(shows_and_suspend);
   RUN_TEST(teach_quantizes_and_clamps);
   RUN_TEST(one_run_per_window_is_the_classic_cooldown);

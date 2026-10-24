@@ -1,0 +1,6 @@
+effect a:
+  wait for trig1
+  audio_volume = loud
+  audio_volume = 101%
+  audio_volume =
+  audio_volume = 30

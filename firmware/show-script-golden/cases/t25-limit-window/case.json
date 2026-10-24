@@ -1,0 +1,85 @@
+{
+  "spec": [
+    "SS-G3"
+  ],
+  "sounds": {},
+  "settings": {},
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 2000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 2150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 3000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 3150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 6500,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 6650,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 8000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            1600,
+            0
+          ],
+          [
+            2100,
+            1000
+          ],
+          [
+            2600,
+            0
+          ],
+          [
+            6600,
+            1000
+          ],
+          [
+            7100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

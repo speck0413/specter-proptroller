@@ -1,0 +1,20 @@
+effect run:
+  audio_loop = 1
+  wait for trig1
+  limit runs_per_cooldown runs per cooldown_ms
+  audio_single = 2
+  pulse cc1 for trigger_out_pulse_ms
+  out1 = on
+  sleep out1_on_ms
+  out1 = off
+  audio_loop = ""
+  sleep 10 ms
+  out2 = on
+  sleep out2_on_ms
+  out2 = off
+effect refill:
+  wait for trig2
+  limit 1 run per 30
+  out2 = on
+  sleep 2
+  out2 = off

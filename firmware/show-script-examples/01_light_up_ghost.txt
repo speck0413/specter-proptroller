@@ -9,11 +9,11 @@
 #        [motion sensor]--TRIG1        OUT1--[12 V LED strip]
 #
 # The sensor holds its contact closed while it sees someone: the ghost lights once per visit,
-# and the 20 s sleep at the end is a rest before it can light again.
+# and the 20 s wait at the end is a rest before it can light again.
 
 effect ghost:
   wait for trig1
   fade out1 to 100% over 1.5
-  sleep 6
+  wait 6
   fade out1 to 0% over 3
-  sleep 20
+  wait 20

@@ -78,17 +78,53 @@ count as unreadable, nothing is written, a new image fails its self-check, and o
 
 Records (LittleFS, each an A/B file pair with a sequence number and CRC):
 
-* `/cfg-a.bin` / `/cfg-b.bin`: settings, shows and the profile (JSON, `STORED_VERSION`).
+* `/cfg-a.bin` / `/cfg-b.bin`: settings, shows and the profile (JSON, `STORED_VERSION`). After
+  `factory_reset` with `keep_wifi` the record holds the firmware's defaults with the name and the Wi-Fi kept and
+  `"reset": true`: the next power-on treats the board as fresh (its defaults apply), puts the kept values back and
+  writes the record again without the mark.
 * `/runs-a.bin` / `/runs-b.bin`: the lifetime run count (`runs.h`, `{"lifetime":n}`, 64 B at most); kept by a
   factory reset and a backup restore.
 * `/script-a.bin` / `/script-b.bin`: the show script (`SCRIPT_RECORD_VERSION`, `script_record.h`): a 24-byte
   header ("PTSR", the format, the step table's format and key, the lengths), the text and its sound list
   compressed together (`lz.h`; `get_script` and backups get the exact text back), then the checked step table
-  (at most about 2.7 KB). Power-on runs the stored table while its key matches (table format, firmware version
+  (table format 2, at most about 3 KB). Power-on runs the stored table while its key matches (table format, firmware version
   and build, the settings the checker reads, the sound list); otherwise the text is checked again and the record
   rewritten. The worst case (8 KB of incompressible text, the largest table, 254 random 32-character sound
-  names) takes 21.9 KB of the 24 KB store; a longer sound list does not fit and `set_script` says so, keeping
-  the stored script. Fixture: `firmware/arduino/test/fixtures/records/script-record.bin` (`test_script_record`).
+  names) takes 22.2 KB of the 24 KB store; a longer sound list does not fit and `set_script` says so, keeping
+  the stored script. Fixtures: `firmware/arduino/test/fixtures/records/script-record.bin` and
+  `script-record-table1.bin` (a table of format 1: its text reads back and is checked again) (`test_script_record`).
+* `/board-a.bin` / `/board-b.bin`: the board package ([BOARD-PACKAGES.md](BOARD-PACKAGES.md), `board_package.h`,
+  `BOARD_RECORD_VERSION`): a 12-byte header ("PTBP", the format, flags: bit 0 = apply the package's defaults once at
+  the next power-on, the JSON's length), then the package's JSON packed (`lz.h`). At most 4,048 bytes
+  (`BOARD_STORE_CAPACITY`): each file stays within one 4 KB block. Read at power-on before any pin is touched; kept
+  by a factory reset unless `forget_board`, and by every update. A record that cannot be used (damaged, from a newer
+  firmware, not for this chip) is kept, the board drives no pins, and a new image fails its self-check. Fixture:
+  `firmware/arduino/test/fixtures/records/board-record.bin` (the whole file, A/B frame included) with its package
+  `board-record.json` (`test_board_package`).
+
+A factory reset of a file system that could not be opened formats it: the board package goes with everything else,
+and the board starts on the image's own board until a package is sent again.
+
+## A board package in the first flash
+
+A first install over USB may write a file system image holding only `/board-a.bin` at the file system's offset,
+in the same write as the firmware, so the board starts on its own pins from the first second (and, with the
+record's "apply the defaults" flag, with the package's defaults). Writing the file system replaces whatever it held:
+settings, the Wi-Fi, shows and the script. The file is the A/B frame around the board record, little endian: "PTC1",
+the sequence number (1), the payload's length, its CRC-32 (zlib's: reflected, polynomial 0xEDB88320), then the
+payload (the board record above; any valid `lz.h` stream decodes, all literals included).
+
+The image must be made with the same LittleFS geometry as the firmware's (littlefs 2.6 or later, on-disk version
+2.1; the name limit at most the reader's):
+
+| Board | Offset | Size | Block | Blocks | Read / prog | Cache / lookahead | Name max |
+|---|---|---|---|---|---|---|---|
+| ESP32 DevKit (esp_littlefs, arduino-esp32 2.0.17) | 0x3D0000 (partition `spiffs`) | 128 KB | 4096 | 32 | 128 / 128 | 512 / 128 | 64 |
+| Pico W (2 MB), Pico 2 W (4 MB) (arduino-pico LittleFS) | flash size - 4 KB - 188 KB (`PICOBOOT_FS_OFFSET`) | 188 KB | 4096 | 47 | 256 / 256 | 256 / 256 | 255 (64 also mounts) |
+| Pico (2 MB) | flash size - 4 KB - 256 KB | 256 KB | 4096 | 64 | 256 / 256 | 256 / 256 | 255 (64 also mounts) |
+
+A file system the firmware cannot open is never formatted at power-on (only a blank one is): its records count as
+unreadable and, with no usable board package, no pins are driven until a factory reset.
 
 ## Changing this page
 

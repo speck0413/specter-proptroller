@@ -163,19 +163,19 @@ void the_table_as_bytes_and_back() {
   x = bytes;
   x[6 + SCRIPT_MAX_NAME + 3] = (char)0xFF;  // effect 0's count
   TEST_ASSERT_TRUE(refused(x));
-  size_t step0 = 6 + p->effects * (SCRIPT_MAX_NAME + 7);
+  size_t step0 = 6 + p->effects * (SCRIPT_MAX_NAME + 15);
   x = bytes;
-  x[step0 + 10] = 9;  // op
+  x[step0 + 10] = 11;  // an op beyond the last
   TEST_ASSERT_TRUE(refused(x));
   x = bytes;
   x[step0 + 4] = (char)INPUT_COUNT;  // step 0 is the first effect's wait for trig1
   TEST_ASSERT_TRUE(refused(x));
   x = bytes;
-  x[step0 + 11 + 4] = (char)0xFF;  // step 1 (a fade): target 0xFFxx
-  x[step0 + 11 + 5] = (char)0xFF;
+  x[step0 + 12 + 4] = (char)0xFF;  // step 1 (a fade): target 0xFFxx
+  x[step0 + 12 + 5] = (char)0xFF;
   TEST_ASSERT_TRUE(refused(x));
   x = bytes;
-  for (int k = 0; k < 4; k++) x[step0 + 11 + k] = 0;  // the fade's time
+  for (int k = 0; k < 4; k++) x[step0 + 12 + k] = 0;  // the fade's time
   TEST_ASSERT_TRUE(refused(x));
   x = bytes;
   x[6 + SCRIPT_MAX_NAME] = 'x';  // a name without its end
@@ -349,10 +349,25 @@ void a_new_firmware_checks_again_and_rewrites_after_its_self_check() {
   TEST_ASSERT_TRUE(lampRuns(sim));
 }
 
+// The text the committed records hold: the doorbell example as it was written when they were made (with `sleep`,
+// the older spelling of `wait`, which a stored script keeps, SS-C2, and which still checks and runs).
+static std::string storedDoorbell() { return readFile(FIX + "records/script-record-text.txt"); }
+
+// A record stored by a firmware with the first table format (rc.2): its text reads back, its table does not
+// (has_table false), so the board checks the text again at the next power-on.
+void a_table_format_1_record_is_checked_again() {
+  std::string rec = readFile(FIX + "records/script-record-table1.bin");
+  std::unique_ptr<ScriptProgram> q(new ScriptProgram());
+  ScriptRecordRead r = scriptRecordDecode(rec, *q);
+  TEST_ASSERT_EQUAL((int)ScriptRecordKind::Current, (int)r.kind);
+  TEST_ASSERT_EQUAL_STRING(storedDoorbell().c_str(), r.text.c_str());
+  TEST_ASSERT_FALSE(r.has_table);
+}
+
 // The committed record (FIXTURE_WRITE=1 writes it again) reads back byte for byte, and runs on a board.
 void the_record_fixture_reads_back() {
   const std::string f2 = FIX + "records/script-record.bin";
-  const std::string text = readFile("../show-script-examples/07_doorbell_chime.txt");
+  const std::string text = storedDoorbell();
   SoundList sounds = {{"chime.mp3", 3}};
   std::unique_ptr<ScriptProgram> p(new ScriptProgram());
   TEST_ASSERT_TRUE(scriptCompile(text, sounds, ScriptBoard(), *p).ok());
@@ -388,5 +403,6 @@ int main() {
   RUN_TEST(power_on_runs_the_stored_table);
   RUN_TEST(a_new_firmware_checks_again_and_rewrites_after_its_self_check);
   RUN_TEST(the_record_fixture_reads_back);
+  RUN_TEST(a_table_format_1_record_is_checked_again);
   return UNITY_END();
 }

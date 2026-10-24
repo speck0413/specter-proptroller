@@ -32,7 +32,7 @@ Wire a 12 V DC pump, motor or store-bought 12 V pop-up to OUT1, with a soft star
 5. **Test it.** Power the board. On the Live tab, in the Outputs card, press On next to OUT1. The motor runs. If it turns the wrong way, power off and swap its two wires. Then press Auto.
    (How to open the board’s page: [Meet your board](00-meet-your-board.md), step "Connect your phone".)
 6. **Soft start.** To ease the start-up surge: Settings > Outputs > "OUT1 soft start" = 500 (ms) > Save settings. The motor now speeds up over half a second.
-7. **Use it in a show.** In a show script: `out1 = on`, `sleep 3`, `out1 = off`. `out1 = 60%` runs it slower (keep a dimmed motor under 2 A at 12 V). A pop-up that must stop at an end needs its own end switches: follow its maker’s wiring.
+7. **Use it in a show.** In a show script: `out1 = on`, `wait 3`, `out1 = off`. `out1 = 60%` runs it slower (keep a dimmed motor under 2 A at 12 V). A pop-up that must stop at an end needs its own end switches: follow its maker’s wiring.
 
 ## Not working?
 

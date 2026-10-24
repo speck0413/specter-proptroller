@@ -473,11 +473,11 @@ static std::vector<DfModel::Play>& plays(Sim& s) { return s.world().df.plays; }
 void default_ambient_then_trigger_sound_then_ambient() {
   Sim sim("t");
   sim.addExample();  // a fresh board has no shows
-  sim.world().df.setCard({{1, 1, 4000}, {DfModel::MP3, 1, 1500}});
+  sim.world().df.setCard({{DfModel::MP3, 2, 4000}, {DfModel::MP3, 1, 1500}});
   sim.powerCycle(10);
   sim.step(2500);
   TEST_ASSERT_EQUAL(1, plays(sim).size());
-  TEST_ASSERT_EQUAL_STRING("/01/001", plays(sim)[0].what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/mp3/0002", plays(sim)[0].what.c_str());  // ambient_track 2
   TEST_ASSERT_EQUAL(15, plays(sim)[0].volume);
   TEST_ASSERT_EQUAL_STRING("ambient", stateCtl(sim)["sound"]["source"].as<const char*>());
   Millis t0 = sim.now();
@@ -493,7 +493,7 @@ void default_ambient_then_trigger_sound_then_ambient() {
   TEST_ASSERT_EQUAL(200, onSpans(sim, Channel::Cc2, t0)[0].second);
   TEST_ASSERT_TRUE_MESSAGE(cc1[0].first - t0 <= 110, "pulse on the accepted press (after the 100 ms debounce)");
   sim.step(2000);
-  TEST_ASSERT_EQUAL_STRING("/01/001", plays(sim).back().what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/mp3/0002", plays(sim).back().what.c_str());
   Millis t1 = sim.now();
   size_t n = plays(sim).size();
   sim.press(Input::Trig1, 150);
@@ -516,20 +516,19 @@ void one_file_card_plays_it_as_the_trigger_and_skips_ambient() {
   TEST_ASSERT_EQUAL(1, plays(sim).size());
 }
 
-void any_file_on_the_card_plays_as_the_trigger() {
+void a_file_outside_the_mp3_folder_does_not_play() {
   Sim sim("t");
   sim.world().df.setCard({{DfModel::ROOT, 1, 1000}});
   sim.powerCycle(10);
   sim.step(3000);
   sim.press(Input::Trig1, 150);
   sim.step(300);
-  TEST_ASSERT_EQUAL(1, plays(sim).size());
-  TEST_ASSERT_EQUAL_STRING("card #1", plays(sim)[0].what.c_str());
+  TEST_ASSERT_EQUAL(0, plays(sim).size());  // sound 1 is mp3/0001 (sound.h SOUND_MODE): no other file is tried
 }
 
 void ambient_off_and_settings() {
   Sim sim("t");
-  sim.world().df.setCard({{1, 1, 4000}, {2, 5, 4000}, {DfModel::MP3, 3, 1000}});
+  sim.world().df.setCard({{DfModel::MP3, 2, 4000}, {DfModel::MP3, 5, 4000}, {DfModel::MP3, 3, 1000}});
   set(sim, "ambient", "false");
   set(sim, "trigger_track", "3");
   set(sim, "trigger_volume", "30");
@@ -541,12 +540,11 @@ void ambient_off_and_settings() {
   sim.step(200);
   TEST_ASSERT_EQUAL_STRING("/mp3/0003", plays(sim)[0].what.c_str());
   TEST_ASSERT_EQUAL(30, plays(sim)[0].volume);
-  set(sim, "ambient_folder", "2");
   set(sim, "ambient_track", "5");
   set(sim, "ambient_volume", "7");
   set(sim, "ambient", "true");
   sim.step(2000);
-  TEST_ASSERT_EQUAL_STRING("/02/005", plays(sim).back().what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/mp3/0005", plays(sim).back().what.c_str());
   TEST_ASSERT_EQUAL(7, plays(sim).back().volume);
 }
 
@@ -893,7 +891,7 @@ int main() {
   RUN_TEST(status_patterns_follow_the_show);
   RUN_TEST(default_ambient_then_trigger_sound_then_ambient);
   RUN_TEST(one_file_card_plays_it_as_the_trigger_and_skips_ambient);
-  RUN_TEST(any_file_on_the_card_plays_as_the_trigger);
+  RUN_TEST(a_file_outside_the_mp3_folder_does_not_play);
   RUN_TEST(ambient_off_and_settings);
   RUN_TEST(show_sound_pulses_the_sound_trigger_and_suppresses_the_default);
   RUN_TEST(role_outputs_are_reserved_and_configurable);

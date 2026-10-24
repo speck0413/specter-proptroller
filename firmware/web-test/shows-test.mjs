@@ -80,6 +80,17 @@ await page.selectOption('.track .cue select >> nth=0', 'level');
 const lv = await page.$eval('.track .cue .params label', (l) => [l.firstChild.textContent, l.querySelector('input').value]);
 ok(lv[0] === 'level (%)' && lv[1] === '50', 'a level in %: ' + lv.join(' '));
 ok(JSON.parse(await page.inputValue('#ed-json')).tracks[0].cues[0].level === 500, 'stored as 500 (permille)');
+// a sound cue plays sound N (folder 0: the card's mp3/NNNN-….mp3), no folder field
+if (await page.$('#ed-new-target option[value="SOUND"]')) {
+  await page.selectOption('#ed-new-target', 'SOUND');
+  await page.click('#ed-add-track');
+  const snd = page.locator('.track').last();
+  const labels = await snd.locator('.cue .params label').evaluateAll((ls) => ls.map((l) => l.firstChild.textContent));
+  ok(JSON.stringify(labels) === '["sound"]', 'a sound cue asks for the sound only: ' + labels.join(', '));
+  const cue = JSON.parse(await page.inputValue('#ed-json')).tracks.at(-1).cues[0];
+  ok(cue.do === 'play' && cue.folder === 0 && cue.track === 1, 'stored as sound 1 (folder 0): ' + JSON.stringify(cue));
+  await snd.getByRole('button', { name: 'remove', exact: true }).click();
+}
 // a JSON that is not a show is refused in plain words, nothing breaks
 await page.click('#editor details summary');
 await page.fill('#ed-json', '{"id":3}');

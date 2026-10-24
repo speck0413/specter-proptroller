@@ -1,0 +1,10 @@
+effect fill:
+  wait for trig1
+  out2 = on
+  sleep 2
+  out2 = off
+effect drain:
+  wait for trig2
+  out2 = 50%
+  sleep 2
+  out2 = off

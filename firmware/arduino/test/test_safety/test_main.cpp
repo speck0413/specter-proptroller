@@ -237,7 +237,7 @@ void relays_never_chatter() {
   TEST_ASSERT_TRUE(p.errorMessage().find("at most every 100 ms") != std::string::npos);
   Response r = script(sim, "effect c:\n  wait for trig1\n  rly1 = on\n  sleep 0.05\n  rly1 = off\n");
   TEST_ASSERT_FALSE(r.doc()["result"]["ok"] | true);
-  TEST_ASSERT_EQUAL_STRING("line 5: rly1 switches again after 50 ms. Relays and contacts switch at most every 100 ms: sleep at least 0.1 between its changes.",
+  TEST_ASSERT_EQUAL_STRING("line 5: rly1 switches again after 50 ms. Relays and contacts switch at most every 100 ms: wait at least 0.1 between its changes.",
                            r.doc()["result"]["errors"][0]["message"] | "");
   // a show stepping on, off, on 20 ms apart: off at once, on again only 100 ms after it went off
   ok(sim.request(R"({"op":"put_show","data":{"id":3,"name":"d","triggers":[{"on":"input","input":"TRIG2"}],"tracks":[{"target":"RLY1","cues":[{"at":0,"do":"on"},{"at":20,"do":"off"},{"at":40,"do":"on"},{"at":500,"do":"off"}]}]}})"));
@@ -388,7 +388,7 @@ static std::string manyErrors() {
   std::string t;
   for (int e = 0; e < 8; e++) {
     t += "effect effect number " + std::to_string(e) + " with a long name:\n  wait for user" + std::to_string(e % 3 + 1) + "\n";
-    for (int i = 0; i < 24; i++) t += "  fade out" + std::to_string(e % 4 + 1) + " to 37.5% over 1.25 s # c\n";
+    for (int i = 0; i < 24; i++) t += "  fade out" + std::to_string(e % 4 + 5) + " to 37.5% over 1.25 s # c\n";  // no such output
   }
   t = t.substr(0, 8100);
   return t.substr(0, t.rfind('\n') + 1);

@@ -49,6 +49,7 @@ class SimPins : public BoardPins {
   explicit SimPins(SimWorld& w) : w_(w) {}
   // a board profile (pins.h): absent terminals and input polarity; none = every terminal, active low
   void setMap(const PinMap& m) { map_ = m; has_map_ = true; }
+  const PinMap& map() const { return map_; }
   bool activeHigh(int k) const { return has_map_ && inputActiveHigh(map_, k); }
   bool hasOutput(int ch) override { return !has_map_ || channelPin(map_, ch) != NO_PIN; }
   bool hasInput(int k) override { return !has_map_ || inputPin(map_, k) != NO_PIN; }

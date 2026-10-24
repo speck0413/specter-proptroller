@@ -1,0 +1,6 @@
+effect a:
+  wait for trig1
+  pulse cc1 for 200 ms
+  out1 = on
+  sleep 1
+  out1 = off

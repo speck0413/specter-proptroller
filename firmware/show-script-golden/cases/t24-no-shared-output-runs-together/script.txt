@@ -1,0 +1,10 @@
+effect lamp:
+  wait for trig1
+  out1 = on
+  sleep 2
+  out1 = off
+effect fan:
+  wait for trig1
+  out2 = on
+  sleep 1
+  out2 = off

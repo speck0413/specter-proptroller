@@ -102,20 +102,32 @@ void every_error_is_reported_in_line_order() {
 
 
 
-void sounds_by_name_and_number() {
-  SoundList s = {{"Chime.mp3", 3}};
+void sounds_are_numbers_and_volume_is_a_percentage() {
+  SoundList s = {{"Chime.mp3", 3}};  // a stored sound list is kept, never read
   ScriptProgram p;
-  TEST_ASSERT_TRUE(check("effect a:\nwait for trig1\naudio_single = Chime.mp3\naudio_loop = 007_wind.mp3\naudio_single = 12\naudio_stop\n", p, board(), s).ok());
-  TEST_ASSERT_EQUAL(3, p.step[1].value);
+  TEST_ASSERT_TRUE(check("effect a:\nwait for trig1\naudio_single = 3000\naudio_loop = \"7\"\naudio_single = 12\naudio_stop\n", p, board(), s).ok());
+  TEST_ASSERT_EQUAL(3000, p.step[1].value);
   TEST_ASSERT_EQUAL(7, p.step[2].value);
   TEST_ASSERT_EQUAL(12, p.step[3].value);
-  // file names keep their case (SS-W1)
-  TEST_ASSERT_FALSE(check("effect a:\nwait for trig1\naudio_single = chime.mp3\n", p, board(), s).ok());
+  ScriptCheck c = check("effect a:\nwait for trig1\naudio_single = Chime.mp3\naudio_single = 3001\naudio_loop = 7_wind\n", p, board(), s);
+  TEST_ASSERT_EQUAL(3, c.errors.size());
+  TEST_ASSERT_EQUAL_STRING("line 3: \"Chime.mp3\" is not a sound number. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3).", c.errors[0].text.c_str());
+  TEST_ASSERT_EQUAL_STRING("line 4: sound 3001 is out of range. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3).", c.errors[1].text.c_str());
+  // audio_volume: 0-100 % on the player's 0-30, halves up; off and 0 are mute; a sound line (may come first)
+  TEST_ASSERT_TRUE(check("effect a:\naudio_volume = 60%\nwait for trig1\naudio_volume = 50%\naudio_volume = 1.7%\naudio_volume = off\naudio_volume = 0\naudio_volume = 100 %\n", p).ok());
+  uint16_t want[] = {18, 15, 1, 0, 0, 30};
+  for (int k = 0; k < 6; k++) {
+    const ScriptStep& st = p.step[k == 0 ? 0 : k + 1];
+    TEST_ASSERT_TRUE(st.op == ScriptStep::Op::Volume);
+    TEST_ASSERT_EQUAL(want[k], st.value);
+  }
+  c = check("effect a:\nwait for trig1\naudio_volume = loud\naudio_volume = 120%\naudio_volume =\n", p);
+  TEST_ASSERT_EQUAL(3, c.errors.size());
+  TEST_ASSERT_EQUAL_STRING("line 3: \"loud\" is not a volume. Use a percentage from 0% to 100%, or off.", c.errors[0].text.c_str());
   SoundList back;
   std::string why;
   TEST_ASSERT_TRUE(soundListParse(soundListJson(s), back, why));
   TEST_ASSERT_EQUAL(1, back.size());
-  TEST_ASSERT_FALSE(soundListParse("{\"x.mp3\":100}", back, why));
 }
 
 
@@ -271,16 +283,16 @@ void sound_lines_and_dmx() {
   b.press(0, 150);
   b.step(500);
   TEST_ASSERT_EQUAL(1, b.sound.size());
-  TEST_ASSERT_TRUE(b.sound[0] == SoundCommand::loopFolder(4));
+  TEST_ASSERT_TRUE(b.sound[0] == SoundCommand::loopMp3(4));  // played again when it finishes (sound.h)
   uint8_t c;
   uint16_t prm;
   b.sound[0].encode(c, prm);
-  TEST_ASSERT_EQUAL_HEX8(0x17, c);
+  TEST_ASSERT_EQUAL_HEX8(0x12, c);
   TEST_ASSERT_EQUAL(4, prm);
   b.step(1000);
   b.sound[1].encode(c, prm);
-  TEST_ASSERT_EQUAL_HEX8(0x0F, c);
-  TEST_ASSERT_EQUAL_HEX16(0x0201, prm);
+  TEST_ASSERT_EQUAL_HEX8(0x12, c);  // sound 2: mp3/0002
+  TEST_ASSERT_EQUAL(2, prm);
   TEST_ASSERT_EQUAL(128, b.run.dmx()[2]);  // round(50 x 255 / 100), halves up
   b.step(1500);
   b.sound[2].encode(c, prm);
@@ -442,7 +454,7 @@ void the_messages_show_the_terminal_beside_the_name() {
   TEST_ASSERT_EQUAL_STRING("line 3: fog (rly1) is set to pulse on every trigger (rly1_role). Set rly1_role to shows to use it in a script.",
                            err0(c).c_str());
   c = check("effect a:\nwait for bell\nlamp = on\neffect b:\nwait for trig1\nout1 = off\n", p, named());
-  TEST_ASSERT_EQUAL_STRING("line 6: out1 is already used by effect \"a\" (line 3). Each output belongs to one effect.", err0(c).c_str());
+  TEST_ASSERT_TRUE_MESSAGE(c.ok(), "two effects may set the same output (SS-R8: they take turns)");
   c = check("effect a:\nwait for bell\nlamp = on\n", p, named());
   TEST_ASSERT_TRUE(c.ok());
   TEST_ASSERT_EQUAL_STRING("line 1: effect \"a\" ends with lamp (out1) still on. It may stay on until the next trigger.", c.warnings[0].text.c_str());
@@ -501,7 +513,7 @@ int main() {
   RUN_TEST(effect_names);
   RUN_TEST(times_and_levels);
   RUN_TEST(every_error_is_reported_in_line_order);
-  RUN_TEST(sounds_by_name_and_number);
+  RUN_TEST(sounds_are_numbers_and_volume_is_a_percentage);
   RUN_TEST(a_run_and_its_timing);
   RUN_TEST(nothing_passes_in_the_boot_lockout_and_a_held_input_waits_for_release);
   RUN_TEST(held_through_the_end_never_restarts);

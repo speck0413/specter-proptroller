@@ -17,8 +17,9 @@ namespace pt {
 // Milliseconds since power-on, 64 bits (never wraps).
 Millis millis64();
 
-// Drive every output pin low and the PIXEL pin to its idle level. The very first thing begin() does.
-void outputsOffNow(const PinMap& m);
+// Drive every output pin low and the PIXEL pin to its idle level (HIGH when the board inverts the pixel data). The
+// first thing begin() does to a pin, once the board package says which pins exist.
+void outputsOffNow(const PinMap& m, bool pixel_inverted = true);
 
 class ArduinoPins : public BoardPins {
  public:
@@ -38,6 +39,9 @@ class ArduinoPins : public BoardPins {
  private:
   PinMap m_;
   int led_;
+  // the inputs' pins and polarity, worked out once from the board package (readLow runs every 1 ms)
+  uint8_t in_pin_[5];
+  bool in_high_[5];
 };
 
 // The DFPlayer serial port (9600 8N1).
@@ -54,16 +58,17 @@ class SerialStream : public ByteStream {
 // Opens the DFPlayer port on the board's pins and returns it.
 Stream& openDfSerial(const PinMap& m);
 
-// The PIXEL port with the board's inversion (ESP32: RMT idle high and inverted items; RP2040: PIO with the
-// pad output inverted).
+// The PIXEL port, with the board's inversion when it has an inverting level shifter (the Proptroller board; ESP32:
+// RMT idle high and inverted items; RP2040: PIO with the pad output inverted), else plain.
 class BoardPixels : public PixelOut {
  public:
-  explicit BoardPixels(uint8_t pin) : pin_(pin) {}
+  explicit BoardPixels(uint8_t pin, bool inverted = true) : pin_(pin), inverted_(inverted) {}
   bool begin();
   bool write(const Rgb* px, size_t n) override;
 
  private:
   uint8_t pin_;
+  bool inverted_;
   bool ok_ = false;
 #if defined(ARDUINO_ARCH_RP2040)
   void* pio_ = nullptr;

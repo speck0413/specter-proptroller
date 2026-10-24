@@ -209,6 +209,7 @@ void Info::toJson(JsonObject o) const {
   o["fw_impl"] = fw_impl;
   o["fw_build"] = fw_build;
   o["mcu"] = mcu;
+  o["board"] = board;
   if (has_update) {
     JsonObject u = o["update"].to<JsonObject>();
     u["slot"] = update_slot;
@@ -230,7 +231,9 @@ void Info::toJson(JsonObject o) const {
     x["label"] = a.label;
     x["confirm"] = a.confirm;
     x["momentary"] = a.momentary;
+    if (a.hold) x["hold"] = true;
   }
+  if (!stop_button) o["stop_button"] = false;
   JsonArray te = o["terminals"].to<JsonArray>();
   for (auto& t : terminals) {
     JsonObject x = te.add<JsonObject>();
@@ -253,6 +256,7 @@ void Info::announceJson(uint16_t port, JsonObject o) const {
   o["fw_version"] = fw_version;
   o["fw_impl"] = fw_impl;
   o["mcu"] = mcu;
+  o["board"] = board;
   o["port"] = port;
 }
 
@@ -265,7 +269,7 @@ std::string Info::announce(uint16_t port) const {
 }
 
 std::vector<std::pair<std::string, std::string>> Info::txt() const {
-  return {{"v", "1"}, {"id", id}, {"name", name}, {"fw", fw}, {"fwv", fw_version}, {"fwi", fw_impl}, {"mcu", mcu}};
+  return {{"v", "1"}, {"id", id}, {"name", name}, {"fw", fw}, {"fwv", fw_version}, {"fwi", fw_impl}, {"mcu", mcu}, {"board", board}};
 }
 
 void NetState::toJson(JsonObject o) const {
@@ -284,7 +288,7 @@ const char* errorCodeName(ErrorCode c) {
   return n[(int)c];
 }
 
-static const char* const READ_ONLY_OPS[] = {"info", "state", "list_shows", "get_show", "get_params", "get_profile", "get_script", "check_script", "get_backup", "wifi_scan"};
+static const char* const READ_ONLY_OPS[] = {"info", "state", "list_shows", "get_show", "get_params", "get_profile", "get_script", "check_script", "get_backup", "wifi_scan", "get_board", "get_defaults"};
 bool Request::mutates() const {
   for (auto o : READ_ONLY_OPS)
     if (op == o) return false;
@@ -362,6 +366,7 @@ bool reqSound(const Request& r, SoundCommand& c) {
   if (k == "play_index") { c.kind = SoundCommand::Kind::PlayIndex; return u("index", 65535, c.a); }
   if (k == "loop_index") { c.kind = SoundCommand::Kind::LoopIndex; return u("index", 65535, c.a); }
   if (k == "loop_folder") { c.kind = SoundCommand::Kind::LoopFolder; return u("folder", 255, c.a); }
+  if (k == "loop_mp3") { c.kind = SoundCommand::Kind::LoopMp3; return u("track", 65535, c.a); }
   if (k == "volume") { c.kind = SoundCommand::Kind::Volume; return u("volume", 255, c.a); }
   static const char* const simple[] = {"stop", "pause", "resume", "next", "reset", "select_sd"};
   static const SoundCommand::Kind sk[] = {SoundCommand::Kind::Stop, SoundCommand::Kind::Pause, SoundCommand::Kind::Resume,
@@ -380,9 +385,30 @@ static bool checkOp(Request& r, std::string& why, bool allow_custom) {
   };
   auto optU = [&](const char* f, uint64_t max) { return r[f].isNull() || isU(r[f], max); };
   if (op == "info" || op == "state" || op == "list_shows" || op == "stop_all" ||
-      op == "add_example" || op == "get_params" || op == "reboot" || op == "factory_reset" || op == "get_profile" ||
-      op == "reset_runs")
+      op == "add_example" || op == "get_params" || op == "reboot" || op == "get_profile" || op == "reset_runs")
     return true;
+  if (op == "factory_reset")
+    return need(r["forget_board"].isNull() || r["forget_board"].is<bool>(), "forget_board") &&
+           need(r["keep_wifi"].isNull() || r["keep_wifi"].is<bool>(), "keep_wifi");
+  if (op == "get_defaults") return true;
+  if (op == "apply_defaults") {
+    if (r["only"].isNull()) return true;
+    if (!r["only"].is<JsonArrayConst>() || r["only"].as<JsonArrayConst>().size() == 0) return need(false, "only");
+    for (JsonVariantConst x : r["only"].as<JsonArrayConst>()) {
+      const std::string w = x | "";
+      if (w != "profile" && w != "settings" && w != "script") { why = "`only` takes \"profile\", \"settings\" and \"script\""; return false; }
+    }
+    return true;
+  }
+  if (op == "get_board") return need(r["preset"].isNull() || r["preset"].is<const char*>(), "preset");
+  if (op == "set_board") {
+    const int given = (r["package"].isNull() ? 0 : 1) + (r["preset"].isNull() ? 0 : 1) + (r["forget"].isNull() ? 0 : 1);
+    if (given != 1) { why = "set_board takes one of `package` (a board package), `preset` (a built-in board's id) or `forget`: true"; return false; }
+    const std::string def = r["defaults"] | "keep";
+    return need(r["package"].isNull() || r["package"].is<JsonObjectConst>(), "package") &&
+           need(r["preset"].isNull() || r["preset"].is<const char*>(), "preset") && need(r["forget"].isNull() || r["forget"] == true, "forget") &&
+           need(r["defaults"].isNull() || def == "apply" || def == "keep", "defaults");
+  }
   if (op == "get_show" || op == "delete_show" || op == "run" || op == "stop") return need(isU(r["show"], 65535), "show");
   if (op == "put_show") {
     Show s;
@@ -416,6 +442,10 @@ static bool checkOp(Request& r, std::string& why, bool allow_custom) {
     return true;
   }
   if (op == "action") return need(r["key"].is<const char*>(), "key") && need(r["down"].isNull() || r["down"].is<bool>(), "down");
+  if (op == "test_input") {
+    Input i = Input::Trig1;
+    return need(reqInput(r, "input", i), "input") && need(r["active"].is<bool>(), "active") && need(optU("ms", TEST_PRESS_MAX_MS), "ms");
+  }
   if (op == "sim_input") {
     Input i = Input::Trig1;
     return need(reqInput(r, "input", i), "input") && need(r["active"].is<bool>(), "active") && need(optU("lease_ms", 0xFFFFFFFFull), "lease_ms");

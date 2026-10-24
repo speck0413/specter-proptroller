@@ -28,6 +28,10 @@ the sound card, wiring, and your first effect script typed on your phone. Then:
   [firmware/show-script-examples/](firmware/show-script-examples/) with wiring notes;
 - [the Arduino library](firmware/arduino/lib/proptroller/README.md): effects in code;
 - [hardware/README.md](hardware/README.md): ratings, pinout and power.
+- [docs/DEV-SETUP.md](docs/DEV-SETUP.md): from nothing to a running board with Specter Studio built from
+  source (macOS, with Windows and Linux notes): the setup script, the clone, a USB install and a script.
+- [docs/FIRMWARE-BUILD.md](docs/FIRMWARE-BUILD.md): build the firmware for each board, flash it over USB, make a
+  release folder, update over Wi-Fi, and what CI does on a release tag.
 
 ## Status
 
@@ -51,7 +55,7 @@ board. The desktop app is Specter Studio, a separate repository. Wiring guides a
 | `GETTING-STARTED.md` | from a new board to a running prop, no programming |
 | `firmware/` | the firmware (`arduino/`), the protocol (`PROTOCOL.md`), flash maps, the phone web UI (`web/`) and its browser tests (`web-test/`), golden sets and example show scripts |
 | `.github/workflows/release.yml` | on a tag `v<firmware/VERSION>`: builds the stock firmware (ESP32 DevKit, Pico W, Pico 2 W), drafts a GitHub Release with the update and first-flash images and `proptroller-firmware.json`, and publishes the browser flasher to GitHub Pages |
-| `docs/` | wiring guides (interactive 3D pages, written pages, videos), the case build guide, switching AC loads |
+| `docs/` | wiring guides (interactive 3D pages, written pages, videos), the case build guide, switching AC loads, developer setup with Specter Studio (`DEV-SETUP.md`), building and flashing the firmware (`FIRMWARE-BUILD.md`) |
 | `tools/` | `setup.sh` (firmware setup; `--dev` for the developer checks), bootstrap, JLC order packages (with rotation corrections), routing helpers |
 
 The generated KiCad project (`hardware/kicad/`: board, schematic, rules, symbol library, build records) and the order files

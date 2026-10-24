@@ -108,10 +108,13 @@ UpdateError SimTarget::markValid() {
 
 // ---------------------------------------------------------------- the board
 
-Sim::Sim(const std::string& id, const std::string& fw_build, const PinMap* map) : pins_(world_), uart_(world_), pixels_(world_) {
+Sim::Sim(const std::string& id, const std::string& fw_build, const PinMap* map, const char* board_id)
+    : pins_(world_), uart_(world_), pixels_(world_) {
   if (map) {
-    pins_.setMap(*map);
-    for (int k = 0; k < INPUT_COUNT; k++) world_.input_high[k] = !pins_.activeHigh(k);  // idle
+    image_board_id_ = board_id ? board_id : "custom";
+    image_board_ = {image_board_id_.c_str(), "Board support package (built in)", *map, true};
+    has_image_board_ = true;
+    chip_.mcu = map->mcu;
   }
   identity_.id = id;
   identity_.mcu = "sim";
@@ -135,11 +138,23 @@ void Sim::boot() {
   slots_.boot();
   identity_.fw_version = slots_.slots[slots_.running].fw_version;
   identity_.fw_build = slots_.slots[slots_.running].fw_build;
+  // the board package first, before any pin is used (as Proptroller::start on the boards)
+  const std::vector<BuiltinBoard> builtins = builtinBoards(chip_, has_image_board_ ? &image_board_ : nullptr);
+  const BoardBoot bb = boardAtBoot(&board_flash_, chip_, builtins);
+  const bool first = boots == 0;
+  bool polarity_changed = false;
+  for (int k = 0; k < INPUT_COUNT; k++) polarity_changed = polarity_changed || first || pins_.activeHigh(k) != inputActiveHigh(bb.cfg.map, k);
+  pins_.setMap(bb.cfg.map);
+  if (polarity_changed)
+    for (int k = 0; k < INPUT_COUNT; k++) world_.input_high[k] = !pins_.activeHigh(k);  // idle
+  identity_.board = bb.cfg.id;
   ctl_.reset(new Controller(pins_, uart_, pixels_, store_, identity_));
   ctl_->setUpdateTarget(&target_);
   ctl_->setScriptStore(script_store_);
   ctl_->setRunStore(&runs_flash_);
   ctl_->setDmx(&dmx_);
+  ctl_->setBoardPackages(&board_flash_, bb, chip_, builtins);
+  factoryRefused = ctl_->applyBoardDefaults(defaults_);
   NetState n;
   n.mode = "sim";
   n.ip = "127.0.0.1";

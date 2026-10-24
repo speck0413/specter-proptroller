@@ -43,9 +43,9 @@ Let a show puff fog on cue through the fog machine’s DMX IN socket and a small
 8. **Tell the board.** On the phone page: Settings > Expansion > DMX port > s4 > Save settings.
 9. **Set up the machine.** Set the fog machine to DMX mode, address one. Its manual shows how: often small switches or a menu. If it has a DMX OUT socket too, leave it empty, or fit a DMX terminator if the manual asks for one. Then plug the XLR into DMX IN.
 10. **Warm it up.** A fog machine only fogs when its heater is ready. A cold machine does nothing, and the board cannot tell. Switch the machine on a few minutes before the show.
-11. **Test it.** On the Script tab, paste a test effect: `effect fog:`, `wait for trig1`, `dmx1 = 100%`, `sleep 4`, `dmx1 = off`, `sleep 45`. Press Check, then Save. Press your TRIG1 button: the machine puffs fog for 4 seconds.
+11. **Test it.** On the Script tab, paste a test effect: `effect fog:`, `wait for trig1`, `dmx1 = 100%`, `wait 4`, `dmx1 = off`, `wait 45`. Press Check, then Save. Press your TRIG1 button: the machine puffs fog for 4 seconds.
    (How to open the board’s page: [Meet your board](00-meet-your-board.md), step "Connect your phone".)
-12. **Use it in a show.** In a show script, `dmx1 = 100%` starts fog, `dmx1 = off` stops it, and `dmx1 = 50%` asks for less if your machine supports it. End the effect with a long rest (`sleep 45`): a fog machine needs time to heat up again.
+12. **Use it in a show.** In a show script, `dmx1 = 100%` starts fog, `dmx1 = off` stops it, and `dmx1 = 50%` asks for less if your machine supports it. End the effect with a long rest (`wait 45`): a fog machine needs time to heat up again.
 
 ## Not working?
 

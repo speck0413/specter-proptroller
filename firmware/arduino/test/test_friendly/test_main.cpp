@@ -50,7 +50,7 @@ void the_ten_line_sketch() {
   TEST_ASSERT_EQUAL(o1[1].first, o2[0].first);  // then(): OUT2 starts when OUT1 ends
   TEST_ASSERT_EQUAL(5000, o2[1].first - o2[0].first);
   bool played = false;
-  for (auto& p : sim.world().df.plays) played |= p.what == "/02/001";
+  for (auto& p : sim.world().df.plays) played |= p.what == "/mp3/0001";  // playSound(1): sound 1
   TEST_ASSERT_TRUE(played);
 }
 

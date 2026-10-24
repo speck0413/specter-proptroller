@@ -1,10 +1,15 @@
 // Example board support package (BSP): a generic ESP32 board with four relay outputs on OUT1-4, a trigger input
 // (active low, the board's own pull-up) and a button with a pull-down (active high) on TRIG2. It has no RLY/CC
 // terminals, no USER buttons, no pixels and no sound port: those are NO_PIN and never touched.
+// The same board as a board package, sent to the stock firmware with no build: firmware/board-packages/relay4-button.json
+// (BOARD-PACKAGES.md; it is also built in: set_board {"preset": "relay4-button"}).
 // Use it: build_flags = -I path/to/this/folder (the Proptroller library picks up proptroller_board.h). Layout: pins.h
 // PinMap.
 #pragma once
 #include "proptroller/pins.h"
+
+// the board package's name (info.board): firmware lists and Specter Studio match images on it
+#define PROPTROLLER_BOARD_ID "relay4-button"
 
 constexpr pt::PinMap PROPTROLLER_BOARD_MAP = {
     pt::Mcu::Esp32DevKit,

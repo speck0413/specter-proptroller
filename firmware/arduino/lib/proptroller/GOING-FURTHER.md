@@ -76,17 +76,41 @@ board, so a sketch's `setup()` can be unit-tested (see `test/test_friendly`).
 
 ## Make your own board
 
-The library runs on other boards too. A board support package (BSP) is a folder with one header,
+The library runs on other boards too. The easy way needs no build: write a **board package**, a small JSON file
+with the GPIO of every terminal and how each input is wired, and send it to a board running the stock firmware
+(Specter Studio, or `set_board` over the USB serial port): `firmware/BOARD-PACKAGES.md`. The rest of this section
+compiles a board into an image instead; such an image starts on that board when no board package is stored.
+
+A board support package (BSP) is a folder with one header,
 `proptroller_board.h`, that defines `constexpr pt::PinMap PROPTROLLER_BOARD_MAP` (layout: `src/proptroller/pins.h`):
 the GPIO of every terminal, `pt::NO_PIN` for a terminal the board does not have (relays, contacts, USER buttons,
 pixels, the sound port), and per input (bit 0 TRIG1, 1 TRIG2, 2-4 USER1-3) `active_high` (a button with a
 pull-down; default active low) and `external_pull` (the board's own resistor; otherwise the internal pull-up or
 pull-down is used). The runtime setting `trig1_input` / `trig2_input = sensor_high` inverts a trigger once more
 (XOR with `active_high`). Select it with one build flag, `build_flags = -I path/to/your-bsp` (or
-`-D PROPTROLLER_BOARD_HEADER='"my_board.h"'`); without one the Proptroller board is the default BSP.
+`-D PROPTROLLER_BOARD_HEADER='"my_board.h"'`); without one the Proptroller board is the default BSP. Name it
+with `#define PROPTROLLER_BOARD_ID "my-board"` (and optionally `PROPTROLLER_BOARD_NAME`, and
+`PROPTROLLER_BOARD_PIXEL_INVERTED false` when the board has no inverting level shifter on PIXEL): it becomes the
+image's default built-in board (`get_board`), and a board package sent later replaces it.
 
 A terminal set to `NO_PIN` is never configured, driven or read and is not offered on the phone page or in `info`.
 The map is checked at compile time like the built-in ones (no GPIO used twice, no ESP32 output on GPIO34-39, no
 internal pull on GPIO34-39). `bsp/relay4-button/` is an example (four outputs, an active-high button, nothing
 else); `tools/build-examples.sh` builds it and `test/test_board_support` runs it on the simulated board
 (`Sim(id, build, &map)`).
+
+A BSP can also give a fresh board (nothing stored yet, or after a factory reset) its own starting point: define
+any of these as string literals, in `proptroller_board.h` or in a header of their own, `proptroller_defaults.h`
+(on the include path, or `-D PROPTROLLER_DEFAULTS_HEADER='"my_defaults.h"'`), which works on the built-in pin
+maps too.
+
+| Define | What | Applied as |
+|---|---|---|
+| `PROPTROLLER_BOARD_PROFILE` | an alias profile (`set_profile`'s JSON) | first |
+| `PROPTROLLER_BOARD_SETTINGS` | `key=value` lines, as on the serial console (`#` comments; the profile's key aliases work) | second |
+| `PROPTROLLER_BOARD_SCRIPT` | a show script (`firmware/SHOW-SCRIPT.md`) | last |
+| `PROPTROLLER_BOARD_SCRIPT_NAME` | what that script is called (`get_defaults`) | |
+
+The board keeps them like anything set by hand: a change made later is not undone at the next power-on. A value
+the board refuses is logged in plain words and the rest still applies (`test/test_board_defaults`). So a board
+with its own pins, words and behaviour is the stock firmware built with one `-I path/to/bsp` flag.

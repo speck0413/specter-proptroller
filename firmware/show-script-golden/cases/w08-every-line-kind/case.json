@@ -2,9 +2,7 @@
   "spec": [
     "SS-L"
   ],
-  "sounds": {
-    "rain.mp3": 4
-  },
+  "sounds": {},
   "settings": {
     "buttons": "triggers"
   },

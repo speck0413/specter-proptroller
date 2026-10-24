@@ -177,7 +177,7 @@ void a_crash_while_pending_rolls_back() {
   TEST_ASSERT_TRUE(sendImage(sim, sim_image::build("0.3.0", "n2", true, 5000)).find("self-check") != std::string::npos);
   sim.step(5000);
   sim.powerCycle();  // a reset before the self-check
-  TEST_ASSERT_TRUE(sim.infoJson().find(R"("fw_build":"sim","mcu":"sim","update":{"slot":"app0","max_bytes":1966080,"state":"valid","rolled_back":true})") != std::string::npos);
+  TEST_ASSERT_TRUE(sim.infoJson().find(R"("fw_build":"sim","mcu":"sim","board":"proptroller","update":{"slot":"app0","max_bytes":1966080,"state":"valid","rolled_back":true})") != std::string::npos);
 }
 
 // A board whose bootloader installs the update at the restart (the Pico W swap, modelled by the simulator):
@@ -350,8 +350,25 @@ void update_mode_refuses_the_console_and_mqtt() {
   sim.ctl().updateAbort();
 }
 
+// the board package (BSP) a firmware was built for: info, the discovery answer, mDNS TXT and backups name it
+void the_board_package_is_named_everywhere() {
+  Info i;
+  TEST_ASSERT_EQUAL_STRING("proptroller", i.board.c_str());  // no board support package: the Proptroller board
+  i.board = "relay4-button";
+  JsonDocument d;
+  i.toJson(d.to<JsonObject>());
+  TEST_ASSERT_EQUAL_STRING("relay4-button", d["board"]);
+  TEST_ASSERT_TRUE(i.announce(80).find(R"("board":"relay4-button")") != std::string::npos);
+  bool txt = false;
+  for (auto& kv : i.txt()) txt = txt || (kv.first == "board" && kv.second == "relay4-button");
+  TEST_ASSERT_TRUE(txt);
+  Identity id;
+  TEST_ASSERT_EQUAL_STRING("proptroller", id.board.c_str());
+}
+
 int main() {
   UNITY_BEGIN();
+  RUN_TEST(the_board_package_is_named_everywhere);
   RUN_TEST(backup_round_trip_is_exact);
   RUN_TEST(a_bad_backup_changes_nothing);
   RUN_TEST(a_script_that_cannot_be_stored_answers_internal_and_the_old_one_stays);

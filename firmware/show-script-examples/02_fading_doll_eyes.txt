@@ -10,13 +10,13 @@
 effect doll eyes:
   wait for trig1
   fade out2 to 80% over 2
-  sleep 3
+  wait 3
   out2 = off
-  sleep 150 ms
+  wait 150 ms
   out2 = 80%
-  sleep 150 ms
+  wait 150 ms
   out2 = off
-  sleep 150 ms
+  wait 150 ms
   out2 = 80%
-  sleep 2
+  wait 2
   fade out2 to 0% over 4

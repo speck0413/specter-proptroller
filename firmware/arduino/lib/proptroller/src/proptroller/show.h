@@ -58,7 +58,9 @@ struct Action {
   uint32_t ms = 0;     // Ramp, Pulse, Fade
   uint32_t on_ms = 0, off_ms = 0;
   uint16_t count = 0;  // Blink (0 = until the next cue)
-  uint8_t folder = 0, track = 0, volume = 0;
+  // Play: folder 0 is sound `track` (1-3000, sound.h: the card's mp3/NNNN), folder 1-99 the file /FF/TTT.mp3
+  uint8_t folder = 0, volume = 0;
+  uint16_t track = 0;
   Rgb color;
   uint32_t step_ms = 0;
   uint16_t width = 3;

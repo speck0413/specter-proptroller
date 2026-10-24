@@ -1,10 +1,8 @@
 {
   "spec": [
-    "SS-C4"
+    "SS-R8"
   ],
-  "sounds": {
-    "chime.mp3": 1
-  },
+  "sounds": {},
   "settings": {},
   "trace": {
     "settings": {
@@ -17,30 +15,29 @@
         "closed": true
       },
       {
-        "t": 1150,
+        "t": 2300,
         "in": "TRIG1",
         "closed": false
       }
     ],
-    "until": 7000,
+    "until": 4000,
     "expect": {
-      "sound": [
-        [
-          1100,
-          "play",
-          1
-        ],
-        [
-          3100,
-          "play",
-          3
-        ],
-        [
-          5100,
-          "play",
-          5
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            2100,
+            500
+          ],
+          [
+            3100,
+            0
+          ]
         ]
-      ]
+      }
     }
   }
 }

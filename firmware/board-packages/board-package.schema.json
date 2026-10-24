@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "board-package.schema.json",
+  "title": "Proptroller board package, format 1",
+  "description": "Which GPIO each terminal is on, how each input is wired, and the board's defaults (firmware/BOARD-PACKAGES.md). The board checks the pin rules of its own chip; this schema checks the shape.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["board_package", "id", "name"],
+  "properties": {
+    "$schema": {"type": "string"},
+    "description": {"type": "string"},
+    "board_package": {"const": 1},
+    "id": {"type": "string", "pattern": "^[a-z0-9_-]{1,32}$", "not": {"const": "none"}},
+    "name": {"type": "string", "minLength": 1, "maxLength": 60},
+    "mcu": {"enum": ["esp32-devkit", "pico"]},
+    "base": {"type": "string", "description": "a built-in board's id: its pins (no pin fields beside it)"},
+    "terminals": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^(OUT[1-4]|RLY[12]|CC[12])$": {"$ref": "#/$defs/output"},
+        "^(TRIG[12]|USER[1-3])$": {"$ref": "#/$defs/input"}
+      }
+    },
+    "pixel": {
+      "type": "object", "additionalProperties": false, "required": ["pin"],
+      "properties": {"pin": {"$ref": "#/$defs/gpio"}, "inverted": {"type": "boolean", "default": true}}
+    },
+    "sound": {
+      "type": "object", "additionalProperties": false, "required": ["tx", "rx"],
+      "properties": {"tx": {"$ref": "#/$defs/gpio"}, "rx": {"$ref": "#/$defs/gpio"}}
+    },
+    "i2c": {
+      "type": "object", "additionalProperties": false, "required": ["sda", "scl"],
+      "properties": {"sda": {"$ref": "#/$defs/gpio"}, "scl": {"$ref": "#/$defs/gpio"}}
+    },
+    "analog": {"$ref": "#/$defs/gpio"},
+    "expansion": {
+      "type": "object", "additionalProperties": false,
+      "properties": {"S4": {"$ref": "#/$defs/gpio"}, "S5": {"$ref": "#/$defs/gpio"}}
+    },
+    "status_led": {"oneOf": [{"$ref": "#/$defs/gpio"}, {"const": "builtin"}]},
+    "defaults": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "settings": {"type": "object", "additionalProperties": {"type": ["string", "number", "boolean"]}},
+        "profile": {"type": "object", "description": "set_profile's data (PROTOCOL.md Profiles)"},
+        "script": {"type": "string", "maxLength": 8192, "description": "a show script (SHOW-SCRIPT.md)"},
+        "script_name": {"type": "string", "minLength": 1, "maxLength": 60, "description": "what the script is called (get_defaults)"}
+      }
+    }
+  },
+  "oneOf": [
+    {"required": ["base"], "not": {"anyOf": [{"required": ["terminals"]}, {"required": ["pixel"]}, {"required": ["sound"]},
+      {"required": ["i2c"]}, {"required": ["analog"]}, {"required": ["expansion"]}, {"required": ["status_led"]}]}},
+    {"required": ["mcu"], "not": {"required": ["base"]}}
+  ],
+  "$defs": {
+    "gpio": {"type": "integer", "minimum": 0, "maximum": 253},
+    "output": {"type": "object", "additionalProperties": false, "required": ["pin"], "properties": {"pin": {"$ref": "#/$defs/gpio"}}},
+    "input": {
+      "type": "object", "additionalProperties": false, "required": ["pin"],
+      "properties": {
+        "pin": {"$ref": "#/$defs/gpio"},
+        "active": {"enum": ["low", "high"], "default": "low"},
+        "pull": {"enum": ["chip", "board"], "default": "chip"}
+      }
+    }
+  }
+}

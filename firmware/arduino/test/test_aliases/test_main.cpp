@@ -115,6 +115,11 @@ void E29_SM_AL4_bad_tables_are_refused_and_nothing_changes() {
       {R"({"aliases":[{"alias":"a","key":"no_such_key"}]})", "there is no setting \"no_such_key\""},
       {R"({"aliases":[{"alias":"secret","key":"pin"}]})", "set-only"},
       {R"({"aliases":[{"alias":"secret","key":"wifi_pass"}]})", "set-only"},
+      {R"({"aliases":[{"alias":"a","key":"out1_on_ms","also":["wifi_pass"]}]})", "no secret"},
+      {R"({"aliases":[{"alias":"a","key":"out1_on_ms","also":["out3_enabled"]}]})", "same kind"},
+      {R"({"aliases":[{"alias":"a","key":"out1_on_ms","also":["nope"]}]})", "there is no setting \"nope\""},
+      {R"({"aliases":[{"alias":"a","control":"trigger","also":["out1_on_ms"]}]})", "for a key alias"},
+      {R"({"aliases":[{"alias":"a","fixed":"123456789012345678901234567890123"}]})", "up to 32 characters"},
       {R"({"aliases":[{"alias":"out2_on_ms","key":"out1_on_ms"}]})", "already a setting"},
       {R"({"aliases":[{"alias":"x","key":"out1_on_ms","invert":true}]})", "invert is for on/off settings"},
       {R"({"aliases":[{"alias":"x","control":"launch"}]})", "there is no control launch"},
@@ -132,6 +137,49 @@ void E29_SM_AL4_bad_tables_are_refused_and_nothing_changes() {
   Response p1 = s.request(R"({"op":"get_profile"})");
   TEST_ASSERT_EQUAL_STRING_MESSAGE(p0.json().c_str(), p1.json().c_str(), "the loaded table stays");
   TEST_ASSERT_EQUAL_STRING_MESSAGE(before.c_str(), settingsJson(s).c_str(), "no value changed");
+}
+
+// SM-AL1 "also": one alias sets more keys with the same value (on every interface); reading gives its own key.
+void SM_AL1_also_sets_every_listed_key() {
+  FxSim s;
+  s.serial("mqtt_broker=127.0.0.1");
+  TEST_ASSERT_TRUE(load(s, R"({"aliases":[{"alias":"bounce_ms","key":"trig_debounce_ms","also":["trig_release_ms"]}]})").isOk());
+  TEST_ASSERT_EQUAL_STRING("bounce_ms=150", s.serial("bounce_ms=150").c_str());
+  TEST_ASSERT_EQUAL(150, s.ctl().settings().trig_debounce_ms);
+  TEST_ASSERT_EQUAL(150, s.ctl().settings().trig_release_ms);
+  TEST_ASSERT_TRUE(s.request(R"({"op":"set_params","values":[{"key":"bounce_ms","value":200}]})").isOk());
+  TEST_ASSERT_EQUAL(200, s.ctl().settings().trig_debounce_ms);
+  TEST_ASSERT_EQUAL(200, s.ctl().settings().trig_release_ms);
+  auto r = s.ctl().mqttOnMessage("proptroller/fx/config/set/bounce_ms", "120");
+  TEST_ASSERT_TRUE(r.size() == 1 && r[0].topic == "proptroller/fx/config/bounce_ms" && r[0].payload == "120");
+  TEST_ASSERT_EQUAL(120, s.ctl().settings().trig_release_ms);
+  // out of range for the key: nothing changes, neither key
+  TEST_ASSERT_TRUE(s.serial("bounce_ms=5000").find("error") == 0);
+  TEST_ASSERT_EQUAL(120, s.ctl().settings().trig_debounce_ms);
+  TEST_ASSERT_EQUAL(120, s.ctl().settings().trig_release_ms);
+  // the generic keys stay their own
+  s.serial("trig_release_ms=300");
+  TEST_ASSERT_EQUAL(120, s.ctl().settings().trig_debounce_ms);
+  Response p = s.request(R"({"op":"get_profile"})");
+  TEST_ASSERT_TRUE_MESSAGE(p.json().find("\"also\":[\"trig_release_ms\"]") != std::string::npos, p.json().c_str());
+}
+
+// A fixed name (an older tool's setting that nothing stands behind any more): reads its value, a set changes nothing.
+void SM_AL1_a_fixed_name_reads_its_value_and_a_set_changes_nothing() {
+  FxSim s;
+  s.serial("mqtt_broker=127.0.0.1");
+  TEST_ASSERT_TRUE(load(s, R"({"aliases":[{"alias":"knob_override","fixed":"true"}]})").isOk());
+  std::string before = settingsJson(s);
+  TEST_ASSERT_EQUAL_STRING("knob_override=true", s.serial("knob_override").c_str());
+  TEST_ASSERT_EQUAL_STRING("knob_override=true", s.serial("knob_override=false").c_str());
+  auto r = s.ctl().mqttOnMessage("proptroller/fx/config/get/knob_override", "");
+  TEST_ASSERT_TRUE(r.size() == 1 && r[0].topic == "proptroller/fx/config/knob_override" && r[0].payload == "true");
+  r = s.ctl().mqttOnMessage("proptroller/fx/config/set/knob_override", "false");
+  TEST_ASSERT_TRUE(r.size() == 1 && r[0].payload == "true");
+  TEST_ASSERT_TRUE(s.request(R"({"op":"set_params","values":[{"key":"knob_override","value":false},{"key":"out1_on_ms","value":400}]})").isOk());
+  TEST_ASSERT_EQUAL(400, s.ctl().settings().fx.out1_on_ms);
+  s.serial("out1_on_ms=1000");
+  TEST_ASSERT_EQUAL_STRING(before.c_str(), settingsJson(s).c_str());
 }
 
 void E30_SM_AL6_topic_prefix_everywhere() {
@@ -266,5 +314,7 @@ int main() {
   RUN_TEST(SM_AL5_stored_kept_through_a_power_cut_and_values_untouched);
   RUN_TEST(SM_P2_the_page_lock_guards_set_profile);
   RUN_TEST(SM_AL3_a_huge_scale_has_an_empty_range);
+  RUN_TEST(SM_AL1_also_sets_every_listed_key);
+  RUN_TEST(SM_AL1_a_fixed_name_reads_its_value_and_a_set_changes_nothing);
   return UNITY_END();
 }

@@ -98,11 +98,11 @@ Gen generate(Rng& r) {
           g.lines_of_kind[4]++;
           break;
         case 5:
-          g.text += "  audio_single = " + std::to_string(r.range(1, 99)) + "\n";
+          g.text += "  audio_single = " + std::to_string(r.range(1, 3000)) + "\n";
           g.lines_of_kind[5]++;
           break;
         case 6:
-          g.text += "  audio_loop = " + std::to_string(r.range(1, 99)) + "_loop.mp3\n";
+          g.text += "  audio_loop = " + std::to_string(r.range(1, 3000)) + "\n";
           g.lines_of_kind[6]++;
           break;
         case 7:
@@ -180,7 +180,8 @@ void random_scripts_never_break_the_rules() {
     for (int k = 0; k < 10; k++) g_kinds[k] += g.lines_of_kind[k];
     Sim sim("random");
     std::string params = R"({"op":"set_params","values":[{"key":"dmx_port","value":"s4"},)"
-                         R"({"key":"rly1_role","value":"shows"},{"key":"rly2_role","value":"shows"},{"key":"cc1_role","value":"shows"},{"key":"cc2_role","value":"shows"},{"key":"interlock_relays","value":true})";
+                         R"({"key":"rly1_role","value":"shows"},{"key":"rly2_role","value":"shows"},{"key":"cc1_role","value":"shows"},{"key":"cc2_role","value":"shows"},{"key":"interlock_relays","value":true},)"
+                         R"({"key":"trig1_wait","value":"return"},{"key":"trig2_wait","value":"return"})";  // SS-R4
     for (int c = 0; c < CHANNEL_COUNT; c++)
       if (MAX_ON_MS[c]) params += std::string(",{\"key\":\"") + OUTS[c] + "_max_on_ms\",\"value\":" + std::to_string(MAX_ON_MS[c]) + "}";
     params += "]}";
@@ -196,7 +197,7 @@ void random_scripts_never_break_the_rules() {
     const ScriptRunner* run = sim.ctl().scriptRunner();
     TEST_ASSERT_NOT_NULL(prog);
     TEST_ASSERT_NOT_NULL(run);
-    // SS-R8: a target effect 0 sets, set again from effect 1, is refused
+    // SS-R8: a target effect 0 sets may be set from effect 1 too (the two then never run at the same time)
     std::string taken;
     for (int i = 0; i < prog->fx[0].count && taken.empty(); i++) {
       const ScriptStep& s = prog->step[prog->fx[0].first + i];
@@ -205,13 +206,12 @@ void random_scripts_never_break_the_rules() {
     }
     size_t at = g.text.find("effect e1:\n");
     if (at != std::string::npos && !taken.empty()) {
-      std::string bad = g.text;
-      size_t after_wait = bad.find('\n', at + 11) + 1;
-      bad.insert(after_wait, "  " + taken + " = off\n");
-      Response c = sim.request(request("check_script", bad));
-      TEST_ASSERT_FALSE_MESSAGE(c.doc()["result"]["ok"] | true, "two effects on one target");
+      std::string shared = g.text;
+      size_t after_wait = shared.find('\n', at + 11) + 1;
+      shared.insert(after_wait, "  " + taken + " = off\n");
+      Response c = sim.request(request("check_script", shared));
       std::string m = c.doc()["result"]["errors"][0]["message"] | "";
-      TEST_ASSERT_TRUE_MESSAGE(m.find("is already used by effect \"e0\"") != std::string::npos, m.c_str());
+      TEST_ASSERT_TRUE_MESSAGE(m.find("is already used by effect") == std::string::npos, m.c_str());
       g_refused++;
     }
     const Millis boot_end = SCRIPT_BOOT_LOCKOUT_MS;  // the sim boots at 0
@@ -256,8 +256,16 @@ void random_scripts_never_break_the_rules() {
         uint32_t runs = run->runs(e);
         if (runs != f.runs) {
           // SS-R2: a new run only from the first wait for, never while running
-          TEST_ASSERT_FALSE_MESSAGE(f.running, "a run started while the effect was running");
-          TEST_ASSERT_EQUAL_MESSAGE(prog->step[prog->fx[e].first].line, f.line, "a run started away from the first wait for");
+          // (with the "return" rule a press remembered during its own run starts the next one on the sample the
+          // run ends: no sample in between)
+          const bool back_to_back = prog->step[prog->fx[e].first].target < 2 && f.running;
+          if (!back_to_back) {
+            TEST_ASSERT_FALSE_MESSAGE(f.running, "a run started while the effect was running");
+            TEST_ASSERT_EQUAL_MESSAGE(prog->step[prog->fx[e].first].line, f.line, "a run started away from the first wait for");
+          } else {
+            // its last line ran on this sample: it was at its end
+            TEST_ASSERT_TRUE_MESSAGE(h.closedAt(prog->step[prog->fx[e].first].target, now), "a remembered start without its input held");
+          }
           TEST_ASSERT_EQUAL(f.runs + 1, runs);
           f.runs = runs;
           g_starts++;
@@ -269,12 +277,19 @@ void random_scripts_never_break_the_rules() {
             char why[200];
             snprintf(why, sizeof why, "seed %d effect %d line %u (input %d) passed at %llu, arrived %llu", seed, e, f.line, k,
                      (unsigned long long)now, (unsigned long long)f.since);
-            TEST_ASSERT_TRUE_MESSAGE(now >= boot_end + DEBOUNCE_MS, why);
             TEST_ASSERT_TRUE_MESSAGE(h.closedAt(k, now), why);
             Millis c = h.closedSince(k, now);
-            Millis from = c > boot_end ? c : boot_end;
-            TEST_ASSERT_TRUE_MESSAGE(now - from + SAMPLE_SLACK_MS >= DEBOUNCE_MS, why);
-            TEST_ASSERT_TRUE_MESSAGE(h.openFor(k, f.since, c, RELEASE_MS), why);
+            if (k < 2 && f.line == prog->step[prog->fx[e].first].line) {
+              // TRIG1 / TRIG2 with the "return" rule at the first wait for (SS-R4): a press confirmed after the boot
+              // lockout, after a release; remembered while the effect could not start and still held now (SS-R8)
+              TEST_ASSERT_TRUE_MESSAGE(c + DEBOUNCE_MS + SAMPLE_SLACK_MS >= boot_end && now - c + SAMPLE_SLACK_MS >= DEBOUNCE_MS, why);
+              TEST_ASSERT_TRUE_MESSAGE(h.openFor(k, 0, c, RELEASE_MS), why);
+            } else {
+              TEST_ASSERT_TRUE_MESSAGE(now >= boot_end + DEBOUNCE_MS, why);
+              Millis from = c > boot_end ? c : boot_end;
+              TEST_ASSERT_TRUE_MESSAGE(now - from + SAMPLE_SLACK_MS >= DEBOUNCE_MS, why);
+              TEST_ASSERT_TRUE_MESSAGE(h.openFor(k, f.since, c, RELEASE_MS), why);
+            }
             g_passes++;
           }
           f.line = line;
@@ -300,7 +315,7 @@ void random_scripts_never_break_the_rules() {
   }
   char m[400];
   snprintf(m, sizeof m,
-           "%d seeded runs x %llu s, %d ticks checked; %d runs started, %d wait for lines passed, %d shared-target scripts refused; "
+           "%d seeded runs x %llu s, %d ticks checked; %d runs started, %d wait for lines passed, %d shared-target scripts accepted; "
            "lines generated: set %d, dmx %d, sleep %d, fade %d, flicker %d, audio_single %d, audio_loop %d, audio_stop %d, first wait %d, mid wait %d",
            g_runs, (unsigned long long)(RUN_MS / 1000), g_ticks, g_starts, g_passes, g_refused, g_kinds[0], g_kinds[1], g_kinds[2],
            g_kinds[3], g_kinds[4], g_kinds[5], g_kinds[6], g_kinds[7], g_kinds[8], g_kinds[9]);

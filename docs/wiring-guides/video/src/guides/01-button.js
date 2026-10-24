@@ -46,7 +46,7 @@ export default {
     { kind: 'test', title: 'Test it', say: 'Power the board and open its page on your phone. Stay on the Live tab. Press the button. In the Inputs card, the TRIG1 box lights up orange while you hold it, and goes dark when you let go.',
       cam: view([35, 15, 120], 260, 20, 40), live: { button: 'press' },
       inset: { type: 'phone', tab: 'Live', cardTitle: 'Inputs', body: chips(['TRIG1', 'TRIG2', 'USER1', 'USER2', 'USER3'], 'TRIG1'), note: 'TRIG1 lights orange while you hold the button.' } },
-    { kind: 'show', title: 'Use it in a show', text: 'In a show script, `wait for trig1` waits for your button. For example: `effect hello:`, then `wait for trig1`, `out1 = on`, `sleep 2`, `out1 = off`. Or, on the Shows tab, pick TRIG1 under "Starts on".',
+    { kind: 'show', title: 'Use it in a show', text: 'In a show script, `wait for trig1` waits for your button. For example: `effect hello:`, then `wait for trig1`, `out1 = on`, `wait 2`, `out1 = off`. Or, on the Shows tab, pick TRIG1 under "Starts on".',
       say: 'In a show script, the line wait for trig 1 waits for your button. Or, on the Shows tab, pick TRIG1 under Starts on.',
       cam: view([35, 15, 120], 260, 20, 40) },
     trouble(view([35, 15, 120], 260, 20, 40)),

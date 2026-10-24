@@ -125,6 +125,8 @@ pre#log { max-height: 240px; overflow: auto; font-size: 12px; white-space: pre-w
 /* momentary presses */
 .chip, .wbox.input.sim { touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
 .chip.pressed, button.pressed { outline: 3px solid var(--accent); }
+button.hold-start { position: relative; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+button.hold-start .fill { position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: var(--accent); }
 /* wiring view */
 .wiring { display: grid; grid-template-columns: minmax(78px, 1fr) 30px 26px 30px minmax(112px, 1.45fr); column-gap: 0; row-gap: 6px; align-items: center; }
 .wboard { grid-column: 3; grid-row: 1 / -1; align-self: stretch; background: #0d5c3a; border-radius: 6px; border: 2px solid #0a4a2e; display: flex; align-items: center; justify-content: center; min-height: 100%; }

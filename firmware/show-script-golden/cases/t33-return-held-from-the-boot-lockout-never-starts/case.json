@@ -1,0 +1,55 @@
+{
+  "spec": [
+    "SS-R4"
+  ],
+  "sounds": {},
+  "settings": {
+    "trig1_wait": "return"
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "power_on": true
+      },
+      {
+        "t": 1500,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 3500,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 4000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 4150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 6000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            4100,
+            1000
+          ],
+          [
+            5100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

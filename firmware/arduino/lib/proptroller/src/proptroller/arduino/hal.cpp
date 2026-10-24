@@ -32,7 +32,7 @@ Millis millis64() { return (Millis)(esp_timer_get_time() / 1000); }
 Millis millis64() { return (Millis)(time_us_64() / 1000); }
 #endif
 
-void outputsOffNow(const PinMap& m) {
+void outputsOffNow(const PinMap& m, bool pixel_inverted) {
   for (int ch = 0; ch < 8; ch++) {
     uint8_t p = channelPin(m, ch);
     if (p == NO_PIN) continue;  // not on this board: never touched
@@ -40,10 +40,10 @@ void outputsOffNow(const PinMap& m) {
     pinMode(p, OUTPUT);
     digitalWrite(p, LOW);
   }
-  // the PIXEL data is inverted by the board: idle is HIGH on the MCU pin
+  // the PIXEL data inverted by the board: idle is HIGH on the MCU pin (LOW without the inverter)
   if (m.pixel != NO_PIN) {
     pinMode(m.pixel, OUTPUT);
-    digitalWrite(m.pixel, HIGH);
+    digitalWrite(m.pixel, pixel_inverted ? HIGH : LOW);
   }
 }
 
@@ -51,7 +51,12 @@ void outputsOffNow(const PinMap& m) {
 
 static const uint32_t PWM_HZ = 1000;
 
-ArduinoPins::ArduinoPins(const PinMap& m, int led) : m_(m), led_(led) {}
+ArduinoPins::ArduinoPins(const PinMap& m, int led) : m_(m), led_(led) {
+  for (int k = 0; k < 5; k++) {
+    in_pin_[k] = inputPin(m_, k);
+    in_high_[k] = inputActiveHigh(m_, k);
+  }
+}
 
 void ArduinoPins::begin() {
 #if defined(ESP32)
@@ -94,9 +99,9 @@ bool ArduinoPins::setDigital(int which, bool on) {
 }
 
 bool ArduinoPins::readLow(int input, bool& low) {
-  uint8_t p = inputPin(m_, input);
+  const uint8_t p = in_pin_[input];
   if (p == NO_PIN) { low = false; return true; }
-  low = (digitalRead(p) == HIGH) == inputActiveHigh(m_, input);  // active
+  low = (digitalRead(p) == HIGH) == in_high_[input];  // active
   return true;
 }
 
@@ -141,6 +146,20 @@ static const rmt_channel_t PIX_CH = RMT_CHANNEL_0;
 // 800 ns then HIGH for 450 ns on the pin, and the pin idles HIGH.
 static const rmt_item32_t WS_BIT0 = {{{400 / 25, 0, 850 / 25, 1}}};
 static const rmt_item32_t WS_BIT1 = {{{800 / 25, 0, 450 / 25, 1}}};
+// without the board's inverter: a "1" bit is HIGH for 800 ns then LOW for 450 ns, and the pin idles LOW
+static const rmt_item32_t WS_BIT0_PLAIN = {{{400 / 25, 1, 850 / 25, 0}}};
+static const rmt_item32_t WS_BIT1_PLAIN = {{{800 / 25, 1, 450 / 25, 0}}};
+
+static void IRAM_ATTR toRmtPlain(const void* src, rmt_item32_t* dest, size_t src_size, size_t wanted, size_t* translated, size_t* item_num) {
+  size_t size = 0, num = 0;
+  const uint8_t* p = (const uint8_t*)src;
+  while (size < src_size && num + 8 <= wanted) {
+    for (int b = 7; b >= 0; b--) dest[num++] = (p[size] >> b) & 1 ? WS_BIT1_PLAIN : WS_BIT0_PLAIN;
+    size++;
+  }
+  *translated = size;
+  *item_num = num;
+}
 
 static void IRAM_ATTR toRmt(const void* src, rmt_item32_t* dest, size_t src_size, size_t wanted, size_t* translated, size_t* item_num) {
   size_t size = 0, num = 0;
@@ -158,9 +177,10 @@ bool BoardPixels::begin() {
   rmt_config_t c = RMT_DEFAULT_CONFIG_TX((gpio_num_t)pin_, PIX_CH);
   c.clk_div = 2;
   c.tx_config.idle_output_en = true;
-  c.tx_config.idle_level = RMT_IDLE_LEVEL_HIGH;
+  c.tx_config.idle_level = inverted_ ? RMT_IDLE_LEVEL_HIGH : RMT_IDLE_LEVEL_LOW;
   c.tx_config.carrier_en = false;
-  ok_ = rmt_config(&c) == ESP_OK && rmt_driver_install(PIX_CH, 0, 0) == ESP_OK && rmt_translator_init(PIX_CH, toRmt) == ESP_OK;
+  ok_ = rmt_config(&c) == ESP_OK && rmt_driver_install(PIX_CH, 0, 0) == ESP_OK &&
+        rmt_translator_init(PIX_CH, inverted_ ? toRmt : toRmtPlain) == ESP_OK;
   return ok_;
 }
 
@@ -169,7 +189,7 @@ bool BoardPixels::write(const Rgb* px, size_t n) {
   if (!ok_) return false;
   std::vector<uint8_t> grb(n * 3);
   for (size_t i = 0; i < n; i++) { grb[3 * i] = px[i].g; grb[3 * i + 1] = px[i].r; grb[3 * i + 2] = px[i].b; }
-  // the idle HIGH that follows is the (inverted) latch; frames are at least 20 ms apart
+  // the idle level that follows is the latch; frames are at least 20 ms apart
   return rmt_write_sample(PIX_CH, grb.data(), grb.size(), true) == ESP_OK;
 }
 #else
@@ -196,7 +216,7 @@ bool BoardPixels::begin() {
     if (sm < 0) continue;
     uint offset = pio_add_program(pio, &WS2812_PIO);
     pio_gpio_init(pio, pin_);
-    gpio_set_outover(pin_, GPIO_OVERRIDE_INVERT);
+    gpio_set_outover(pin_, inverted_ ? GPIO_OVERRIDE_INVERT : GPIO_OVERRIDE_NORMAL);
     pio_sm_set_consecutive_pindirs(pio, sm, pin_, 1, true);
     pio_sm_config c = pio_get_default_sm_config();
     sm_config_set_wrap(&c, offset, offset + 3);

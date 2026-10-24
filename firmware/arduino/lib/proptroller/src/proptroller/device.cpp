@@ -1,5 +1,6 @@
 #include "device.h"
 #include <algorithm>
+#include <ctype.h>
 #include "password.h"
 #include "script_record.h"
 #include "storage_ab.h"
@@ -54,6 +55,7 @@ Controller::Controller(BoardPins& pins, ByteStream& uart, PixelOut& pixels, Stor
   std::vector<Show> shows;
   std::string rec;
   Stored got = store_ ? store_->fetch(rec) : Stored::None;
+  fresh_ = got == Stored::None;
   if (got == Stored::Invalid) {
     // both copies damaged, or the file system could not be opened (and holds data): kept, nothing is written
     // until a factory reset
@@ -72,6 +74,11 @@ Controller::Controller(BoardPins& pins, ByteStream& uart, PixelOut& pixels, Stor
     if (k == RecordKind::Current || k == RecordKind::Migrated) {
       store_migrated_ = k == RecordKind::Migrated;
       settings_.fromJson(d["settings"]);
+      // a factory reset that kept the Wi-Fi: a fresh board (its defaults apply), then the kept values go back
+      if (d["reset"] | false) {
+        fresh_ = true;
+        reset_kept_.reset(new Settings(settings_));
+      }
       for (JsonVariantConst sv : d["shows"].as<JsonArrayConst>()) {
         Show s;
         std::string e;
@@ -112,6 +119,25 @@ Controller::Controller(BoardPins& pins, ByteStream& uart, PixelOut& pixels, Stor
 void Controller::readInputs(bool raw[INPUT_COUNT]) {
   board_.readInputs(raw);
   for (int k = 0; k < 2; k++) raw[k] = raw[k] != settings_.trig_sensor_high[k];
+  // a test press is a press like a real one (OR'd with the pin) when a remote start is allowed
+  if (testStarts())
+    for (int k = 0; k < INPUT_COUNT; k++) raw[k] = raw[k] || testHeld(k);
+}
+
+void Controller::testRelease(int k, Millis now) {
+  if (!test_until_[k]) return;
+  test_until_[k] = 0;
+  test_session_[k] = 0;
+  test_off_since_[k] = now;
+}
+
+// a test press whose time is up lets go by itself (polled every sample: never a wait)
+void Controller::expireTests(Millis now) {
+  for (int k = 0; k < INPUT_COUNT; k++)
+    if (test_until_[k] && now >= test_until_[k]) {
+      testRelease(k, now);
+      log(std::string("test press on ") + name(ALL_INPUTS[k]) + " let go: its time was up");
+    }
 }
 
 void Controller::applySettings() {
@@ -180,6 +206,9 @@ void Controller::ownedLevels(Millis now) {
     if (effectOwns(c)) {
       bool on = c == Channel::Out4 ? fx_->ready(now) && fx_->released : o[i];
       engine_.setScript(c, true, on ? FULL : 0);
+    } else if (c == Channel::Out4 && !fx_ && settings_.out4_ready_lamp && script_run_ && script_prog_) {
+      // the ready lamp of the script's first effect: on while a press would start it
+      engine_.setScript(c, true, script_run_->armed(0, now) ? FULL : 0);
     } else if (settings_.role(c) != OutputRole::Shows) {
       engine_.setScript(c, true, role_on_[i] && now < role_until_[i] ? FULL : 0);
     } else if (!(script_prog_ && (script_prog_->channels & (1u << i)))) {
@@ -222,6 +251,7 @@ ShowError Controller::addCodeShow(const Show& s) {
 // ---------------------------------------------------------------- tick
 
 void Controller::sampleTriggers(Millis now) {
+  expireTests(now);
   bool raw[INPUT_COUNT];
   readInputs(raw);
   sampleTriggersWith(now, raw);
@@ -241,10 +271,18 @@ void Controller::sampleTriggersWith(Millis now, const bool raw[INPUT_COUNT]) {
   for (int k = 0; k < 2; k++) {
     TriggerEvent ev = trig_[k].update(raw[k], now);
     if (ev != TriggerEvent::None) trig_events_.push_back({(uint8_t)k, ev});
+    // the effect's TRIG2 (recover) and a script's recover effect hear the press on the sample it happens (both run
+    // every 1 ms)
+    bool pause_role = k == 1 && settings_.trig2 == Trig2Role::Pause;
+    if (ev == TriggerEvent::Pressed && !updating() && fx_ && k == 1) (void)doRecover();
+    (void)pause_role;
   }
   if (updating()) return;  // nothing starts while a firmware update runs
   effectSample(now, raw);
-  if (script_run_) script_run_->sample(now, scriptInputs());
+  if (script_run_ && script_prog_) {
+    scriptValues();  // a setting changed since the tick applies to the line that reads it on this sample
+    script_run_->sample(now, scriptInputs());
+  }
 }
 
 void Controller::tick(Millis now) {
@@ -259,6 +297,7 @@ void Controller::tick(Millis now) {
     board_.setStatusLed(settings_.status_led && Pattern(Pattern::Kind::FastBlink).level(now));
     return;
   }
+  expireTests(now);
   bool raw[INPUT_COUNT];
   readInputs(raw);
 
@@ -282,7 +321,7 @@ void Controller::tick(Millis now) {
       if (k == 0 && ev == TriggerEvent::Pressed && fx_->refusal(now) == EffectRefused::CooldownFull) {
         log("trigger ignored: " + refusedText(EffectRefused::CooldownFull));
       } else if (k == 1 && ev == TriggerEvent::Pressed) {
-        doRecover();
+        // recover: on its sample (sampleTriggersWith)
       } else if (k == 1 && ev == TriggerEvent::Released) {
         fx_->recoverRelease();
       }
@@ -552,6 +591,7 @@ Info Controller::info() const {
   i.fw_impl = PROPTROLLER_FW_IMPL;
   i.fw_build = identity_.fw_build;
   i.mcu = identity_.mcu;
+  i.board = identity_.board;
   if (update_target_) {
     i.has_update = true;
     i.update_slot = update_target_->slot();
@@ -565,13 +605,39 @@ Info Controller::info() const {
   if (fx_) i.capabilities.push_back("effect");
   i.capabilities.push_back("script");
   i.capabilities.push_back("backup");
+  i.capabilities.push_back("test_input");
   if (update_target_) i.capabilities.push_back("update");
   if (wifi_scan_.available()) i.capabilities.push_back("wifi_scan");
+  if (board_store_) i.capabilities.push_back("board_package");
+  i.capabilities.push_back("defaults");
   for (auto& c : identity_.extra_caps) i.capabilities.push_back(c);
   ActionDesc save;
   save.key = "save";
   save.label = "Save now";
   i.actions.push_back(save);
+  if (script_run_ && script_prog_) {
+    // every effect of the stored script can be started by its name (SS-R10), and a waiting start cancelled
+    // a profile's control alias with that name and a label names the button ("Go"); a labelled control alias of
+    // cancel names Cancel ("Cancel the waiting start")
+    for (int e = 0; e < script_prog_->effects; e++) {
+      ActionDesc a;
+      a.key = script_prog_->fx[e].name;
+      for (auto& ch : a.key) if (ch == ' ') ch = '_';
+      a.label = std::string("Start ") + script_prog_->fx[e].name;
+      for (auto& al : settings_.profile.aliases)
+        if (al.kind == AliasEntry::Kind::Control && al.alias == a.key && !al.label.empty()) a.label = al.label;
+      a.hold = settings_.start_hold;
+      i.actions.push_back(a);
+    }
+    if (!fx_) {
+      ActionDesc a;
+      a.key = "cancel";
+      a.label = "Cancel waiting start";
+      for (auto& al : settings_.profile.aliases)
+        if (al.kind == AliasEntry::Kind::Control && al.target == a.key) a.label = al.label.empty() ? al.alias + " (" + a.label + ")" : al.label;
+      i.actions.push_back(a);
+    }
+  }
   if (fx_) {
     const char* const keys[3][2] = {{"trigger", "Trigger"}, {"recover", "Recover"}, {"cancel", "Cancel queued run"}};
     for (auto& k : keys) {
@@ -586,6 +652,7 @@ Info Controller::info() const {
       i.actions.push_back(a);
     }
   }
+  i.stop_button = settings_.stop_button;
   i.terminals = terminals();
   // terminal aliases: displays show the alias with the board name beside it (SM-AL0)
   for (auto& t : i.terminals)
@@ -691,6 +758,7 @@ void Controller::soundState(JsonObject o) const {
     char b[32];
     switch (cur.kind) {
       case SoundCommand::Kind::PlayMp3: (void)snprintf(b, sizeof b, "/mp3/%04u", cur.a); break;
+      case SoundCommand::Kind::LoopMp3: (void)snprintf(b, sizeof b, "/mp3/%04u (loop)", cur.a); break;
       case SoundCommand::Kind::PlayFolder: (void)snprintf(b, sizeof b, "/%02u/%03u", cur.a, cur.b); break;
       case SoundCommand::Kind::LoopFolder: (void)snprintf(b, sizeof b, "/%02u/ (loop)", cur.a); break;
       case SoundCommand::Kind::PlayIndex: case SoundCommand::Kind::LoopIndex: (void)snprintf(b, sizeof b, "card file #%u", cur.a); break;
@@ -703,6 +771,7 @@ void Controller::soundState(JsonObject o) const {
     case Playing::Kind::Ambient: o["source"] = "ambient"; break;
     case Playing::Kind::Trigger: o["source"] = "trigger"; break;
     case Playing::Kind::Show: o["source"] = "show"; break;
+    case Playing::Kind::Loop: o["source"] = "loop"; break;
     case Playing::Kind::Idle:
     default: break;
   }
@@ -723,6 +792,8 @@ void Controller::stateToJson(JsonObject o) const {
     o["store"] = std::string("the stored show script ") + (script_newer_ ? "is from a newer firmware" : "could not be read") +
                  " and is kept: the script cannot be changed (a factory reset starts over)";
   if (store_errors) o["store_errors"] = store_errors;
+  // the stored board package could not be used: no pins are driven (BOARD-PACKAGES.md)
+  if (board_boot_.source == BoardSource::None && !board_boot_.problem.empty()) o["board_problem"] = board_boot_.problem;
   JsonArray outs = o["outputs"].to<JsonArray>();
   for (int i = 0; i < CHANNEL_COUNT; i++) outputState(i, snap, outs.add<JsonObject>());
   JsonArray ins = o["inputs"].to<JsonArray>();
@@ -741,6 +812,8 @@ void Controller::stateToJson(JsonObject o) const {
       x["waiting"] = fx_->raw_closed && !fx_->released;
     }
     x["raw"] = snap.inputs[i];
+    // a test press held now (test_input), and whether it starts things (remote start on) or only shows
+    if (testHeld(i)) { x["test"] = true; x["test_starts"] = testStarts(); }
     if (i < 2) x["armed"] = i == 0 && fx_ ? fx_->released : trig_[i].isReady();
     x["held"] = false;
     for (auto& a : settings_.profile.aliases)
@@ -776,7 +849,16 @@ void Controller::stateToJson(JsonObject o) const {
     JsonObject x = status.add<JsonObject>();
     x["key"] = pv.key;
     pv.value.toJson(x, "value");
+    // a profile's label for it, and "ms" for a time left (shown as m:ss), also under an alias
+    const AliasEntry* al = aliasNamed(pv.key);
+    std::string base = al && al->kind == AliasEntry::Kind::Status ? al->target : pv.key;
+    if (al && al->kind == AliasEntry::Kind::Status && !al->label.empty()) x["label"] = al->label;
+    if (base.size() > 13 && base.compare(base.size() - 13, 13, "_remaining_ms") == 0) x["unit"] = "ms";
   }
+  // the run counters' labels from the profile ("Presses tonight")
+  for (const char* k : RUN_STATUS)
+    for (auto& a : settings_.profile.aliases)
+      if (a.kind == AliasEntry::Kind::Status && a.target == k && !a.label.empty()) o["run_labels"][k] = a.label;
   net_.toJson(o["net"].to<JsonObject>());
   soundState(o["sound"].to<JsonObject>());
   if (pixel_have_last_ && pixel_last_has_) o["pixel"] = pixel_last_.describe();
@@ -937,7 +1019,8 @@ Response Controller::handle(Request& r) {
   // page lock (SM-P2): checked before anything changes; the USB serial port is local access
   // stopping is never locked: STOP, stop, pause on, releasing or switching off an output
   bool safe = op == "stop_all" || op == "stop" || (op == "pause" && r["on"].as<bool>()) ||
-              (op == "set_output" && (r["level"].isNull() || r["level"].as<int>() == 0));
+              (op == "set_output" && (r["level"].isNull() || r["level"].as<int>() == 0)) ||
+              (op == "test_input" && !r["active"].as<bool>());
   if (r.mutates() && !safe && locked() && origin_ != Origin::Serial) {
     std::string why = pinRefused(r.has_pin, r.pin);
     if (!why.empty()) return Response::err(r, ErrorCode::Pin, why);
@@ -1094,6 +1177,13 @@ Response Controller::handle(Request& r) {
   if (op == "sound") {
     SoundCommand c;
     (void)reqSound(r, c);
+    // loop_mp3: /mp3/NNNN over and over (the director plays it again each time it ends); stop ends it too
+    if (c.kind == SoundCommand::Kind::LoopMp3) {
+      for (auto& x : sound_.scriptLoop(c.a, now_, true)) df_.command(x);
+      return Response::done(r);
+    }
+    if (c.kind == SoundCommand::Kind::Stop)
+      for (auto& x : sound_.scriptLoop(0, now_)) (void)x;
     engine_.sound(c);
     return Response::done(r);
   }
@@ -1112,6 +1202,7 @@ Response Controller::handle(Request& r) {
       x.key = alias;
       if (!a->label.empty()) x.label = a->label;
       if (!a->unit.empty()) x.unit = a->unit;
+      if (!a->group.empty()) x.group = a->group;
       if (a->scale) { x.min = aliasMin(d.min, a->scale); x.max = aliasMax(d.max, a->scale); }
       x.toJson(p.add<JsonObject>());
     }
@@ -1145,6 +1236,8 @@ Response Controller::handle(Request& r) {
   }
   if (op == "get_script" || op == "check_script" || op == "set_script") return scriptOp(r);
   if (op == "get_backup" || op == "put_backup") return backupOp(r);
+  if (op == "get_board" || op == "set_board") return boardOp(r);
+  if (op == "get_defaults" || op == "apply_defaults") return defaultsOp(r);
   if (op == "wifi_scan") {
     if (!wifi_scan_.available()) return Response::err(r, ErrorCode::Unsupported, "this board has no Wi-Fi to look for networks with");
     // the radio is left alone while a firmware update comes in
@@ -1196,7 +1289,9 @@ Response Controller::handle(Request& r) {
   }
   if (op == "action") {
     std::string key = r["key"].as<std::string>();
-    if (key == "trigger" || key == "recover" || key == "cancel") return effectAction(r, key);
+    // a show-script effect's name, a control, or a profile's control alias (an effect's name wins, SS-R10)
+    std::string c = resolveControl(key);
+    if (c == "trigger" || c == "recover" || c == "cancel" || c.compare(0, 7, "script:") == 0) return effectAction(r, c);
     if (r["key"].as<std::string>() == "save") {
       if (dirty_) saveNow();  // flash wear: nothing to save, nothing written
       return Response::done(r);
@@ -1211,10 +1306,36 @@ Response Controller::handle(Request& r) {
   }
   if (op == "factory_reset") {
     // everything: settings (with the Wi-Fi), shows and the show script; each wipe is power-safe (a cut part way
-    // never brings an older record back), and a wipe that fails is said, without a restart
-    bool a = !store_ || store_->wipe();
+    // never brings an older record back), and a wipe that fails is said, without a restart. keep_wifi: the settings
+    // record is replaced (one power-safe write) by the firmware's defaults with the name, the Wi-Fi network and its
+    // password and the setup hotspot's password kept, marked as reset: the next power-on starts fresh (the
+    // board's defaults) and puts those back, so the board stays on its network under its name
+    bool a;
+    if ((r["keep_wifi"] | false) && store_) {
+      std::unique_ptr<Settings> kept(new Settings());
+      kept->name = settings_.name;
+      kept->wifi_ssid = settings_.wifi_ssid;
+      kept->wifi_pass = settings_.wifi_pass;
+      kept->ap_pass = settings_.ap_pass;
+      JsonDocument d;
+      d["version"] = STORED_VERSION;
+      kept->toJson(d["settings"].to<JsonObject>());
+      d["shows"].to<JsonArray>();
+      d["reset"] = true;
+      std::string rec;
+      serializeJson(d, rec);
+      a = store_->save(rec);
+    } else {
+      a = !store_ || store_->wipe();
+    }
     if (a) stored_crc_known_ = false;  // the flash no longer holds the record in RAM
     bool b = !script_store_ || script_store_->wipe();
+    // the board package is kept (the board keeps its pins), unless asked to forget it
+    if (a && b && (r["forget_board"] | false) && board_store_ && !board_store_->wipe()) {
+      store_errors++;
+      log("factory reset: the board package could not be cleared from flash");
+      return Response::err(r, ErrorCode::Internal, "factory reset failed: the board package could not be cleared from flash. Try again; nothing was restarted");
+    }
     if (!a || !b) {
       store_errors++;
       log("factory reset: the flash could not be cleared");
@@ -1232,6 +1353,22 @@ Response Controller::handle(Request& r) {
     // the lifetime run count back to 0 (page lock: a change like any other); runs since power-on stay
     runs_.resetLifetime(now_);
     log("lifetime runs reset to 0");
+    return Response::done(r);
+  }
+  if (op == "test_input") {
+    // a test press: held until let go (active false), "ms" (at most TEST_PRESS_MAX_MS) or the page closing
+    Input in = Input::Trig1;
+    (void)reqInput(r, "input", in);
+    int k = (int)in;
+    if (!r["active"].as<bool>()) { testRelease(k, fxNow()); return Response::done(r); }
+    uint32_t ms = r["ms"] | 0u;
+    if (!ms && (origin_ == Origin::Http || origin_ == Origin::Mqtt))
+      return Response::err(r, ErrorCode::Refused, "from plain HTTP or MQTT a test press needs \"ms\" (at most 30000); to hold it, use the phone page");
+    if (!ms || ms > TEST_PRESS_MAX_MS) ms = TEST_PRESS_MAX_MS;
+    Millis t = fxNow();
+    if (!test_until_[k]) test_on_since_[k] = t;
+    test_until_[k] = t + ms;
+    test_session_[k] = origin_ == Origin::Session ? session_ : 0;
     return Response::done(r);
   }
   if (op == "sim_input") return Response::err(r, ErrorCode::Unsupported, "simulator only");
@@ -1260,10 +1397,18 @@ Response Controller::setParams(const Request& r, const std::vector<ParamValue>& 
     if (d->isSecret() && pv.value == Value::text("") && pv.key != "pin") continue;
     if (pv.key == "pin" && pv.value.type == Value::Type::Text && !pv.value.s.empty() && pv.value.s.size() < PIN_MIN_LEN)
       return Response::err(r, ErrorCode::BadRequest, "the page password needs at least 6 characters");
-    std::string why = d->explain(pv.value);
+    // in the words the page shows it under: a key alias's label and group (SM-AL2)
+    ParamDesc shown = *d;
+    for (auto& a : settings_.profile.aliases)
+      if (a.kind == AliasEntry::Kind::Key && a.target == d->key) {
+        if (!a.label.empty()) shown.label = a.label;
+        if (!a.group.empty()) shown.group = a.group;
+        break;
+      }
+    std::string why = shown.explain(pv.value);
     if (!why.empty()) return Response::err(r, ErrorCode::BadRequest, why);
     const char* e = next.set(pv.key, pv.value);
-    if (e) return Response::err(r, ErrorCode::BadRequest, d->label + ": " + e);
+    if (e) return Response::err(r, ErrorCode::BadRequest, shown.label + ": " + e);
   }
   // a new network without a password in the same change is an open one: the old network's password is not kept
   // for it (an empty secret otherwise means "keep"; an unchanged network keeps its password)
@@ -1467,11 +1612,13 @@ std::vector<MqttMsg> Controller::mqttOnMessage(const std::string& topic, const s
     // an alias works as its control; errors name the control
     std::string c = resolveControl(rest.substr(8));
     // locked: MQTT is read-only, but for a trigger, which has its own gate (remote_trigger_enable)
-    if (locked() && c != "trigger" && !c.empty()) return err("the page is locked: " + c + " on the web page with the page password");
+    // a script effect that needs remote_trigger_enable has that gate too; one started without it does not
+    bool gated = c == "trigger" || (c.compare(0, 7, "script:") == 0 && !((scriptFreeEffects() >> atoi(c.c_str() + 7)) & 1));
+    if (locked() && !gated && !c.empty()) return err("the page is locked: " + rest.substr(8) + " on the web page with the page password");
     if (c.empty()) return err("unknown control");
     Request req;
     Response r = effectAction(req, c);
-    if (!r.isOk() && c != "restart") return err(c + ": " + r.errorMessage());
+    if (!r.isOk() && c != "restart") return err((c.compare(0, 7, "script:") == 0 ? rest.substr(8) : c) + ": " + r.errorMessage());
     return {};
   }
   if (rest.compare(0, 11, "status/get/") == 0) {
@@ -1493,9 +1640,11 @@ std::vector<MqttMsg> Controller::mqttOnMessage(const std::string& topic, const s
     std::string name = rest.substr(11);
     // a key alias works as its key (SM-AL1); the answer comes back under the name asked for
     const AliasEntry* a = aliasNamed(name);
+    if (set && locked()) return err("the page is locked: use rpc with the page password");
+    // a fixed name always answers its value; a value set under it changes nothing
+    if (a && a->kind == AliasEntry::Kind::Fixed) return {MqttMsg(p + "/config/" + name, a->target, true)};
     if (a && a->kind != AliasEntry::Kind::Key) a = nullptr;
     std::string key = a ? a->target : name;
-    if (set && locked()) return err("the page is locked: use rpc with the page password");
     const ParamDesc* d = Settings::find(key);
     if (!d) return err("unknown setting");
     if (set) {
@@ -1511,7 +1660,7 @@ std::vector<MqttMsg> Controller::mqttOnMessage(const std::string& topic, const s
         }
       }
       Request req;
-      Response resp = setParams(req, {ParamValue{key, v}});
+      Response resp = setParams(req, withAlso(a, key, v));
       if (!resp.isOk()) return err(name + ": " + resp.errorMessage());
     }
     if (d->isSecret()) return {};
@@ -1568,14 +1717,29 @@ std::vector<MqttMsg> Controller::mqttPoll() {
       if (!found) { mqtt_.published.push_back({m.topic, m.payload}); v.push_back(m); }
     }
   }
-  // the effect's status values: changes at most once a second (the cooldown counts down every ms)
-  std::vector<ParamValue> status;
-  if (now_ - mqtt_.status_at >= MQTT_STATUS_PERIOD_MS) {
-    effectStatus(status);
+  // the effect's status values: a change goes out within MQTT_STATUS_MIN_MS; a time left once a second
+  if (now_ - mqtt_.status_at >= MQTT_STATUS_MIN_MS) {
     mqtt_.status_at = now_;
+    bool time_left = now_ - mqtt_.time_left_at >= MQTT_STATUS_PERIOD_MS;
+    if (time_left) mqtt_.time_left_at = now_;
+    std::vector<ParamValue> status;
+    effectStatus(status);
+    for (auto& st : status) {
+      const AliasEntry* al = aliasNamed(st.key);
+      const std::string& base = al && al->kind == AliasEntry::Kind::Status ? al->target : st.key;
+      if (!time_left && base.size() > 13 && base.compare(base.size() - 13, 13, "_remaining_ms") == 0) continue;
+      MqttMsg m(p + "/status/" + st.key, st.value.plain(), true);
+      bool found = false;
+      for (auto& pub : mqtt_.published)
+        if (pub.first == m.topic) {
+          found = true;
+          if (pub.second != m.payload) { pub.second = m.payload; v.push_back(m); }
+        }
+      if (!found) { mqtt_.published.push_back({m.topic, m.payload}); v.push_back(m); }
+    }
   }
-  if (params_changed || !status.empty()) {
-    for (auto& m : configMsgsUnlocked(p, status)) {
+  if (params_changed) {
+    for (auto& m : configMsgsUnlocked(p, {})) {
       bool found = false;
       for (auto& pub : mqtt_.published)
         if (pub.first == m.topic) {
@@ -1601,6 +1765,59 @@ std::vector<MqttMsg> Controller::mqttPoll() {
     }
   }
   return v;
+}
+
+// ---------------------------------------------------------------- a board support package's defaults
+
+std::string Controller::applyFactoryDefaults(const FactoryDefaults& d, bool force) {
+  if (!fresh_ && !force) return "";
+  std::string refused;
+  auto note = [&](const std::string& what) {
+    refused += (refused.empty() ? "" : "\n") + what;
+    log("board defaults: " + what);
+  };
+  // an answer of call(): ok, or the error's message
+  auto failed = [](const std::string& answer, std::string& why) {
+    JsonDocument a;
+    if (deserializeJson(a, answer) || !a["ok"].as<bool>()) {
+      why = a["error"]["message"] | "not accepted";
+      return true;
+    }
+    if (a["result"]["ok"].is<bool>() && !a["result"]["ok"].as<bool>()) {  // a script the checker refused
+      why = a["result"]["errors"][0]["message"] | "the checker refused it";
+      return true;
+    }
+    return false;
+  };
+  if (d.profile && *d.profile) {
+    std::string body = std::string("{\"op\":\"set_profile\",\"data\":") + d.profile + "}", why;
+    if (failed(call(body.data(), body.size()), why)) note("profile: " + why);
+  }
+  if (d.settings) {
+    const char* p = d.settings;
+    while (*p) {
+      const char* e = p;
+      while (*e && *e != '\n') e++;
+      std::string line(p, (size_t)(e - p));
+      p = *e ? e + 1 : e;
+      size_t hash = line.find('#');
+      if (hash != std::string::npos) line.resize(hash);
+      while (!line.empty() && isspace((unsigned char)line.back())) line.pop_back();
+      while (!line.empty() && isspace((unsigned char)line.front())) line.erase(line.begin());
+      if (line.empty()) continue;
+      std::string out = consoleLine(line);
+      if (out.compare(0, 6, "error:") == 0) note(line + ": " + out.substr(7));
+    }
+  }
+  if (d.script && *d.script) {
+    JsonDocument q;
+    q["op"] = "set_script";
+    q["text"] = d.script;
+    std::string body, why;
+    serializeJson(q, body);
+    if (failed(call(body.data(), body.size()), why)) note("script: " + why);
+  }
+  return refused;
 }
 
 }  // namespace pt

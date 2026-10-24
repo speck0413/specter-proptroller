@@ -9,11 +9,11 @@
     "errors": [
       {
         "line": 3,
-        "message": "line 3: sound 100 is out of range. Sounds are numbered 1 to 99."
+        "message": "line 3: sound 3001 is out of range. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3)."
       },
       {
         "line": 4,
-        "message": "line 4: sound 0 is out of range. Sounds are numbered 1 to 99."
+        "message": "line 4: sound 0 is out of range. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3)."
       }
     ],
     "warnings": []

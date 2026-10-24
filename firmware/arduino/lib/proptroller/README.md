@@ -17,7 +17,7 @@ effect porch light:
   wait for trig1
   out1 = on
   audio_single = 1
-  sleep 30
+  wait 30
   fade out1 to 0% over 2
 ```
 
@@ -125,21 +125,18 @@ over-the-air update, and the IDE does not use the shared flash map unless you se
 
 ## 4. Sound files
 
-The sound player plays files by number. On the microSD card:
+The sound player plays files by number: sound N is the file `0001-….mp3`, `0002-….mp3` … in the card's `mp3`
+folder, and the same number means the same file everywhere:
 
-| File | Played by |
+| Sound | Played by |
 |---|---|
-| `02/001.mp3`, `02/002.mp3`, … | `playSound(1)`, `playSound(2)`, … |
-| `01/001.mp3` | the ambient loop between triggers (Settings → Sound) |
-| `01/001.mp3`, `02/001.mp3`, … `99/001.mp3` | a show script's `audio_single = 1`, `= 2`, … (sound N is folder N, one file in it); the ambient loop is off while a script is stored |
-| `mp3/0001.mp3` | the default trigger sound, for a trigger whose effect has no sound of its own |
+| 1, 2, … 3000 | `playSound(1)`, `playSound(2)`, …; a show script's `audio_single = 1`, `audio_loop = 2`, … |
+| `trigger_track` (1) | the default trigger sound, for a trigger whose effect has no sound of its own (Settings → Sound) |
+| `ambient_track` (2) | the ambient loop between triggers (Settings → Sound); off while a script is stored |
 
-The card: 32 GB or smaller, formatted FAT32; folders `01` to `99`. Copy the files onto a freshly formatted card
-(the player can get confused by files that were deleted and replaced).
-
-Folder names are two digits, file names start with three digits (`02/001 thunder.mp3` is fine). A show script
-and a sketch number their sounds differently (script: one file per folder; sketch: `02/NNN`), so a card made for
-one does not suit the other.
+The player numbers the files in the order they were written to the card, so let Studio's SD card tool fill it
+(it erases the card, names the files and copies them in order); by hand, see `docs/SD-CARD.md` in the
+repository ("Setting up the SD card for the DFPlayer"). The card: 32 GB or smaller, FAT32.
 
 ## 5. Next
 

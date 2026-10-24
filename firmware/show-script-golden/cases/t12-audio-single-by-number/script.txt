@@ -1,7 +1,7 @@
 effect a:
 wait for trig1
-audio_single = chime.mp3
+audio_single = 1
 sleep 2
 audio_single = 3
 sleep 2
-audio_single = 005_boo.mp3
+audio_single = 5

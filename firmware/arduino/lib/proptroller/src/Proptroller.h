@@ -112,8 +112,8 @@ class Sequence {
   Sequence& turnOn(PropOutput o);
   Sequence& turnOn(PropOutput o, Duration how_long);
   Sequence& turnOff(PropOutput o);
-  // Play a sound (a DFPlayer Mini with a microSD card): playSound(3) plays 02/003.mp3, so put your sounds in a
-  // folder named 02.
+  // Play a sound (a DFPlayer Mini with a microSD card) by its number: playSound(3) plays the card's
+  // mp3/0003-<name>.mp3, the same sound 3 as a show script's audio_single = 3.
   Sequence& playSound(int number);
   // Time: then() waits until everything so far has finished; wait(seconds(2)) waits that long.
   Sequence& then();

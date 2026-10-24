@@ -1,0 +1,5 @@
+effect a:
+wait for out1_on_ms
+out1 = on
+wait out1_on_ms
+out1 = off

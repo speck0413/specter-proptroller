@@ -9,11 +9,11 @@
     "errors": [
       {
         "line": 3,
-        "message": "line 3: say which sound, for example \"audio_single = 1\" (plays /01/001.mp3)."
+        "message": "line 3: say which sound by its number, for example \"audio_single = 1\" (the card's mp3/0001-<name>.mp3)."
       },
       {
         "line": 4,
-        "message": "line 4: say which sound, for example \"audio_single = 1\" (plays /01/001.mp3)."
+        "message": "line 4: say which sound by its number, for example \"audio_single = 1\" (the card's mp3/0001-<name>.mp3)."
       }
     ],
     "warnings": []
