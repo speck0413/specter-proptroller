@@ -1,0 +1,71 @@
+{
+  "board_package": 1,
+  "id": "esp32-devkit-bare",
+  "name": "ESP32 DevKit, bare (no Proptroller board)",
+  "mcu": "esp32-devkit",
+  "terminals": {
+    "OUT1": {
+      "pin": 23
+    },
+    "OUT2": {
+      "pin": 22
+    },
+    "OUT3": {
+      "pin": 21
+    },
+    "OUT4": {
+      "pin": 19
+    },
+    "RLY1": {
+      "pin": 25
+    },
+    "RLY2": {
+      "pin": 26
+    },
+    "CC1": {
+      "pin": 27
+    },
+    "CC2": {
+      "pin": 32
+    },
+    "TRIG1": {
+      "pin": 13,
+      "active": "low",
+      "pull": "chip"
+    },
+    "TRIG2": {
+      "pin": 18,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER1": {
+      "pin": 14,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER2": {
+      "pin": 4,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER3": {
+      "pin": 5,
+      "active": "low",
+      "pull": "chip"
+    }
+  },
+  "pixel": {
+    "pin": 33,
+    "inverted": false
+  },
+  "sound": {
+    "tx": 17,
+    "rx": 16
+  },
+  "analog": 39,
+  "expansion": {
+    "S4": 15,
+    "S5": 35
+  },
+  "status_led": 2
+}

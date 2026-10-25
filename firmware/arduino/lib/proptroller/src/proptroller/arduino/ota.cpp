@@ -69,7 +69,7 @@ bool BoardOta::rolledBack() const {
 }
 
 size_t BoardOta::headerLen() const { return esp_image::HEADER_LEN; }
-bool BoardOta::headerOk(const uint8_t* first, size_t n) const { return esp_image::isEsp32App(first, n); }
+bool BoardOta::headerOk(const uint8_t* first, size_t n) const { return esp_image::isEspApp(first, n, PT_ESP_CHIP_ID); }
 
 UpdateError BoardOta::begin(uint32_t len) {
   total_ = len;

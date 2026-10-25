@@ -67,8 +67,8 @@ jobs:
           restore-keys: pio-${{ runner.os }}-boards-
       - name: Install PlatformIO
         run: python -m pip install "platformio==$PLATFORMIO_VERSION"
-      - name: Build (ESP32 DevKit, Pico, Pico W, Pico 2 W, the Pico bootloaders)
-        run: pio run -e esp32dev -e pico -e picow -e pico2w -e boot_rp2040 -e boot_rp2350
+      - name: Build (ESP32 DevKit, Pico, Pico W, Pico 2 W, the Pico bootloaders, the bare devkits)
+        run: pio run -e esp32dev -e pico -e picow -e pico2w -e boot_rp2040 -e boot_rp2350 -e esp32dev_generic -e esp32s3_generic -e esp32c3_supermini
       - name: Pico W / Pico 2 W first-flash files
         run: |
           python tools/picoboot_image.py merge pico-w

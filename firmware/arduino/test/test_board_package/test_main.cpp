@@ -23,6 +23,8 @@ static const ChipRules ESP32{Mcu::Esp32DevKit, false, false};
 static const ChipRules ESP32_PSRAM{Mcu::Esp32DevKit, true, false};
 static const ChipRules PICO_PLAIN{Mcu::Pico, false, false};
 static const ChipRules PICO_W{Mcu::Pico, false, true};
+static const ChipRules S3{Mcu::Esp32S3, false, false};
+static const ChipRules C3{Mcu::Esp32C3, false, false};
 
 // four relays on OUT1-4, a trigger with the board's pull-up and a button with a pull-down (active high)
 static const char* const RELAY_BOARD = R"({"board_package":1,"id":"relay-board","name":"Relay board","mcu":"esp32-devkit",
@@ -48,7 +50,7 @@ static void refused(const char* json, const char* words, const ChipRules& chip =
 // ---------------------------------------------------------------- the package
 
 void every_built_in_board_passes_the_pin_rules() {
-  for (const ChipRules& chip : {ESP32, ESP32_PSRAM, PICO_PLAIN, PICO_W}) {
+  for (const ChipRules& chip : {ESP32, ESP32_PSRAM, PICO_PLAIN, PICO_W, S3, C3}) {
     if (chip.psram) continue;  // the Proptroller board's ESP32 has no PSRAM (GPIO16 / 17 are SCL and sound TX)
     for (auto& b : builtinBoards(chip)) {
       std::vector<std::string> w;
@@ -93,7 +95,7 @@ void a_bad_package_is_refused_in_plain_words() {
   refused(R"({"board_package":1,"id":"none","name":"X","mcu":"esp32-devkit"})", "(not \"none\")");
   refused(R"({"board_package":1,"id":"x","mcu":"esp32-devkit"})", "\"name\" must be 1 to 60 characters");
   refused(R"({"board_package":1,"id":"x","name":"X","mcu":"pico"})", "this board package is for the pico socket; this board has the esp32-devkit");
-  refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32"})", "\"mcu\" must be \"esp32-devkit\" or \"pico\"");
+  refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32"})", "\"mcu\" must be \"esp32-devkit\", \"pico\", \"esp32-s3\" or \"esp32-c3\"");
   refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-devkit","pins":{}})", "unknown field \"pins\"");
   refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-devkit","terminals":{"OUT5":{"pin":4}}})", "there is no terminal \"OUT5\" (OUT1-4");
   refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-devkit","terminals":{"OUT1":23}})", "OUT1 must be an object");
@@ -146,6 +148,47 @@ void boot_strapping_pins_are_warned_not_refused() {
   TEST_ASSERT_EQUAL(2, (int)w.size());
   TEST_ASSERT_TRUE(w[0].find("USER1: GPIO 5 is read at power-on (a boot-strapping pin)") == 0);
   TEST_ASSERT_TRUE(w[1].find("status_led: GPIO 2 is read at power-on") == 0);
+}
+
+// ESP32-S3 and ESP32-C3 (BARE-DEVKIT.md): their own rules, their devkit as the only built-in board
+void the_s3_and_c3_rules() {
+  TEST_ASSERT_EQUAL(1, (int)builtinBoards(S3).size());
+  TEST_ASSERT_EQUAL_STRING("esp32-s3-devkit", builtinBoards(S3)[0].id);
+  TEST_ASSERT_EQUAL_STRING("esp32-c3-supermini", builtinBoards(C3)[0].id);
+  TEST_ASSERT_FALSE(builtinBoards(C3)[0].pixel_inverted);
+  // a package with OUT1 on `pin` for chip family `mcu`
+  auto out1 = [](const char* mcu, int pin) {
+    return std::string(R"({"board_package":1,"id":"x","name":"X","mcu":")") + mcu + R"(","terminals":{"OUT1":{"pin":)" +
+           std::to_string(pin) + "}}}";
+  };
+  struct Bad { const char* mcu; int pin; const char* words; const ChipRules* chip; };
+  const Bad bad[] = {
+      {"esp32-s3", 22, "the ESP32-S3 has no GPIO 22", &S3},          {"esp32-s3", 49, "the ESP32-S3 has no GPIO 49", &S3},
+      {"esp32-s3", 30, "wired to the module's flash memory", &S3},   {"esp32-s3", 36, "octal PSRAM", &S3},
+      {"esp32-s3", 19, "the USB port's data line", &S3},             {"esp32-s3", 43, "the USB serial port", &S3},
+      {"esp32-s3", 45, "sets the flash voltage", &S3},
+      {"esp32-c3", 22, "the ESP32-C3 has no GPIO 22", &C3},          {"esp32-c3", 14, "wired to the flash memory", &C3},
+      {"esp32-c3", 18, "the USB port's data line", &C3},
+  };
+  for (auto& x : bad) refused(out1(x.mcu, x.pin).c_str(), x.words, *x.chip);
+  std::vector<std::string> w;
+  TEST_ASSERT_EQUAL_STRING("", check(out1("esp32-s3", 4), S3, &w).c_str());
+  TEST_ASSERT_EQUAL(0, (int)w.size());
+  // strapping pins warned; an output on the C3's boot UART flickers at power-on
+  TEST_ASSERT_EQUAL_STRING("", check(out1("esp32-c3", 21), C3, &w).c_str());
+  TEST_ASSERT_EQUAL(1, (int)w.size());
+  TEST_ASSERT_TRUE(w[0].find("boot messages") != std::string::npos);
+  TEST_ASSERT_EQUAL_STRING("", check(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-c3",
+    "terminals":{"USER1":{"pin":9}}})", C3, &w).c_str());
+  TEST_ASSERT_TRUE(w.size() == 1 && w[0].find("USER1: GPIO 9 is read at power-on") == 0);
+  // analog on ADC1 only
+  refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-s3","analog":11})", "use GPIO 1-10", S3);
+  refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-c3","analog":5})", "use GPIO 0-4", C3);
+  // a package for one chip on another
+  refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-s3"})", "is for the esp32-s3 socket; this board has the esp32-c3", C3);
+  refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-devkit"})", "this board has the esp32-s3", S3);
+  // no Proptroller board on an S3
+  refused(R"({"board_package":1,"id":"x","name":"X","base":"proptroller"})", "(it has: esp32-s3-devkit)", S3);
 }
 
 void a_package_can_take_a_built_in_boards_pins() {
@@ -653,10 +696,14 @@ void the_stored_file_matches_the_fixture_and_reads_back_on_the_board() {
 void the_example_files_are_the_built_in_boards() {
   struct Example { const char* file; ChipRules chip; const char* id; };
   const Example ex[] = {{"proptroller-esp32.json", ESP32, "proptroller"}, {"proptroller-pico.json", PICO_W, "proptroller"},
-                        {"relay4-button.json", ESP32, "relay4-button"}};
+                        {"relay4-button.json", ESP32, "relay4-button"},
+                        {"esp32-devkit-bare.json", ESP32, "esp32-devkit-bare"},
+                        {"esp32-s3-devkit.json", S3, "esp32-s3-devkit"},
+                        {"esp32-c3-supermini.json", C3, "esp32-c3-supermini"}};
   for (auto& e : ex) {
     const std::vector<BuiltinBoard> all = builtinBoards(e.chip);
     const BuiltinBoard* b = findBuiltin(all, e.id);
+    if (!b && bareDevkit(e.chip.mcu) && !strcmp(bareDevkit(e.chip.mcu)->id, e.id)) b = bareDevkit(e.chip.mcu);  // esp32-devkit-bare
     TEST_ASSERT_NOT_NULL(b);
     JsonDocument d;
     builtinToJson(*b, e.chip, d.to<JsonObject>());
@@ -680,6 +727,7 @@ int main(int, char**) {
   RUN_TEST(a_bad_package_is_refused_in_plain_words);
   RUN_TEST(the_pin_rules_name_the_terminal_and_the_reason);
   RUN_TEST(boot_strapping_pins_are_warned_not_refused);
+  RUN_TEST(the_s3_and_c3_rules);
   RUN_TEST(a_package_can_take_a_built_in_boards_pins);
   RUN_TEST(the_defaults_are_checked_for_their_shape);
   RUN_TEST(the_record_round_trips_and_a_damaged_or_newer_one_is_told_apart);

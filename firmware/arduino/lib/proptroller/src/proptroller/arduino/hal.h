@@ -12,6 +12,35 @@
 #include "../window_lock.h"
 #include "../ws2812.h"
 
+#if defined(ESP32)
+#include <soc/gpio_reg.h>
+#include <soc/soc_caps.h>
+// The ESP32 family (classic ESP32, ESP32-S3, ESP32-C3; firmware/BARE-DEVKIT.md):
+//  PT_GPIO_IN_ALL()  every GPIO's input level in one 64-bit word (bit n = GPIO n): the classic ESP32 has GPIO 0-39,
+//                    the S3 0-48, the C3 0-21 (one register)
+//  PT_STEP_CORE      the core the step and the 1 ms sampling interrupt run on: core 1 on the dual-core chips (the
+//                    network on core 0), core 0 on the single-core C3 (the step then runs above the network's
+//                    tasks and below Wi-Fi's own, the 1 ms samples latched by the interrupt either way)
+//  PT_ESP_CHIP_ID    the chip id an app image's header carries (esp_image in update.h)
+#if CONFIG_IDF_TARGET_ESP32C3
+#define PT_GPIO_IN_ALL() ((uint64_t)REG_READ(GPIO_IN_REG))
+#define PT_ESP_CHIP_ID 0x0005
+#elif CONFIG_IDF_TARGET_ESP32S3
+#define PT_GPIO_IN_ALL() ((uint64_t)REG_READ(GPIO_IN_REG) | ((uint64_t)(REG_READ(GPIO_IN1_REG) & 0x1FFFFu) << 32))
+#define PT_ESP_CHIP_ID 0x0009
+#elif CONFIG_IDF_TARGET_ESP32
+#define PT_GPIO_IN_ALL() ((uint64_t)REG_READ(GPIO_IN_REG) | ((uint64_t)(REG_READ(GPIO_IN1_REG) & 0xFFu) << 32))
+#define PT_ESP_CHIP_ID 0x0000
+#else
+#error "this ESP32 chip is not supported (classic ESP32, ESP32-S3 and ESP32-C3 are)"
+#endif
+#if SOC_CPU_CORES_NUM > 1
+#define PT_STEP_CORE 1
+#else
+#define PT_STEP_CORE 0
+#endif
+#endif
+
 namespace pt {
 
 // Milliseconds since power-on, 64 bits (never wraps).

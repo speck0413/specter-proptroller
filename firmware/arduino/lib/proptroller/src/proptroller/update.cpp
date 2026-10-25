@@ -58,11 +58,12 @@ std::string updateUnsupportedJson() {
 static uint32_t le32(const uint8_t* p) { return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24; }
 
 namespace esp_image {
-bool isEsp32App(const uint8_t* first, size_t n) {
+bool isEspApp(const uint8_t* first, size_t n, uint16_t want) {
   if (n < HEADER_LEN) return false;
   uint16_t chip = (uint16_t)(first[CHIP_ID_OFFSET] | first[CHIP_ID_OFFSET + 1] << 8);
-  return first[0] == MAGIC && chip == CHIP_ESP32 && le32(first + APP_DESC_OFFSET) == APP_DESC_MAGIC;
+  return first[0] == MAGIC && chip == want && le32(first + APP_DESC_OFFSET) == APP_DESC_MAGIC;
 }
+bool isEsp32App(const uint8_t* first, size_t n) { return isEspApp(first, n, CHIP_ESP32); }
 }  // namespace esp_image
 
 namespace pico_image {

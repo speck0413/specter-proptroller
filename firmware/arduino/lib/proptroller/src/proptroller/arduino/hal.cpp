@@ -6,7 +6,9 @@
 
 #if defined(ESP32)
 #include <driver/rmt.h>
+#if SOC_CPU_CORES_NUM > 1
 #include <esp_ipc.h>
+#endif
 #include <soc/gpio_reg.h>
 #include <soc/soc.h>
 #include <driver/uart.h>
@@ -117,7 +119,7 @@ void ArduinoPins::useLatched(bool on, uint64_t gpio_in) {
 
 bool ArduinoPins::readAllLow(bool low[INPUT_COUNT]) {
 #if defined(ESP32)
-  const uint64_t in = g_latched ? g_latched_in : (uint64_t)REG_READ(GPIO_IN_REG) | ((uint64_t)(REG_READ(GPIO_IN1_REG) & 0xFF) << 32);  // GPIO0-31, 32-39
+  const uint64_t in = g_latched ? g_latched_in : PT_GPIO_IN_ALL();
 #else
   const uint64_t in = gpio_get_all();
 #endif
@@ -150,9 +152,13 @@ Stream& openDfSerial(const PinMap& m) {
     static NoStream none;
     return none;
   }
-#if defined(ESP32)
+#if defined(ESP32) && SOC_UART_NUM > 2
   Serial2.begin(9600, SERIAL_8N1, m.df_rx, m.df_tx);
   return Serial2;
+#elif defined(ESP32)
+  // the C3 has two UARTs: UART0 (its console is the USB port's own CDC) and UART1, the sound port's (no DMX port)
+  Serial1.begin(9600, SERIAL_8N1, m.df_rx, m.df_tx);
+  return Serial1;
 #else
   // GP7 is not a hardware UART RX pin: a PIO UART on GP8 (TX) / GP7 (RX)
   static SerialPIO df(m.df_tx, m.df_rx, 64);
@@ -197,8 +203,14 @@ static void IRAM_ATTR toRmt(const void* src, rmt_item32_t* dest, size_t src_size
 
 // The channel takes the memory of channels 0-3 (256 items, RMT RAM, not heap; nothing else here uses the RMT):
 // the refill interrupt comes every 128 items (160 us), so a late one (Wi-Fi's interrupts share core 0) still
-// keeps the wire fed.
+// keeps the wire fed. The S3 and the C3 have 48-item blocks and only their transmit channels' memory to take:
+// the S3 4 blocks (192 items, a refill every 96: 120 us), the C3 2 (96 items, a refill every 48: 60 us; with Wi-Fi
+// on the one core a late refill can garble a frame, which the next frame 20 ms later replaces: unmeasured).
+#if CONFIG_IDF_TARGET_ESP32
 static const uint8_t PIX_MEM_BLOCKS = 4;
+#else
+static const uint8_t PIX_MEM_BLOCKS = SOC_RMT_TX_CANDIDATES_PER_GROUP;
+#endif
 struct RmtInstall {
   gpio_num_t pin;
   bool inverted;
@@ -220,7 +232,12 @@ static void rmtInstall(void* arg) {
 bool BoardPixels::begin() {
   if (pin_ == NO_PIN) return false;  // the board profile has no pixel port
   RmtInstall a{(gpio_num_t)pin_, inverted_, false};
+#if SOC_CPU_CORES_NUM > 1
   ok_ = esp_ipc_call_blocking(0, rmtInstall, &a) == ESP_OK && a.ok;
+#else
+  rmtInstall(&a);  // one core: installed here
+  ok_ = a.ok;
+#endif
   return ok_;
 }
 
@@ -541,7 +558,13 @@ std::string deviceId() {
   snprintf(b, sizeof b, "%02x%02x%02x%02x%02x%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
   return b;
 }
+#if CONFIG_IDF_TARGET_ESP32S3
+const char* mcuName() { return "esp32-s3"; }
+#elif CONFIG_IDF_TARGET_ESP32C3
+const char* mcuName() { return "esp32-c3"; }
+#else
 const char* mcuName() { return "esp32-devkit"; }
+#endif
 void restartNow() { ESP.restart(); }
 #else
 RawLock::RawLock() {

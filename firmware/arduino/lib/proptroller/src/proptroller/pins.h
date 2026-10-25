@@ -1,5 +1,6 @@
 // GPIO maps for the two MCU options (hardware/README.md "GPIO map"). Fit either a 30-pin ESP32 DevKit or a
-// Raspberry Pi Pico family board, never both.
+// Raspberry Pi Pico family board, never both. The bare-devkit maps (no Proptroller board) are further down:
+// ESP32_DEVKIT_BARE, ESP32S3_DEVKIT, ESP32C3_SUPERMINI (firmware/BARE-DEVKIT.md; their BSPs in bsp/).
 //
 // | Function                              | ESP32 DevKit     | Pico                  |
 // |---------------------------------------|------------------|-----------------------|
@@ -22,7 +23,9 @@
 
 namespace pt {
 
-enum class Mcu : uint8_t { Esp32DevKit, Pico };
+// The chip family a pin map is for. Esp32DevKit is the classic ESP32 (ESP32-WROOM-32 / WROVER, the module the
+// Proptroller board takes); Esp32S3 and Esp32C3 run only bare (no Proptroller board takes them).
+enum class Mcu : uint8_t { Esp32DevKit, Pico, Esp32S3, Esp32C3 };
 
 static const uint8_t NO_PIN = 255;
 // status_led: the MCU board's own LED that is not on a GPIO of its own (the Pico W / Pico 2 W LED sits on the radio
@@ -60,6 +63,26 @@ constexpr PinMap PICO = {Mcu::Pico, {15, 14, 12, 11}, {20, 21}, {22, 18}, {16, 1
 //   constexpr pt::PinMap PROPTROLLER_BOARD_MAP = {...};
 // in this layout. A terminal (OUT, RLY, CC, TRIG, USER) or function set to NO_PIN is never configured, driven or
 // read, and is left out of the board's terminals (info, the phone page). The checks below run on it too.
+
+// ---- Bare devkits (no Proptroller board; firmware/BARE-DEVKIT.md). Every output is plain 3.3 V logic: it needs a
+// driver (a MOSFET module, a relay module) to switch a load. The PIXEL data is not inverted. Each map is copied,
+// with a comment on every line, into bsp/<board>/proptroller_board.h (test/test_bsp_generic checks they agree) and
+// into firmware/board-packages/<board>.json.
+//
+// ESP32 30-pin DevKit, bare: every output on the same GPIO as on the Proptroller board (so the two images never
+// drive one of the other board's inputs), the inputs moved to GPIOs with internal pull-ups (a bare devkit has no
+// 4.7k resistors), no I2C (the firmware does not use it).
+constexpr PinMap ESP32_DEVKIT_BARE = {Mcu::Esp32DevKit, {23, 22, 21, 19}, {25, 26}, {27, 32}, {13, 18}, {14, 4, 5},
+                                      33, 17, 16, NO_PIN, NO_PIN, 39, {15, 35}, 2, 0, 0x00};
+// ESP32-S3 DevKitC-1 style: outputs and inputs on plain GPIOs (no strapping, USB, UART0, flash / PSRAM pins,
+// not the RGB LED's 38 / 48); no status LED (the board's LED is an RGB pixel).
+constexpr PinMap ESP32S3_DEVKIT = {Mcu::Esp32S3, {4, 5, 6, 7}, {15, 16}, {17, 18}, {9, 10}, {11, 12, 13},
+                                   8, 40, 41, NO_PIN, NO_PIN, 1, {47, 14}, NO_PIN, 0, 0x00};
+// ESP32-C3 SuperMini: 13 GPIOs on its pins, so no RLY1-2, CC1-2, USER3, I2C or expansion port (the C3 has two
+// UARTs: the sound port takes the second, so no DMX); USER1 is the board's BOOT button (GPIO9); no status LED
+// (GPIO8's LED is a strapping pin and lit by a low level on most clones).
+constexpr PinMap ESP32C3_SUPERMINI = {Mcu::Esp32C3, {5, 6, 7, 10}, {NO_PIN, NO_PIN}, {NO_PIN, NO_PIN}, {3, 4},
+                                      {9, 2, NO_PIN}, 1, 21, 20, NO_PIN, NO_PIN, 0, {NO_PIN, NO_PIN}, NO_PIN, 0, 0x00};
 
 // The GPIO of output channel 0-7 (OUT1-4, RLY1-2, CC1-2) and of input 0-4 (TRIG1-2, USER1-3).
 constexpr uint8_t channelPin(const PinMap& m, int ch) { return ch < 4 ? m.out[ch] : ch < 6 ? m.relay[ch - 4] : m.contact[ch - 6]; }
@@ -103,6 +126,9 @@ constexpr bool internalPullsPossible(const PinMap& m) {
 static_assert(pinsDistinct(ESP32_DEVKIT) && pinsDistinct(PICO), "a GPIO serves two board functions");
 static_assert(internalPullsPossible(ESP32_DEVKIT), "an ESP32 input on GPIO34-39 needs external_pull");
 static_assert(outputsCanDrive(ESP32_DEVKIT), "an ESP32 output on an input-only GPIO (34-39)");
+static_assert(pinsDistinct(ESP32_DEVKIT_BARE) && pinsDistinct(ESP32S3_DEVKIT) && pinsDistinct(ESP32C3_SUPERMINI),
+              "a GPIO serves two board functions");
+static_assert(internalPullsPossible(ESP32_DEVKIT_BARE) && outputsCanDrive(ESP32_DEVKIT_BARE), "the bare ESP32 map");
 #endif
 
 // Every GPIO used by a board function (22 entries; no duplicates in a valid map).

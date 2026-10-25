@@ -1,0 +1,8 @@
+{
+  "name": "proptroller-bsp-esp32-s3-devkit",
+  "version": "0.1.0",
+  "description": "Board support package for the Proptroller library: a bare ESP32-S3 DevKit (DevKitC-1 style), every terminal on a plain GPIO (outputs need a driver module)",
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": ["espressif32"]
+}

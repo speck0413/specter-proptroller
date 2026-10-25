@@ -1736,12 +1736,14 @@ function fwInspect(b, name) {
   }
   const markerName = names.includes(mcu) ? mcu : names[0] || null;
   const esp = b[0] === 0xE9 && b.length >= 64;
-  const espApp = esp && u16(12) === 0 && u32(32) === 0xABCD5432;
+  const espApp = esp && u32(32) === 0xABCD5432;
   const blob = ascii(b.slice(0, 8)) === 'PTCYW43\0';
   const sim = ascii(b.slice(0, 22)) === 'PROPTROLLER-SIM-IMAGE\n';
   const other = (what) => ({ ok: false, why: `${name} is ${what}, not for this board (${mcu})` });
-  if (mcu === 'esp32-devkit') {
-    if (espApp) return { ok: true, what: 'ESP32 firmware', version: ascii(b.slice(48, 80)).split('\0')[0] };
+  // the ESP32 family: the app image header's chip id (0 ESP32, 9 ESP32-S3, 5 ESP32-C3)
+  const espChip = { 'esp32-devkit': [0, 'ESP32'], 'esp32-s3': [9, 'ESP32-S3'], 'esp32-c3': [5, 'ESP32-C3'] }[mcu];
+  if (espChip) {
+    if (espApp && u16(12) === espChip[0]) return { ok: true, what: `${espChip[1]} firmware`, version: ascii(b.slice(48, 80)).split('\0')[0] };
     if (esp) return other('a firmware for another ESP32 chip');
   } else if (mcu === 'sim') {
     if (sim) {

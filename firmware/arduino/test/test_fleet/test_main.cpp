@@ -264,6 +264,16 @@ void image_checks() {
   s3[12] = 0x09;  // ESP32-S3
   TEST_ASSERT_FALSE(esp_image::isEsp32App(s3, 40));
   TEST_ASSERT_FALSE(esp_image::isEsp32App(esp, 20));
+  // each chip of the family takes its own images only (the bare-devkit images, BARE-DEVKIT.md)
+  uint8_t c3[40];
+  memcpy(c3, esp, 40);
+  c3[12] = 0x05;  // ESP32-C3
+  TEST_ASSERT_TRUE(esp_image::isEspApp(s3, 40, esp_image::CHIP_ESP32S3));
+  TEST_ASSERT_TRUE(esp_image::isEspApp(c3, 40, esp_image::CHIP_ESP32C3));
+  TEST_ASSERT_FALSE(esp_image::isEspApp(c3, 40, esp_image::CHIP_ESP32S3));
+  TEST_ASSERT_FALSE(esp_image::isEspApp(s3, 40, esp_image::CHIP_ESP32C3));
+  TEST_ASSERT_FALSE(esp_image::isEspApp(esp, 40, esp_image::CHIP_ESP32C3));
+  TEST_ASSERT_FALSE(esp_image::isEspApp(c3, 20, esp_image::CHIP_ESP32C3));
   auto both = [](const std::string& img, uint32_t slot, uint32_t ram_end) {
     bool ours = pico_image::vectorsOk((const uint8_t*)img.data(), img.size(), slot, ram_end);
     bool boot = picoboot_vectors_ok((const uint8_t*)img.data(), PICOBOOT_ACTIVE_ADDRESS, slot, pico_image::RAM_BASE, ram_end) != 0;
