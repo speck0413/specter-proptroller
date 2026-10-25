@@ -64,7 +64,10 @@ ArduinoPins::ArduinoPins(const PinMap& m, int led) : m_(m), led_(led) {
 }
 
 void ArduinoPins::begin() {
-#if defined(ESP32)
+#if defined(PROPTROLLER_QEMU_NO_LEDC)
+  // QEMU's esp32s3 machine has no LED PWM controller (ledcSetup divides by zero reading it back): OUT1-4 on / off
+  // only (env esp32s3_qemu, never flashed)
+#elif defined(ESP32)
   for (uint8_t i = 0; i < 4; i++) {
     if (m_.out[i] == NO_PIN) continue;
     ledcSetup(i, PWM_HZ, 10);
@@ -88,7 +91,9 @@ void ArduinoPins::begin() {
 }
 
 bool ArduinoPins::setOut(int i, Level l) {
-#if defined(ESP32)
+#if defined(PROPTROLLER_QEMU_NO_LEDC)
+  digitalWrite(m_.out[i], l > 0 ? HIGH : LOW);
+#elif defined(ESP32)
   uint32_t duty = l >= FULL ? 1024 : ((uint32_t)1024 * l + 500) / 1000;
   ledcWrite((uint8_t)i, duty);
 #else
@@ -231,6 +236,10 @@ static void rmtInstall(void* arg) {
 
 bool BoardPixels::begin() {
   if (pin_ == NO_PIN) return false;  // the board profile has no pixel port
+#if defined(PROPTROLLER_QEMU_NO_LEDC)
+  // QEMU's esp32s3 machine has no RMT either: the driver's failure message would overflow the IPC task's stack
+  return false;
+#endif
   RmtInstall a{(gpio_num_t)pin_, inverted_, false};
 #if SOC_CPU_CORES_NUM > 1
   ok_ = esp_ipc_call_blocking(0, rmtInstall, &a) == ESP_OK && a.ok;

@@ -28,6 +28,8 @@ the sound card, wiring, and your first effect script typed on your phone. Then:
   [firmware/show-script-examples/](firmware/show-script-examples/) with wiring notes;
 - [the Arduino library](firmware/arduino/lib/proptroller/README.md): effects in code;
 - [hardware/README.md](hardware/README.md): ratings, pinout and power.
+- [firmware/BARE-DEVKIT.md](firmware/BARE-DEVKIT.md): no board yet? Run the firmware on a bare ESP32 DevKit,
+  ESP32-S3 DevKit or ESP32-C3 SuperMini (outputs through MOSFET or relay modules).
 - [docs/DEV-SETUP.md](docs/DEV-SETUP.md): from nothing to a running board with Specter Studio built from
   source (macOS, with Windows and Linux notes): the setup script, the clone, a USB install and a script.
 - [docs/FIRMWARE-BUILD.md](docs/FIRMWARE-BUILD.md): build the firmware for each board, flash it over USB, make a
@@ -54,7 +56,7 @@ board. The desktop app is Specter Studio, a separate repository. Wiring guides a
 | `enclosure/` | the 3D-printed enclosure: OpenSCAD model, `design.toml` with every size, Bambu Studio projects, build and check tools |
 | `GETTING-STARTED.md` | from a new board to a running prop, no programming |
 | `firmware/` | the firmware (`arduino/`), the protocol (`PROTOCOL.md`), flash maps, the phone web UI (`web/`) and its browser tests (`web-test/`), golden sets and example show scripts |
-| `.github/workflows/release.yml` | on a tag `v<firmware/VERSION>`: builds the stock firmware (ESP32 DevKit, Pico W, Pico 2 W), drafts a GitHub Release with the update and first-flash images and `proptroller-firmware.json`, and publishes the browser flasher to GitHub Pages |
+| `.github/workflows/release.yml` | on a tag `v<firmware/VERSION>`: builds the stock firmware (ESP32 DevKit, Pico W, Pico 2 W, and the bare devkits), drafts a GitHub Release with the update and first-flash images and `proptroller-firmware.json`, and publishes the browser flasher to GitHub Pages |
 | `docs/` | wiring guides (interactive 3D pages, written pages, videos), the case build guide, switching AC loads, developer setup with Specter Studio (`DEV-SETUP.md`), building and flashing the firmware (`FIRMWARE-BUILD.md`) |
 | `tools/` | `setup.sh` (firmware setup; `--dev` for the developer checks), bootstrap, JLC order packages (with rotation corrections), routing helpers |
 
@@ -80,7 +82,7 @@ effects in code, start with [the library's README](firmware/arduino/lib/proptrol
 3. Wait for PlatformIO to finish loading (status bar), then **Terminal > Run Task**:
    - **Native unit tests**: the host tests (no board needed).
    - **Host simulator**: a simulated board; open <http://localhost:8080/> for its phone page.
-   - **Build all boards**: ESP32 DevKit, Pico, Pico W, Pico 2 W.
+   - **Build all boards**: ESP32 DevKit, Pico, Pico W, Pico 2 W, and the bare devkits (ESP32, ESP32-S3, ESP32-C3 SuperMini).
 4. Flash a board (USB):
    - ESP32 DevKit: `cd firmware/arduino && pio run -e esp32dev -t upload`
    - Pico (no Wi-Fi): `cd firmware/arduino && pio run -e pico -t upload` (the first time, hold BOOTSEL while

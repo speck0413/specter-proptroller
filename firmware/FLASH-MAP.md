@@ -38,6 +38,17 @@ First flash (USB): `pio run -e esp32dev -t upload` writes the arduino-esp32 core
 nvs and LittleFS keep what they hold. The checksums are those of the packages pinned in `platformio.ini`; a
 platform update that changes them updates this table.
 
+## Bare devkits: ESP32, ESP32-S3, ESP32-C3 (4 MB)
+
+The bare-devkit images ([BARE-DEVKIT.md](BARE-DEVKIT.md); envs `esp32dev_generic`, `esp32s3_generic`,
+`esp32c3_supermini`) use the same `esp32-4mb.csv`: the same slots, LittleFS and stores, so updates, rollback and
+the records work as on the ESP32 DevKit. They are built for 4 MB and run on boards with more flash (the rest is
+unused). The bootloader sits at **0x1000 on the classic ESP32** and at **0x0 on the S3 and the C3**; the partition
+table (0x8000), otadata (0xE000) and the app (0x10000) are where they are on the ESP32. Flash mode: the bare ESP32
+image is the esp32dev one's QIO 80 MHz; the S3 and C3 images run at DIO 80 MHz (bootloader and app), which every
+quad flash chip on these boards supports. The first-flash files keep the bootloader's own mode and speed
+(`release.py`, `--flash_mode keep --flash_freq keep`).
+
 ## Raspberry Pi Pico W and Pico 2 W: behind the Pico bootloader
 
 Our bootloader (`firmware/arduino/PICO-BOOTLOADER.md`) keeps the previous image: an update goes to the dfu slot,

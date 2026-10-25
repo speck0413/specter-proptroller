@@ -1,13 +1,15 @@
 # Board packages
 
-One generic firmware image per chip (ESP32 DevKit, Pico, Pico W, Pico 2 W) runs any board built around it. A
+One generic firmware image per chip (ESP32 DevKit, Pico, Pico W, Pico 2 W, and the ESP32-S3 and ESP32-C3 of the bare
+devkits, [BARE-DEVKIT.md](BARE-DEVKIT.md)) runs any board built around it. A
 **board package** says which GPIO each terminal is on, how each input is wired, whether the pixel data is
 inverted, the board's id and name and, if you want, the board's defaults (settings, an alias profile, a show
 script). It is JSON, sent to the board (`set_board`, [PROTOCOL.md](PROTOCOL.md)) and kept on it in its own record
 ([FLASH-MAP.md](FLASH-MAP.md)). Nothing is compiled.
 
 The examples are in [`board-packages/`](board-packages/): the Proptroller board on the ESP32 DevKit and on the
-Pico family, and `relay4-button` (four relays and an active-high button). The code is
+Pico family, `relay4-button` (four relays and an active-high button), and the bare devkits `esp32-devkit-bare`,
+`esp32-s3-devkit` and `esp32-c3-supermini` ([BARE-DEVKIT.md](BARE-DEVKIT.md)). The code is
 `firmware/arduino/lib/proptroller/src/proptroller/board_package.h`; `test/test_board_package` tests every rule on
 this page.
 
@@ -34,7 +36,7 @@ this page.
 | `board_package` | the format: `1` (a newer number is refused: "update the firmware first") |
 | `id` | 1-32 characters of `a-z`, `0-9`, `-`, `_` (not `none`); `info.board`, mDNS TXT `board`, backups and release lists carry it |
 | `name` | 1-60 characters, shown by Specter Studio |
-| `mcu` | the chip socket: `esp32-devkit`, or `pico` (one package fits the Pico, Pico W and Pico 2 W) |
+| `mcu` | the chip socket: `esp32-devkit` (the classic ESP32), `pico` (one package fits the Pico, Pico W and Pico 2 W), `esp32-s3` or `esp32-c3` |
 | `terminals` | `OUT1`-`OUT4`, `RLY1`-`RLY2`, `CC1`-`CC2` (outputs: `pin`), `TRIG1`-`TRIG2`, `USER1`-`USER3` (inputs: `pin`, `active`, `pull`) |
 | `active` | inputs: `low` (pressed pulls the pin to ground; the default) or `high` |
 | `pull` | inputs: `chip` (the chip's own pull-up for an input active low, pull-down for one active high; the default) or `board` (the board has its own resistor) |
@@ -71,6 +73,8 @@ The board checks every package for its own chip and names the field and the reas
 | Chip | Refused | Warned (accepted) |
 |---|---|---|
 | ESP32 | GPIOs that do not exist (20, 24, 28-31, above 39); 6-11 (the module's flash); 1 and 3 (the USB serial port); 16 and 17 on a module with PSRAM; 34-39 for anything that drives (outputs, pixel, sound TX, I2C, S4, the status LED); an input on 34-39 without `"pull": "board"` (no pull resistor of its own); 12 for anything that drives (it sets the flash voltage at power-on); `analog` other than 32-39 (ADC2 stops while Wi-Fi runs) | the boot-strapping pins 0, 2, 5, 12 (inputs), 15: what is wired there must not pull them the wrong way while the board starts |
+| ESP32-S3 | GPIOs that do not exist (22-25, above 48); 26-32 (flash and PSRAM); 33-37 (octal flash / PSRAM on the N8R8, N16R8 ... modules: refused on every S3); 19, 20 (USB); 43, 44 (the USB serial port); 45 for anything that drives (it sets the flash voltage); `analog` other than 1-10 | the boot-strapping pins 0, 3, 45, 46 |
+| ESP32-C3 | above GPIO21; 12-17 (flash); 18, 19 (USB); `analog` other than 0-4 | the boot-strapping pins 2, 8, 9; anything that drives on 20 or 21 (the chip's boot messages flicker it at power-on) |
 | Pico W, Pico 2 W | above GP29; GP23, 24, 25, 29 (the radio's) | |
 | Pico | above GP29; GP23, 24, 29 (the Pico board's own); GP25 for anything but `status_led` (the Pico's LED) | |
 | every chip | one GPIO used twice ("GPIO 23 is used twice: OUT1 and RLY1"); `analog` on a pin without an ADC (Pico: GP26-28) | |
@@ -157,6 +161,9 @@ Each image carries its default board and the examples for its chip, selectable b
 |---|---|---|
 | `proptroller` | every image | the Spectre Proptroller board (its ESP32 or Pico map; the status LED on the Pico W's radio) |
 | `relay4-button` | ESP32 | four relays on OUT1-4, a trigger on TRIG1, an active-high button on TRIG2, nothing else |
+| `esp32-s3-devkit` | ESP32-S3 | the bare S3 DevKit (the S3's only built-in board) |
+| `esp32-c3-supermini` | ESP32-C3 | the bare C3 SuperMini (the C3's only built-in board) |
+| `esp32-devkit-bare` | ESP32, the `esp32dev_generic` image | the bare 30-pin DevKit, compiled in as that image's default; the stock image takes `board-packages/esp32-devkit-bare.json` |
 
 An image built with a board support package compiled in (`build_flags = -I path/to/bsp`, GOING-FURTHER.md "Make
 your own board") puts that board first, as its default, named by `PROPTROLLER_BOARD_ID` (and optionally
