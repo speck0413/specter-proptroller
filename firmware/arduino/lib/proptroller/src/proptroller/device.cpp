@@ -1653,7 +1653,7 @@ Response Controller::handle(Request& r) {
     test_session_[k] = origin_ == Origin::Session ? session_ : 0;
     return Response::done(r);
   }
-  if (op == "sim_input") return Response::err(r, ErrorCode::Unsupported, "simulator only");
+  if (op == "sim_input" || op == "sim_pixels") return Response::err(r, ErrorCode::Unsupported, "simulator only");
   return Response::err(r, ErrorCode::BadRequest, "unknown op");
 }
 

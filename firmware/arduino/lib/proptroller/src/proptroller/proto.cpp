@@ -288,7 +288,7 @@ const char* errorCodeName(ErrorCode c) {
   return n[(int)c];
 }
 
-static const char* const READ_ONLY_OPS[] = {"info", "state", "list_shows", "get_show", "get_params", "get_profile", "get_script", "check_script", "get_backup", "wifi_scan", "get_board", "get_defaults", "list_patterns"};
+static const char* const READ_ONLY_OPS[] = {"info", "state", "list_shows", "get_show", "get_params", "get_profile", "get_script", "check_script", "get_backup", "wifi_scan", "get_board", "get_defaults", "list_patterns", "sim_pixels"};
 bool Request::mutates() const {
   for (auto o : READ_ONLY_OPS)
     if (op == o) return false;
@@ -447,6 +447,7 @@ static bool checkOp(Request& r, std::string& why, bool allow_custom) {
     Input i = Input::Trig1;
     return need(reqInput(r, "input", i), "input") && need(r["active"].is<bool>(), "active") && need(optU("ms", TEST_PRESS_MAX_MS), "ms");
   }
+  if (op == "sim_pixels") return true;
   if (op == "sim_input") {
     Input i = Input::Trig1;
     return need(reqInput(r, "input", i), "input") && need(r["active"].is<bool>(), "active") && need(optU("lease_ms", 0xFFFFFFFFull), "lease_ms");

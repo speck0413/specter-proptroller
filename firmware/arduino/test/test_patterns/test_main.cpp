@@ -256,6 +256,10 @@ void the_pixel_test_plays_a_stored_pattern() {
   b->step(100);
   TEST_ASSERT_EQUAL(60, count(*b, RED));
   TEST_ASSERT_EQUAL_STRING("not_found", b->request(R"({"op":"pixel","action":{"target":"PIXEL","do":"pattern","name":"nope"}})").doc()["error"]["code"]);
+  // the simulator shows the strip's lights (op sim_pixels)
+  std::string hex = b->request(R"({"op":"sim_pixels"})").doc()["result"]["pixels"].as<std::string>();
+  TEST_ASSERT_EQUAL(360, (int)hex.size());
+  TEST_ASSERT_EQUAL_STRING("ff0000", hex.substr(0, 6).c_str());
   TEST_ASSERT_TRUE(b->request(R"({"op":"pixel","action":null})").isOk());
   b->step(100);
   TEST_ASSERT_EQUAL(60, count(*b, DARK));

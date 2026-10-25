@@ -274,6 +274,16 @@ Response Sim::handle(Request& r) {
     if (lease_[index(i)]) lease_until_[index(i)] = now_ + r["lease_ms"].as<uint32_t>();
     return Response::done(r);
   }
+  if (r.op == "sim_pixels") {
+    // what the strip shows now: red, green, blue per light as hex (the simulator's own window on the PIXEL wire)
+    static const char* const H = "0123456789abcdef";
+    std::string hex;
+    for (auto& p : world_.pixels)
+      for (uint8_t v : {p.r, p.g, p.b}) { hex += H[v >> 4]; hex += H[v & 15]; }
+    Response resp = Response::ok(r, "sim_pixels");
+    resp.result()["pixels"] = hex;
+    return resp;
+  }
   return ctl_->handle(r);
 }
 
