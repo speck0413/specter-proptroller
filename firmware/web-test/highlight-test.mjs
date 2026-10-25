@@ -97,6 +97,11 @@ c = await contrast();
 ok(Object.values(c).every((r) => r >= 4.5), 'light theme: every colour 4.5:1 on the box: ' + JSON.stringify(c, (k, v) => (typeof v === 'number' ? +v.toFixed(1) : v)));
 await page.screenshot({ path: `${S}/highlight-light.png`, fullPage: false });
 await page.evaluate(() => document.documentElement.removeAttribute('data-theme'));
+// the phone's own light setting (no theme chosen on the page): its own copy of the colours
+await page.emulateMedia({ colorScheme: 'light' });
+c = await contrast();
+ok(Object.values(c).every((r) => r >= 4.5), 'system light theme: every colour 4.5:1 on the box: ' + JSON.stringify(c, (k, v) => (typeof v === 'number' ? +v.toFixed(1) : v)));
+await page.emulateMedia({ colorScheme: 'dark' });
 
 // forced colours: the box shows its own text, the layer is off
 await page.emulateMedia({ forcedColors: 'active' });
