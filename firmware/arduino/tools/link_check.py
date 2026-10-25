@@ -114,9 +114,10 @@ def check(program):
 
         # 1. peer to peer
         t = time.monotonic()
-        ring(pa)
+        rpc(pa, "sim_input", input="TRIG1", active=True)  # held while Porch's OUT1 is watched
         wait_for(lambda: out1(pb) == 1000, 1.5, "Porch's OUT1 did not come on")
         took = time.monotonic() - t
+        rpc(pa, "sim_input", input="TRIG1", active=False)
         logged(broker, "front-door", "tell porch blackout: sent (Wi-Fi)", t)
         logged(broker, "porch", "remote start by front-door: effect \"blackout\"", t)
         time.sleep(2.5)

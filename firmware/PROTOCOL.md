@@ -626,9 +626,10 @@ takes a new nonce. **Without a key nothing is signed and anyone on the network c
 can use the board's page with the page lock off.
 
 ESP-NOW reaches ESP32 boards on the same channel with no router; UDP reaches every Wi-Fi board (ESP32, Pico W,
-Pico 2 W) on the same network, also when the boards are joined to one board's hotspot. Not yet tried on hardware:
-the UDP broadcasts (ESP32, Pico W), ESP-NOW frames, and a board joined to another board's hotspot (it then has
-two networks at 192.168.4.x).
+Pico 2 W) joined to the same Wi-Fi network. **Not for boards joined to another board's hotspot**: every board's own
+hotspot is 192.168.4.1/24, so a board joined to another's has two networks at 192.168.4.x and its answers go to
+itself (ESP32 boards still reach each other by ESP-NOW; Pico W boards then cannot use the board link peer to
+peer). Not yet tried on hardware: the UDP broadcasts (ESP32, Pico W) and ESP-NOW frames.
 
 ## Firmware updates
 

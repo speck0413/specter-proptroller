@@ -379,8 +379,9 @@ times as fast.
 - **SS-B4 Checked here, run there.** The checker knows the form of a tell line but not the other board's effects
   or settings: a name the other board does not have is refused there, and the sender logs it.
 - **SS-B5 How it travels** is the setting `board_link`: `auto` (the default: MQTT when a broker is set, otherwise
-  straight to the other boards), `mqtt`, `wifi` (straight to the boards on the same Wi-Fi network, or joined to
-  one board's own hotspot; an ESP32 also sends by ESP-NOW, which needs no router), or `off`. A board hears tells
+  straight to the other boards), `mqtt`, `wifi` (straight to the boards on the same Wi-Fi network; an ESP32 also
+  sends by ESP-NOW, which needs no router), or `off`. Boards joined to another board's own hotspot do not hear each
+  other this way (every hotspot has the same address, 192.168.4.1), except ESP32 boards by ESP-NOW. A board hears tells
   over MQTT whenever it has a broker, and straight from other boards unless `board_link` is `mqtt` or `off`.
   PROTOCOL.md "Board link" has the wire formats.
 - **SS-B6 Groups and the key.** Boards hear tells sent straight to them only from boards with the same

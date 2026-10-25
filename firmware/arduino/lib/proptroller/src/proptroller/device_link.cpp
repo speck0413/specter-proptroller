@@ -107,7 +107,10 @@ void Controller::mqttLinkOut(const LinkOut& o) {
   std::vector<std::string> to;
   if (o.to == "all") to = mqtt_names_;
   else to.push_back(o.to);
-  for (auto& b : to) link_mqtt_out_.push_back(MqttMsg(root + "/" + b + (o.set ? "/config/now/" : "/control/") + o.what, body, false));
+  for (auto& b : to) {
+    if (link_mqtt_out_.size() >= LINK_PENDING_MAX) link_mqtt_out_.erase(link_mqtt_out_.begin());
+    link_mqtt_out_.push_back({now_, MqttMsg(root + "/" + b + (o.set ? "/config/now/" : "/control/") + o.what, body, false)});
+  }
 }
 
 std::vector<LinkOut> Controller::linkTake() {

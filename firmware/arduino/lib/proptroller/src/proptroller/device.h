@@ -502,7 +502,9 @@ class Controller : public Firmware {
     std::vector<std::string> answered;
   };
   std::vector<LinkPending> link_pending_;  // oldest first (at most LINK_PENDING_MAX)
-  std::vector<MqttMsg> link_mqtt_out_;   // tells for mqttPoll
+  // tells for mqttPoll, with when they were told: one older than LINK_ANSWER_MS is dropped (a broker that was away
+  // must not start effects late), at most LINK_PENDING_MAX, none carried into a new session
+  std::vector<std::pair<Millis, MqttMsg>> link_mqtt_out_;
   std::vector<std::string> mqtt_names_;  // boards online on the broker (<root>/+/online, for MQTT tell all)
   uint32_t link_seq_ = 0;
   Millis link_window_at_ = 0;

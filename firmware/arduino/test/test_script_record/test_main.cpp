@@ -258,6 +258,8 @@ void the_worst_case_fits_the_store() {
            rec.size(), SCRIPT_STORE_CAPACITY, text.size(), SCRIPT_MAX_SOUNDS - 1, sounds.size(), scriptTableEncode(*p).size());
   TEST_MESSAGE(m);
   TEST_ASSERT_TRUE(rec.size() <= SCRIPT_STORE_CAPACITY);
+  // and with a full tell pool on top (the largest script has no tell lines; a pool holds at most SCRIPT_TELL_BYTES)
+  TEST_ASSERT_TRUE(rec.size() + SCRIPT_TELL_BYTES <= SCRIPT_STORE_CAPACITY);
   // longer names: too big for the store; the board says so and the stored script stays
   JsonDocument big;
   for (int i = 0; i < SCRIPT_MAX_SOUNDS - 1; i++) big[randomName(r, 120)] = 1 + i % SCRIPT_MAX_TRACK;

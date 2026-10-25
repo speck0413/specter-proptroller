@@ -1806,6 +1806,7 @@ std::vector<std::string> Controller::mqttSubscriptions() {
           p + "/status/get/+", p + "/script/set", p + "/script/check", p + "/config/now/+"};
   // the board link over MQTT: answers to this board's tells; with a script that tells all, which boards are online
   mqtt_.answers = linkVia() == LinkVia::Mqtt;
+  link_mqtt_out_.clear();  // a new session starts nothing told before it
   if (mqtt_.answers) v.push_back(p + "/link/answer");
   mqtt_.names = mqttWantsNames();
   mqtt_names_.clear();
@@ -2016,10 +2017,9 @@ std::vector<MqttMsg> Controller::mqttPoll() {
   std::string p = mqttPrefix();
   std::vector<MqttMsg> v;
   // the board link: this board's tells
-  if (!link_mqtt_out_.empty()) {
-    v.insert(v.end(), link_mqtt_out_.begin(), link_mqtt_out_.end());
-    link_mqtt_out_.clear();
-  }
+  for (auto& m : link_mqtt_out_)
+    if (now_ - m.first < LINK_ANSWER_MS) v.push_back(m.second);  // an older one is already "no answer"
+  link_mqtt_out_.clear();
   std::vector<std::string> evs;
   uint32_t seq = events_.since(mqtt_.seq, evs);
   mqtt_.seq = seq;

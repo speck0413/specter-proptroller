@@ -514,6 +514,31 @@ void over_mqtt_the_effect_starts_and_the_answer_comes_back() {
   TEST_ASSERT_EQUAL(0, others);
 }
 
+// tells queued while the broker is away are not sent late: the log says "no answer" and a new session starts clean
+void over_mqtt_a_broker_that_was_away_starts_nothing_late() {
+  Sim a("a1");
+  a.request(R"({"op":"set_params","values":[{"key":"name","value":"Front Door"},{"key":"mqtt_broker","value":"127.0.0.1"}]})");
+  TEST_ASSERT_TRUE(setScript(a, DOORBELL).isOk());
+  a.ctl().mqttSubscriptions();
+  a.step(2500);
+  a.setInput(Input::Trig1, true);
+  a.step(150);
+  a.setInput(Input::Trig1, false);
+  a.ctl().linkTake();  // queued for MQTT; no mqttPoll: the session is down
+  a.step(3000);
+  a.ctl().linkTake();
+  TEST_ASSERT_TRUE(has(logs(a), "tell porch blackout: no answer from porch"));
+  for (auto& m : a.ctl().mqttPoll()) TEST_ASSERT_TRUE_MESSAGE(m.topic.find("/control/") == std::string::npos, m.topic.c_str());
+  // and a new session drops what was queued before it
+  a.setInput(Input::Trig1, true);
+  a.step(150);
+  a.setInput(Input::Trig1, false);
+  a.ctl().linkTake();
+  a.ctl().mqttSubscriptions();
+  a.ctl().mqttOnConnect();
+  for (auto& m : a.ctl().mqttPoll()) TEST_ASSERT_TRUE_MESSAGE(m.topic.find("/control/") == std::string::npos, m.topic.c_str());
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(hmac_sha256_matches_rfc_4231);
@@ -528,5 +553,6 @@ int main() {
   RUN_TEST(with_a_key_a_challenge_then_it_runs_and_replays_are_dropped);
   RUN_TEST(tell_all_reaches_every_board_and_counts_the_answers);
   RUN_TEST(over_mqtt_the_effect_starts_and_the_answer_comes_back);
+  RUN_TEST(over_mqtt_a_broker_that_was_away_starts_nothing_late);
   return UNITY_END();
 }
