@@ -37,6 +37,13 @@ struct StoredPattern {
   // what the board knows from the program without keeping it decoded: its trigger buttons (control index, label
   // words) for `pixels press`
   std::vector<std::pair<uint8_t, std::string>> buttons;
+  // its controls (kind as pattern_vm.h's PatternControlKind, function name, label), for list_patterns without
+  // reading the program again
+  struct Control {
+    uint8_t kind;
+    std::string name, label;
+  };
+  std::vector<Control> control_list;
   uint32_t gen = 0;  // a new number every time it is put (the player starts the new program)
 };
 

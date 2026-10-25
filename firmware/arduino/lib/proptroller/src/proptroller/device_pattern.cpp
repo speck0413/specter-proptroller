@@ -133,11 +133,14 @@ Controller::~Controller() { delete pat_; }
 
 bool Controller::hasPatterns() const { return pat_ != nullptr; }
 
-// the trigger buttons of a program (control index, label words)
-static void buttonsOf(const PatternProgram& p, std::vector<std::pair<uint8_t, std::string>>& out) {
-  out.clear();
-  for (size_t i = 0; i < p.controls.size(); i++)
-    if (p.controls[i].kind == PatternControlKind::Trigger) out.push_back({(uint8_t)i, patternWords(p.controls[i].label)});
+// what the board keeps of a program besides its bytes: its controls, and its trigger buttons (control index, label words)
+static void buttonsOf(const PatternProgram& p, StoredPattern& sp) {
+  sp.buttons.clear();
+  sp.control_list.clear();
+  for (size_t i = 0; i < p.controls.size(); i++) {
+    sp.control_list.push_back({(uint8_t)p.controls[i].kind, p.controls[i].name, p.controls[i].label});
+    if (p.controls[i].kind == PatternControlKind::Trigger) sp.buttons.push_back({(uint8_t)i, patternWords(p.controls[i].label)});
+  }
 }
 
 void Controller::setPatternStore(Storage* store) {
@@ -173,7 +176,7 @@ void Controller::setPatternStore(Storage* store) {
         pat_->dirty = true;
         continue;
       }
-      buttonsOf(prog, it->buttons);
+      buttonsOf(prog, *it);
       it->gen = pat_->next_gen++;
       ++it;
     }
@@ -440,16 +443,12 @@ std::string Controller::patternReport() {
 static void patternJson(const StoredPattern& p, JsonObject o) {
   o["name"] = p.name;
   o["bytes"] = p.program.size();
-  PatternProgram prog;
-  std::string why;
-  if (prog.decode((const uint8_t*)p.program.data(), p.program.size(), why)) {
-    JsonArray cs = o["controls"].to<JsonArray>();
-    for (auto& c : prog.controls) {
-      JsonObject x = cs.add<JsonObject>();
-      x["kind"] = patternControlKindName(c.kind);
-      x["name"] = c.name;
-      x["label"] = c.label;
-    }
+  JsonArray cs = o["controls"].to<JsonArray>();
+  for (auto& c : p.control_list) {
+    JsonObject x = cs.add<JsonObject>();
+    x["kind"] = patternControlKindName((PatternControlKind)c.kind);
+    x["name"] = c.name;
+    x["label"] = c.label;
   }
   JsonArray bs = o["buttons"].to<JsonArray>();
   for (auto& b : p.buttons) bs.add(b.second);
@@ -494,8 +493,13 @@ Response Controller::patternOp(Request& r) {
   const char* b64 = r["program"] | "";
   if (!base64Decode(b64, strlen(b64), np.program)) return Response::err(r, ErrorCode::BadRequest, "program: not base64");
   PatternProgram prog;
-  if (!prog.decode((const uint8_t*)np.program.data(), np.program.size(), why)) return Response::err(r, ErrorCode::Invalid, why);
-  buttonsOf(prog, np.buttons);
+  bool decoded;
+  {
+    Unlocked u(*this);  // the request's own bytes: read and checked without holding up the step
+    decoded = prog.decode((const uint8_t*)np.program.data(), np.program.size(), why);
+  }
+  if (!decoded) return Response::err(r, ErrorCode::Invalid, why);
+  buttonsOf(prog, np);
   for (JsonPairConst kv : r["controls"].as<JsonObjectConst>()) {
     PatternValues v;
     v.control = kv.key().c_str();
