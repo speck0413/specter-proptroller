@@ -6,6 +6,34 @@ TYPES = {"html": "text/html; charset=utf-8", "js": "text/javascript; charset=utf
          "svg": "image/svg+xml", "webmanifest": "application/manifest+json"}
 
 
+def slim(name, raw):
+    """What the board serves: the scripts without their whole-line // comments and indentation, the style sheet
+    without its comments (about 12 KB less flash, gzipped). Only whole lines change: a line that is part of a
+    multi-line template literal (an odd number of backticks on a line) leaves the script as it is."""
+    if name.endswith(".js"):
+        text = raw.decode("utf-8")
+        lines = text.split("\n")
+        if any(l.count("`") % 2 for l in lines):
+            return raw
+        kept = [l.strip() for l in lines]
+        return "\n".join(l for l in kept if l and not l.startswith("//")).encode("utf-8") + b"\n"
+    if name.endswith(".css"):
+        text = raw.decode("utf-8")
+        out, i = [], 0
+        while True:
+            a = text.find("/*", i)
+            if a < 0:
+                out.append(text[i:])
+                break
+            b = text.find("*/", a + 2)
+            if b < 0:
+                return raw
+            out.append(text[i:a])
+            i = b + 2
+        return "\n".join(l.strip() for l in "".join(out).split("\n") if l.strip()).encode("utf-8") + b"\n"
+    return raw
+
+
 def gz(data):
     out = io.BytesIO()
     with gzip.GzipFile(fileobj=out, mode="wb", compresslevel=9, mtime=0, filename="") as f:
@@ -23,7 +51,7 @@ def generate(project):
              "  size_t raw_len;", "  const char* etag;  // a hash of the gzipped bytes, quoted (HTTP ETag)", "};"]
     entries = []
     for i, name in enumerate(FILES):
-        raw = open(os.path.join(web, name), "rb").read()
+        raw = slim(name, open(os.path.join(web, name), "rb").read())
         z = gz(raw)
         body = ",".join("0x%02x" % b for b in z)
         rows = [body[k:k + 120] for k in range(0, len(body), 120)]
