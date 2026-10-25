@@ -6,6 +6,7 @@
 #include "dfplayer.h"
 #include "gate.h"
 #include <ArduinoJson.h>
+#include <string.h>
 #include <string>
 #include <vector>
 
@@ -22,6 +23,8 @@ static const uint16_t SCRIPT_MAX_TRACK = 99;       // sound N (sound.h SOUND_MAX
 static const uint16_t DMX_CHANNELS = 512;
 static const uint32_t SCRIPT_MAX_TIME_MS = 24UL * 3600UL * 1000UL;  // one line waits at most a day
 static const Millis SCRIPT_BOOT_LOCKOUT_MS = 2000; // no wait for passes after power-on (SM-B2)
+static const uint8_t SCRIPT_MAX_NAMES = 16;        // patterns and buttons a script names (`pixels = pattern`, `pixels press`)
+static const uint8_t SCRIPT_MAX_PRESSES = 16;      // button presses handed to the strip in one tick
 // flicker: a new level every FLICKER_MIN_MS to FLICKER_MAX_MS, base x (FLICKER_LOW_PERMILLE + r % ...) / 1000
 static const uint32_t FLICKER_MIN_MS = 30, FLICKER_MAX_MS = 120;
 static const uint32_t FLICKER_LOW_PERMILLE = 100;
@@ -56,7 +59,7 @@ bool scriptPixelColoured(uint8_t effect);
 extern const char* const SCRIPT_OUTPUT_WORDS[CHANNEL_COUNT];
 extern const char* const SCRIPT_INPUT_WORDS[INPUT_COUNT];
 // the words that make or join a line (effect, wait, for, fade, to, over, ... pixels), the level words, the time units
-static const uint8_t SCRIPT_KEYWORD_COUNT = 18;
+static const uint8_t SCRIPT_KEYWORD_COUNT = 20;
 extern const char* const SCRIPT_KEYWORDS[SCRIPT_KEYWORD_COUNT];
 extern const char* const SCRIPT_LEVEL_WORDS[2];  // on, off
 struct ScriptUnit {
@@ -74,8 +77,9 @@ static const uint8_t SCRIPT_NAMED = CHANNEL_COUNT + INPUT_COUNT;
 
 struct ScriptStep {
   // Pixels (a `pixels = <effect> <colour>` line): target the effect (SCRIPT_PIXEL_EFFECTS, Effect::Kind's order),
-  // ms the colour 0xRRGGBB.
-  enum class Op : uint8_t { Wait, Set, Sleep, Fade, Flicker, Single, Loop, Stop, Pulse, LoopOff, Volume, Pixels };
+  // ms the colour 0xRRGGBB; for `pixels = pattern <name>` target Effect::Kind::Pattern and value the name
+  // (ScriptProgram::name). Press (`pixels press <button>`): value the button's name.
+  enum class Op : uint8_t { Wait, Set, Sleep, Fade, Flicker, Single, Loop, Stop, Pulse, LoopOff, Volume, Pixels, Press };
   uint32_t ms = 0;      // wait / fade / flicker / pulse time
   uint16_t target = 0;  // input index (Wait) or target
   uint16_t value = 0;   // level: permille for an output, 0-255 for DMX; the sound number; the volume 0-30
@@ -103,6 +107,9 @@ struct ScriptProgram {
   uint8_t inputs = 0;    // bit per Input the script waits for
   bool dmx = false;      // a dmx line: the port sends frames
   bool pixels = false;   // a pixels line
+  // the patterns and buttons the script names, lower case with runs of spaces made one
+  uint8_t names = 0;
+  char name[SCRIPT_MAX_NAMES][SCRIPT_MAX_NAME + 1] = {{0}};
   void reset() {
     effects = 0;
     for (auto& e : fx) e = ScriptEffect();
@@ -112,6 +119,8 @@ struct ScriptProgram {
     inputs = 0;
     dmx = false;
     pixels = false;
+    names = 0;
+    memset(name, 0, sizeof name);
   }
 };
 
@@ -137,6 +146,15 @@ struct ScriptBoard {
     std::string name;
   };
   std::vector<Name> names;
+  // the LED patterns stored on the board, with their trigger buttons (lower case, runs of spaces made one): a
+  // `pixels press` line naming a button none of the script's patterns has is an error when every pattern the
+  // script shows is stored (one that is not stored is told when it runs)
+  struct PatternButtons {
+    std::string pattern;
+    std::vector<std::string> buttons;
+  };
+  std::vector<PatternButtons> patterns;
+  bool pattern_player = true;  // the board plays LED patterns (not on the Pico W and the Pico: M-noplayer)
 };
 
 typedef std::vector<std::pair<std::string, uint16_t>> SoundList;  // file name -> track (SS-C4)
@@ -245,6 +263,15 @@ class ScriptRunner {
     since = pixel_since_;
     return true;
   }
+  // The `pixels press` lines that ran since the last call, in order (their names: ScriptProgram::name); at most
+  // SCRIPT_MAX_PRESSES, more are dropped (and counted in presses_lost).
+  uint8_t takePresses(uint8_t out[SCRIPT_MAX_PRESSES]) {
+    uint8_t n = press_n_;
+    for (uint8_t i = 0; i < n; i++) out[i] = press_q_[i];
+    press_n_ = 0;
+    return n;
+  }
+  uint32_t presses_lost = 0;
   uint16_t line(int effect) const;  // the line the effect is on
   uint32_t runs(int effect) const { return st_[effect].runs; }
   // A run of an effect that turns OUT2 on (its recovery) is before that line: the status value `pulsing` (SS-R13)
@@ -298,6 +325,8 @@ class ScriptRunner {
   Millis pulse_until_[CHANNEL_COUNT] = {0};         // a pulse turns its output off then (0: none)
   uint32_t values_[SCRIPT_SETTING_COUNT] = {0};
   bool paused_ = false;
+  uint8_t press_q_[SCRIPT_MAX_PRESSES] = {0};
+  uint8_t press_n_ = 0;
   int16_t pixel_step_ = -1;   // the last pixels line that ran (a step index), -1 none
   Millis pixel_since_ = 0;
   bool remote_enabled_ = false;

@@ -1,0 +1,45 @@
+{
+  "spec": [
+    "SS-X"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: say which pattern, for example \"pixels = pattern ghost\" (a pattern Studio sent to the board)."
+      },
+      {
+        "line": 4,
+        "message": "line 4: \"ghost/2\" is not a pattern's name. A name has at most 32 letters, digits, spaces and - _ ( )."
+      },
+      {
+        "line": 5,
+        "message": "line 5: \"a name that is far too long for a board\" is not a pattern's name. A name has at most 32 letters, digits, spaces and - _ ( )."
+      },
+      {
+        "line": 6,
+        "message": "line 6: say which button, for example \"pixels press clue1\" (a button of the pattern the strip shows)."
+      },
+      {
+        "line": 7,
+        "message": "line 7: \"clue*1\" is not a button's name. A name has at most 32 letters, digits, spaces and - _ ( )."
+      },
+      {
+        "line": 8,
+        "message": "line 8: a button press has no \"=\": write \"pixels press clue1\"."
+      },
+      {
+        "line": 9,
+        "message": "line 9: a button press has no \"=\": write \"pixels press clue1\"."
+      },
+      {
+        "line": 10,
+        "message": "line 10: write it as \"pixels = pattern ghost\"."
+      }
+    ],
+    "warnings": []
+  }
+}

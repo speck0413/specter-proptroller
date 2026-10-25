@@ -554,7 +554,7 @@ void words_js_matches_the_checker() {
   // every keyword in a script the checker passes
   const char* every = "effect a:\n  pixels = rainbow\n  wait for trig1\n  limit 2 runs per 1 min\n  fade out1 to 50% over 1\n"
                       "  flicker out1 for 1\n  pulse rly1 for 200 ms\n  sleep 1\n  audio_single = 1\n  audio_loop = 2\n"
-                      "  audio_volume = 50%\n  audio_stop\n  out1 = off\n";
+                      "  audio_volume = 50%\n  audio_stop\n  out1 = off\n  pixels = pattern ghost\n  pixels press flash\n";
   std::unique_ptr<ScriptProgram> p(new ScriptProgram());
   ScriptBoard b;
   ScriptCheck c = scriptCompile(every, {}, b, *p);

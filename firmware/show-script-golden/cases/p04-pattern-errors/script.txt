@@ -1,0 +1,12 @@
+effect a:
+  wait for trig1
+  pixels = pattern
+  pixels = pattern ghost/2
+  pixels = pattern a name that is far too long for a board
+  pixels press
+  pixels press clue*1
+  pixels = press clue1
+  pixels = press
+  pixels pattern ghost
+  pixels = pattern ghost
+  pixels press flash

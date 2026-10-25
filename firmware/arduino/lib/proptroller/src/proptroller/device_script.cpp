@@ -56,6 +56,7 @@ std::string scriptSubject(const std::string& m) {
 
 ScriptCheck Controller::checkScript(const std::string& text, const SoundList& sounds, ScriptProgram& table) const {
   ScriptBoard b = scriptBoardFor(settings_);
+  patternBoard(b);  // the stored LED patterns' buttons (a press of one none of them has)
   // the table is the caller's; the text and sounds are the caller's or the stored script, which nothing changes
   // meanwhile (only the step runs, and it cannot change the script: window_lock.h). The step keeps running
   Unlocked u(*this);
@@ -98,6 +99,7 @@ void Controller::scriptInstall(std::unique_ptr<ScriptProgram> prog) {
     script_prog_.reset();
     script_run_.reset();
   }
+  patternScriptSlots();  // its pattern names to the stored patterns
   for (auto& c : sound_.scriptLoop(0, now_)) df_.command(c);  // a new table sets its own loop
   for (auto& c : sound_.setConfig(soundConfig(), now_)) df_.command(c);
   for (auto& n : script_runs_seen_) n = 0;  // a loaded table starts its effects' run counts at 0

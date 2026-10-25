@@ -1,0 +1,16 @@
+# A clue puzzle on the pixel strip: red until solved, each clue lights its own stretch yellow, all of them green.
+effect puzzle:
+  pixels = pattern Clue  Puzzle   # at power-on, and again after every reset
+  wait for user3
+  audio_single = 1
+effect clue1:
+  wait for trig1
+  pixels press clue1
+effect clue5:
+  wait for trig2
+  PIXELS PRESS   Clue5
+effect both:
+  wait for user1
+  pixels press clue1
+  pixels press reset
+  pixels = rainbow

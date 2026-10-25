@@ -152,6 +152,7 @@ void Sim::boot() {
   ctl_->setUpdateTarget(&target_);
   ctl_->setScriptStore(script_store_);
   ctl_->setRunStore(&runs_flash_);
+  ctl_->setPatternStore(&pattern_flash_);
   ctl_->setDmx(&dmx_);
   ctl_->setBoardPackages(&board_flash_, bb, chip_, builtins);
   factoryRefused = ctl_->applyBoardDefaults(defaults_);

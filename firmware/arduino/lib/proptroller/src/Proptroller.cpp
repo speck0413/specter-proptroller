@@ -1,4 +1,5 @@
 #include "ProptrollerAdvanced.h"
+#include "proptroller/pattern_vm.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -256,6 +257,9 @@ struct Proptroller::Platform {
   ABStorage script_store{fs, "/script-a.bin", "/script-b.bin", SCRIPT_STORE_CAPACITY};
   ABStorage run_store{fs, "/runs-a.bin", "/runs-b.bin", RUNS_STORE_CAPACITY};
   ABStorage board_store{fs, BOARD_FILE_A, BOARD_FILE_B, BOARD_STORE_CAPACITY};
+#if PT_PATTERNS
+  ABStorage pattern_store{fs, "/patterns-a.bin", "/patterns-b.bin", PATTERN_STORE_CAPACITY};
+#endif
   BoardDmx dmx{map.exp[0]};  // expansion S4
 #if defined(PT_HAS_OTA)
   BoardOta ota;
@@ -408,7 +412,9 @@ static void tickTask(void* arg) {
 // The pixel strip's frames (Controller::pixelService): rendered and sent on core 0, below the network's priority,
 // so the step on core 1 never renders or waits for the wire. Every PIXEL_SERVICE_MS (frames are 20 ms apart).
 static const uint32_t PIXEL_SERVICE_MS = 2;
-static const uint32_t PIXEL_TASK_STACK = 4096;
+// an LED pattern's interpreter calls itself for a pattern's own function calls (pattern_vm.h, up to
+// PATTERN_MAX_DEPTH deep): 8 KB with the player
+static const uint32_t PIXEL_TASK_STACK = PT_PATTERNS ? 8192 : 4096;
 static void pixelTask(void* arg) {
   Controller* c = (Controller*)arg;
   for (;;) {
@@ -498,6 +504,7 @@ static Firmware* makeGeneric(BoardParts& p) {
   Controller* c = new Controller(*p.pins, *p.uart, *p.pixels, p.store, p.identity);
   c->setScriptStore(p.script_store);
   c->setRunStore(p.run_store);
+  if (p.pattern_store) c->setPatternStore(p.pattern_store);
   c->setDmx(p.dmx);
   if (p.update) c->setUpdateTarget(p.update);
   if (p.board_store && p.board_boot && p.chip && p.builtins) c->setBoardPackages(p.board_store, *p.board_boot, *p.chip, *p.builtins);
@@ -569,6 +576,9 @@ void Proptroller::start(FirmwareMaker make) {
   parts.pixels = &plat_->pixels;
   parts.store = &plat_->store;
   parts.script_store = &plat_->script_store;
+#if PT_PATTERNS
+  parts.pattern_store = &plat_->pattern_store;
+#endif
   parts.run_store = &plat_->run_store;
   parts.dmx = &plat_->dmx;
   parts.analog = &plat_->analog;
@@ -727,10 +737,14 @@ std::string Proptroller::memoryReport() {
     g_sample_us_sum = 0;
   }
 #endif
-#if PT_BOARD && defined(PROPTROLLER_STEP_PROFILE)
-  if (ctl_) return std::string(b) + ctl_->profileReport();
+  std::string out = b;
+#if PT_BOARD && PT_PATTERNS
+  if (ctl_) out += ctl_->patternReport();  // the LED pattern playing: its longest frame and steps, its memory
 #endif
-  return b;
+#if PT_BOARD && defined(PROPTROLLER_STEP_PROFILE)
+  if (ctl_) out += ctl_->profileReport();
+#endif
+  return out;
 }
 
 std::string proptrollerMemoryReport() { return g_prop ? g_prop->advanced().memoryReport() : std::string("not started"); }

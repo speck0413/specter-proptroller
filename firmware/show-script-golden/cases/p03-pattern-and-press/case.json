@@ -1,0 +1,96 @@
+{
+  "spec": [
+    "SS-X"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "puzzle",
+          "line": 2,
+          "steps": [
+            {
+              "line": 3,
+              "op": "pixels",
+              "effect": "pattern",
+              "pattern": "clue puzzle"
+            },
+            {
+              "line": 4,
+              "op": "wait_for",
+              "input": "USER3"
+            },
+            {
+              "line": 5,
+              "op": "audio_single",
+              "sound": 1
+            }
+          ]
+        },
+        {
+          "name": "clue1",
+          "line": 6,
+          "steps": [
+            {
+              "line": 7,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 8,
+              "op": "pixels_press",
+              "button": "clue1"
+            }
+          ]
+        },
+        {
+          "name": "clue5",
+          "line": 9,
+          "steps": [
+            {
+              "line": 10,
+              "op": "wait_for",
+              "input": "TRIG2"
+            },
+            {
+              "line": 11,
+              "op": "pixels_press",
+              "button": "clue5"
+            }
+          ]
+        },
+        {
+          "name": "both",
+          "line": 12,
+          "steps": [
+            {
+              "line": 13,
+              "op": "wait_for",
+              "input": "USER1"
+            },
+            {
+              "line": 14,
+              "op": "pixels_press",
+              "button": "clue1"
+            },
+            {
+              "line": 15,
+              "op": "pixels_press",
+              "button": "reset"
+            },
+            {
+              "line": 16,
+              "op": "pixels",
+              "effect": "rainbow"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

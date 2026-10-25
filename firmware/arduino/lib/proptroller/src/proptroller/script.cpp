@@ -3,6 +3,7 @@
 #include "script.h"
 #include "sound.h"
 #include "pixels.h"
+#include "pattern_vm.h"
 #include <string.h>
 #include <algorithm>
 
@@ -17,7 +18,8 @@ static const char* const OUT_UPPER[CHANNEL_COUNT] = {"OUT1", "OUT2", "OUT3", "OU
 static const char* const (&IN_NAMES)[INPUT_COUNT] = SCRIPT_INPUT_WORDS;
 const char* const SCRIPT_KEYWORDS[SCRIPT_KEYWORD_COUNT] = {"effect", "wait",  "for",   "sleep",        "fade",       "to",
                                                           "over",   "flicker", "pulse", "limit",      "run",        "runs",
-                                                          "per",    "audio_single", "audio_loop", "audio_volume", "audio_stop", "pixels"};
+                                                          "per",    "audio_single", "audio_loop", "audio_volume", "audio_stop", "pixels",
+                                                          "pattern", "press"};
 const char* const SCRIPT_LEVEL_WORDS[2] = {"on", "off"};
 // no unit: seconds
 const ScriptUnit SCRIPT_TIME_UNITS[SCRIPT_UNIT_COUNT] = {{"ms", 1},         {"s", 1000},       {"sec", 1000},  {"secs", 1000},
@@ -63,7 +65,8 @@ enum Msg : uint8_t {
   W_STILLON, W_TWOSOUND, M_RELAYFAST, M_HINTSET, M_HINTPLAY, M_HINTTURN, M_HINTSLEEP, M_PIXEL,
   M_TWONAMES, M_BADNAME, W_NAMEIS, W_WAITNAME,
   M_LIMITFORM, M_LIMITRUNS, M_LIMITLONG, M_TWOLIMITS, M_NOTATIME, M_PULSEFORM, M_NOPULSE, M_PULSESHORT, M_LAMP, M_VOLUME,
-  M_PIXEMPTY, M_PIXEFFECT, M_PIXCOLOR, M_PIXNOCOLOR, M_PIXHASH, M_PIXLINE
+  M_PIXEMPTY, M_PIXEFFECT, M_PIXCOLOR, M_PIXNOCOLOR, M_PIXHASH, M_PIXLINE,
+  M_PATEMPTY, M_PATNAME, M_PRESSFORM, M_PRESSNAME, M_PRESSEQ, M_NAMES, M_NOBUTTON, M_NOBUTTONS, M_NOBUTTONANY, M_NOPLAYER
 };
 static const char* const MSG[] = {
     "this line is not inside an effect. Start one first with \"effect <name>:\".",
@@ -126,8 +129,18 @@ static const char* const MSG[] = {
     "{1} takes no colour: write \"pixels = {1}\".",
     "\"#{1}\" starts a comment, so the colour is lost: write it as 0x{1}.",
     "the pixel strip has its own line: \"pixels = <effect> <colour>\", for example \"pixels = chase red\".",
+    "say which pattern, for example \"pixels = pattern ghost\" (a pattern Studio sent to the board).",
+    "\"{1}\" is not a pattern's name. A name has at most 32 letters, digits, spaces and - _ ( ).",
+    "say which button, for example \"pixels press clue1\" (a button of the pattern the strip shows).",
+    "\"{1}\" is not a button's name. A name has at most 32 letters, digits, spaces and - _ ( ).",
+    "a button press has no \"=\": write \"pixels press {1}\".",
+    "a script names at most 16 patterns and buttons.",
+    "pattern \"{1}\" has no button \"{2}\". Its buttons are {3}.",
+    "pattern \"{1}\" has no buttons to press (a button is an export function trigger... in the pattern).",
+    "no pattern this script shows has a button \"{1}\".",
+    "this board has no pattern player: the Pico W and the Pico have no room for it (an ESP32 or a Pico 2 W has one).",
 };
-static_assert(sizeof MSG / sizeof MSG[0] == M_PIXLINE + 1, "one text per message");
+static_assert(sizeof MSG / sizeof MSG[0] == M_NOPLAYER + 1, "one text per message");
 static_assert(SCRIPT_LIMIT_MAX_RUNS == 20 && SCRIPT_LIMIT_MAX_MS == 60UL * 60000UL && RELAY_MIN_DWELL_MS == 100,
               "the message texts quote these limits");
 
@@ -493,7 +506,17 @@ struct PixelLine {
   std::string word;  // the word the error quotes
   uint8_t effect = 0;
   uint32_t rgb = 0;
+  std::string name;  // pixels = pattern <name>: the name, lower case, runs of spaces made one
 };
+
+// A pattern's or a button's name in a script line (lower case, runs of spaces made one): 1-32 letters, digits,
+// spaces and - _ ( ) (pattern_store.h patternNameOk).
+bool scriptNameOk(const std::string& w) {
+  if (w.empty() || w.size() > SCRIPT_MAX_NAME) return false;
+  for (char c : w)
+    if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == ' ' || c == '-' || c == '_' || c == '(' || c == ')')) return false;
+  return true;
+}
 }  // namespace
 
 // pixels = <effect> [<colour>] | <colour> (SHOW-SCRIPT.md): `v` lower case, `v_raw` as written, `comment` the text
@@ -514,6 +537,15 @@ static void readPixels(const std::string& v_raw, const std::string& comment, Pix
   if (pixelColour(v, o.rgb)) { o.effect = (uint8_t)Effect::Kind::Fill; return; }  // a colour alone fills the strip
   size_t sp = v.find(' ');
   std::string w = v.substr(0, sp), rest = sp == std::string::npos ? std::string() : v.substr(sp + 1);
+  if (w == "pattern") {
+    // pixels = pattern <name>: a stored LED pattern
+    o.effect = (uint8_t)Effect::Kind::Pattern;
+    o.name = rest;
+    if (rest.empty()) o.msg = M_PATEMPTY;
+    else if (!scriptNameOk(rest)) { o.msg = M_PATNAME; o.word = trim(collapse(v_raw).substr(w.size())); }
+    return;
+  }
+  if (w == "press") { o.msg = M_PRESSEQ; o.word = rest.empty() ? "clue1" : rest; return; }
   int k = -1;
   for (int i = 0; i < SCRIPT_PIXEL_EFFECT_COUNT; i++)
     if (w == SCRIPT_PIXEL_EFFECTS[i]) k = i;
@@ -571,6 +603,10 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
   };
 
   std::vector<FxWork> fx;
+  // the patterns and buttons the script names (ScriptProgram::name), and the pattern and press lines for the
+  // check against the board's stored patterns at the end
+  std::vector<std::string> names;
+  std::vector<std::pair<uint16_t, uint8_t>> press_lines, pattern_lines;  // line, name
 
   for (size_t li = 0; li < lines.size(); li++) {
     uint16_t n = (uint16_t)(li + 1);
@@ -584,6 +620,15 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
     std::string l = lower(raw);
     auto err = [&](Msg id, const char* x = "", const char* y = "", const char* z = "", size_t k = 0) {
       r.errors.push_back({n, msg(id, n, x, y, z, k)});
+    };
+    // a pattern's or button's name in the script's table; false (with the message) when the table is full
+    auto nameIndex = [&](const std::string& w, uint16_t& at) -> bool {
+      for (size_t i = 0; i < names.size(); i++)
+        if (names[i] == w) { at = (uint16_t)i; return true; }
+      if (names.size() >= SCRIPT_MAX_NAMES) { err(M_NAMES); return false; }
+      at = (uint16_t)names.size();
+      names.push_back(w);
+      return true;
     };
 
     // effect <name>:
@@ -829,7 +874,22 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         bool is_out = false;
         for (auto o : OUT_NAMES) is_out |= w0 == o;
         for (auto& x : named) is_out |= x.terminal < CHANNEL_COUNT && !x.problem && x.word == w0;
-        if (startsWith(l, "turn ")) err(M_HINTTURN);
+        std::string press = collapse(l);
+        if (startsWith(press, "pixels press") && (press.size() == 12 || press[12] == ' ')) {
+          // pixels press <button>: a trigger button of the pattern the strip shows
+          is_pixels = true;
+          std::string b = trim(press.substr(12));
+          uint16_t at = 0;
+          if (!board.pattern_player) err(M_NOPLAYER);
+          else if (b.empty()) err(M_PRESSFORM);
+          else if (!scriptNameOk(b)) err(M_PRESSNAME, trim(collapse(raw).substr(12)).c_str());
+          else if (nameIndex(b, at)) {
+            st.op = ScriptStep::Op::Press;
+            st.value = at;
+            good = true;
+            press_lines.push_back({n, (uint8_t)at});
+          }
+        } else if (startsWith(l, "turn ")) err(M_HINTTURN);
         else if (startsWith(l, "play ") && l.size() > 5) {
           std::string what = trim(raw.substr(5));
           if (startsWith(lower(what), "sound ")) what = trim(what.substr(6));  // play sound 1 -> audio_single = 1
@@ -878,8 +938,18 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         is_pixels = true;
         PixelLine px;
         readPixels(v_raw, comment, px);
-        if (px.msg >= 0) err((Msg)px.msg, px.word.c_str());
-        else { st.op = ScriptStep::Op::Pixels; st.target = px.effect; st.ms = px.rgb; good = true; }
+        uint16_t at = 0;
+        if (px.effect == (uint8_t)Effect::Kind::Pattern && !board.pattern_player) err(M_NOPLAYER);
+        else if (px.msg >= 0) err((Msg)px.msg, px.word.c_str());
+        else if (px.effect == (uint8_t)Effect::Kind::Pattern) {
+          if (nameIndex(px.name, at)) {
+            st.op = ScriptStep::Op::Pixels;
+            st.target = px.effect;
+            st.value = at;
+            good = true;
+            pattern_lines.push_back({n, (uint8_t)at});
+          }
+        } else { st.op = ScriptStep::Op::Pixels; st.target = px.effect; st.ms = px.rgb; good = true; }
       } else {
         uint16_t t = 0, v = 0;
         if (target(key, t)) {
@@ -942,6 +1012,34 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
       else r.warnings.push_back({f.line, msg(W_TWOSOUND, f.line, fx[sound_first].name.c_str(), f.name.c_str())});
     }
   }
+  // a press of a button none of the script's patterns has, when the board has every one of them stored (a board
+  // without the pattern player stores none)
+#if PT_PATTERNS
+  if (!press_lines.empty() && !pattern_lines.empty()) {
+    std::vector<const ScriptBoard::PatternButtons*> shown;
+    bool all_stored = true;
+    for (auto& pl : pattern_lines) {
+      const ScriptBoard::PatternButtons* found = nullptr;
+      for (auto& bp : board.patterns)
+        if (bp.pattern == names[pl.second]) found = &bp;
+      if (!found) { all_stored = false; break; }
+      if (std::find(shown.begin(), shown.end(), found) == shown.end()) shown.push_back(found);
+    }
+    for (auto& pr : press_lines) {
+      if (!all_stored) break;
+      const std::string& b = names[pr.second];
+      bool has = false;
+      for (auto* x : shown) has |= std::find(x->buttons.begin(), x->buttons.end(), b) != x->buttons.end();
+      if (has) continue;
+      if (shown.size() > 1) { r.errors.push_back({pr.first, msg(M_NOBUTTONANY, pr.first, b.c_str())}); continue; }
+      const auto& bs = shown[0]->buttons;
+      std::string list;
+      for (size_t i = 0; i < bs.size(); i++) list += (i == 0 ? "" : i + 1 == bs.size() ? " and " : ", ") + bs[i];
+      if (bs.empty()) r.errors.push_back({pr.first, msg(M_NOBUTTONS, pr.first, shown[0]->pattern.c_str())});
+      else r.errors.push_back({pr.first, msg(M_NOBUTTON, pr.first, shown[0]->pattern.c_str(), b.c_str(), list.c_str())});
+    }
+  }
+#endif
   byLine(r.errors);
   byLine(r.warnings);
   // the whole script, at the end
@@ -951,6 +1049,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
   if (!r.ok()) return r;
 
   // the table (the limits above make it fit)
+  for (auto& w : names) strncpy(out.name[out.names++], w.c_str(), SCRIPT_MAX_NAME);
   for (auto& f : fx) {
     ScriptEffect& e = out.fx[out.effects++];
     strncpy(e.name, f.name.c_str(), SCRIPT_MAX_NAME);
@@ -978,12 +1077,13 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
 
 // The step table as JSON, the one place it is written (README "The step table": keys in this order).
 void scriptTableJson(const ScriptProgram& p, JsonObject o) {
-  static const char* const OP[] = {"wait_for", "set", "sleep", "fade", "flicker", "audio_single", "audio_loop", "audio_stop", "pulse", "audio_loop_off", "audio_volume", "pixels"};
+  static const char* const OP[] = {"wait_for", "set", "sleep", "fade", "flicker", "audio_single", "audio_loop", "audio_stop", "pulse", "audio_loop_off", "audio_volume", "pixels", "pixels_press"};
   // what each op writes after "op": T target, L level, M ms (or the setting), S sound, V volume, I input,
   // P the pixel effect and its colour ("#rrggbb", for an effect that takes one)
-  static const char* const KEYS[] = {"I", "TL", "M", "TLM", "TM", "S", "S", "", "TM", "", "V", "P"};
-  PT_ONE_PER(OP, ScriptStep::Op::Pixels);
-  PT_ONE_PER(KEYS, ScriptStep::Op::Pixels);
+  // B the button pressed
+  static const char* const KEYS[] = {"I", "TL", "M", "TLM", "TM", "S", "S", "", "TM", "", "V", "P", "B"};
+  PT_ONE_PER(OP, ScriptStep::Op::Press);
+  PT_ONE_PER(KEYS, ScriptStep::Op::Press);
   JsonArray effects = o["effects"].to<JsonArray>();
   for (int e = 0; e < p.effects; e++) {
     const ScriptEffect& f = p.fx[e];
@@ -1011,7 +1111,11 @@ void scriptTableJson(const ScriptProgram& p, JsonObject o) {
         else if (*k == 'M' && s.setting) so["setting"] = SCRIPT_SETTINGS[s.setting - 1];
         else if (*k == 'M') so["ms"] = s.ms;
         else if (*k == 'V') so["volume"] = s.value;
-        else if (*k == 'P') {
+        else if (*k == 'B') so["button"] = std::string(s.value < p.names ? p.name[s.value] : "");
+        else if (*k == 'P' && s.target == (uint16_t)Effect::Kind::Pattern) {
+          so["effect"] = "pattern";
+          so["pattern"] = std::string(s.value < p.names ? p.name[s.value] : "");
+        } else if (*k == 'P') {
           so["effect"] = SCRIPT_PIXEL_EFFECTS[s.target < SCRIPT_PIXEL_EFFECT_COUNT ? s.target : 0];
           if (scriptPixelColoured((uint8_t)s.target)) so["color"] = colorText(Rgb((uint8_t)(s.ms >> 16), (uint8_t)(s.ms >> 8), (uint8_t)s.ms));
         }
@@ -1050,6 +1154,7 @@ void ScriptRunner::load(const ScriptProgram* p, Millis now) {
   for (auto& x : pulse_until_) x = 0;
   for (auto& x : press_armed_) x = false;  // armed after a release: held at load never starts
   pending_sound_.clear();
+  press_n_ = 0;
   pixel_step_ = -1;  // the strip keeps no effect from an earlier script
   rng_ = FLICKER_SEED;
   if (!p_) return;
@@ -1227,6 +1332,7 @@ PT_STEP_CODE void ScriptRunner::enter(int e, Millis now) {
     case ScriptStep::Op::Flicker: s.before = get(st.target); s.until = now + st.ms; s.next_flicker = now; break;
     case ScriptStep::Op::Loop: case ScriptStep::Op::Set: case ScriptStep::Op::Single: case ScriptStep::Op::Stop:
     case ScriptStep::Op::Pulse: case ScriptStep::Op::LoopOff: case ScriptStep::Op::Volume: case ScriptStep::Op::Pixels:
+    case ScriptStep::Op::Press:
     default: break;
   }
 }
@@ -1350,6 +1456,11 @@ PT_STEP_CODE bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& 
       // the strip's effect from now until another pixels line (the controller renders it)
       pixel_step_ = (int16_t)(p_->fx[e].first + s.pc);
       pixel_since_ = now;
+      break;
+    case ScriptStep::Op::Press:
+      // handed to the strip at the next tick (the controller), never run here
+      if (press_n_ < SCRIPT_MAX_PRESSES) press_q_[press_n_++] = (uint8_t)st.value;
+      else presses_lost++;
       break;
   }
   bool back_to_top = s.pc + 1 >= p_->fx[e].count;

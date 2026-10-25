@@ -416,6 +416,7 @@ PT_STEP_CODE void Controller::tick(Millis now) {
   }
   profMark(5);
   publishPixels(frame);
+  patternPresses(now);  // after the strip's picture: a press goes to the pattern it shows
   profMark(6);
   for (auto& n : frame.notices) {
     if (n.kind == Notice::Kind::PausedChanged && n.paused) {
@@ -487,6 +488,7 @@ void Controller::background() {
     if (dirty_) saveNow();
   }
   scriptRewrite();
+  patternBackground();
   // the lifetime run count: throttled (runs.h), only when nothing runs unless it has waited too long
   if (runs_.saveDue(now_, quietNow())) runsSaveNow();
 }
@@ -552,6 +554,7 @@ PT_STEP_CODE void Controller::scriptPixels(Frame& f) const {
   f.has_pixel = true;
   f.pixel = pixelEffect((Effect::Kind)st->target, Rgb((uint8_t)(st->ms >> 16), (uint8_t)(st->ms >> 8), (uint8_t)st->ms), settings_.pixel_speed);
   f.pixel_start = since;
+  patternPixels(f);  // pixels = pattern <name>: the stored pattern
 }
 
 // same picture: the effect and its look; the start counts only for an animation (a still colour looks the same
@@ -568,6 +571,7 @@ PT_STEP_CODE void Controller::publishPixels(const Frame& f) {
   if (r.has) { r.effect = f.pixel; r.start = f.pixel_start; }
   r.brightness = settings_.pixel_brightness;
   r.count = settings_.pixel_count;
+  patternPlay(r);
   if (pixel_published_ && r.brightness == pixel_req_.brightness && r.count == pixel_req_.count &&
       samePicture(r.has, r.effect, r.start, pixel_req_.has, pixel_req_.effect, pixel_req_.start))
     return;
@@ -598,8 +602,12 @@ void Controller::pixelService(Millis now) {
     return;
   // the last frame is still on the wire: never wait for it; this frame (or a newer one) goes on a later call
   if (pixels_.busy()) { pixel_skipped++; return; }
-  if (f.has) render(f.effect, now > f.start ? now - f.start : 0, pixel_buf_.data(), pixel_buf_.size());
-  else for (auto& p : pixel_buf_) p = Rgb();
+  int pattern = patternRender(f, now);  // a stored pattern (device_pattern.cpp): its interpreter fills the buffer
+  if (pattern == 0) return;
+  if (pattern < 0) {
+    if (f.has) render(f.effect, now > f.start ? now - f.start : 0, pixel_buf_.data(), pixel_buf_.size());
+    else for (auto& p : pixel_buf_) p = Rgb();
+  }
   // the brightness cap: a plain scale of every channel (the firmware does not estimate current, SM-S3)
   if (f.brightness < PIXEL_BRIGHTNESS_MAX) {
     uint8_t scale = (uint8_t)((uint32_t)f.brightness * 255 / PIXEL_BRIGHTNESS_MAX);
@@ -728,6 +736,7 @@ Info Controller::info() const {
   if (update_target_) i.capabilities.push_back("update");
   if (wifi_scan_.available()) i.capabilities.push_back("wifi_scan");
   if (board_store_) i.capabilities.push_back("board_package");
+  if (pat_) i.capabilities.push_back("patterns");
   i.capabilities.push_back("defaults");
   for (auto& c : identity_.extra_caps) i.capabilities.push_back(c);
   ActionDesc save;
@@ -1170,7 +1179,8 @@ std::string Controller::call(const char* body, size_t len) {
   }
   // what reads only what requests change (the shows, the profile, the settings, the script's text, a script to
   // check): answered in a window, so only the step runs meanwhile and nothing it changes is read
-  static const char* const READ_ONLY[] = {"list_shows", "get_show", "get_profile", "get_script", "info", "check_script", "get_backup", "get_params"};
+  static const char* const READ_ONLY[] = {"list_shows", "get_show", "get_profile", "get_script", "info", "check_script", "get_backup", "get_params",
+                                          "list_patterns"};
   bool read_only = false;
   for (auto op : READ_ONLY) read_only |= r.op == op;
   auto answerIt = [&]() -> Response {
@@ -1418,11 +1428,18 @@ Response Controller::handle(Request& r) {
   }
   if (op == "pixel") {
     if (r["action"].isNull()) { engine_.setManualPixel(nullptr); return Response::done(r); }
-    Action a;
-    std::string e;
-    (void)actionFromJson(r["action"], a, e);
     Effect eff;
-    if (!a.effect(eff)) return Response::err(r, ErrorCode::BadRequest, "not a pixel action");
+    if (!strcmp(r["action"]["do"] | "", "pattern")) {
+      // a stored LED pattern as the pixel test
+      std::string name = r["action"]["name"] | "";
+      if (!pat_) return Response::err(r, ErrorCode::Unsupported, "this board has no pattern player");
+      if (!patternEffect(name, eff)) return Response::err(r, ErrorCode::NotFound, "there is no pattern called " + name + " on this board");
+    } else {
+      Action a;
+      std::string e;
+      (void)actionFromJson(r["action"], a, e);
+      if (!a.effect(eff)) return Response::err(r, ErrorCode::BadRequest, "not a pixel action");
+    }
     if (engine_.isPaused()) return Response::err(r, ErrorCode::Refused, PAUSED_TEXT);
     engine_.setManualPixel(&eff);
     pixel_session_ = origin_ == Origin::Session ? session_ : 0;
@@ -1489,6 +1506,7 @@ Response Controller::handle(Request& r) {
     return setParams(r, values);
   }
   if (op == "get_script" || op == "check_script" || op == "set_script") return scriptOp(r);
+  if (op == "list_patterns" || op == "put_pattern" || op == "delete_pattern") return patternOp(r);
   if (op == "get_backup" || op == "put_backup") return backupOp(r);
   if (op == "get_board" || op == "set_board") return boardOp(r);
   if (op == "get_defaults" || op == "apply_defaults") return defaultsOp(r);
@@ -1554,6 +1572,7 @@ Response Controller::handle(Request& r) {
   }
   if (op == "reboot") {
     if (dirty_) saveNow();
+    patternBackground(true);  // patterns not yet written go to flash first
     runsSaveNow();
     reboot_ = true;
     return Response::done(r);
@@ -1583,7 +1602,7 @@ Response Controller::handle(Request& r) {
       a = !store_ || store_->wipe();
     }
     if (a) stored_crc_known_ = false;  // the flash no longer holds the record in RAM
-    bool b = !script_store_ || script_store_->wipe();
+    bool b = (!script_store_ || script_store_->wipe()) && patternsWipe();
     // the board package is kept (the board keeps its pins), unless asked to forget it
     if (a && b && (r["forget_board"] | false) && board_store_ && !board_store_->wipe()) {
       store_errors++;

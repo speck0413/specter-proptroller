@@ -1,0 +1,20 @@
+effect a:
+  wait for trig1
+  pixels = pattern p1
+  pixels = pattern p2
+  pixels = pattern p3
+  pixels = pattern p4
+  pixels = pattern p5
+  pixels = pattern p6
+  pixels = pattern p7
+  pixels = pattern p8
+  pixels = pattern p9
+  pixels press b1
+  pixels press b2
+  pixels press b3
+  pixels press b4
+  pixels press b5
+  pixels press b6
+  pixels press b7
+  pixels press b8
+  pixels press b9

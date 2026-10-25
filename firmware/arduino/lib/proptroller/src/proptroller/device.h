@@ -19,6 +19,7 @@
 #include "update.h"
 #include "password.h"
 #include "runs.h"
+#include "pattern_store.h"
 #include <atomic>
 #include <deque>
 #include <memory>
@@ -49,10 +50,12 @@ struct FactoryDefaults {
   const char* script_name = nullptr;  // what the script is called (get_defaults), optional
 };
 
+struct PatternSide;  // device_pattern.cpp: the LED patterns' store, player and hand-over
+
 class Controller : public Firmware {
  public:
   Controller(BoardPins& pins, ByteStream& uart, PixelOut& pixels, Storage* store, const Identity& id);
-  virtual ~Controller() {}
+  virtual ~Controller();
 
   // One step (call every ~10 ms).
   void tick(Millis now) override;
@@ -237,6 +240,13 @@ class Controller : public Firmware {
   void setScriptStore(Storage* store);
   // The run counters (runs.h): the lifetime count's own record is kept in `store` (nullptr: RAM only).
   void setRunStore(Storage* store);
+  // LED patterns (PROTOCOL.md "LED patterns"): their record is kept in `store` (pattern_store.h). A board without
+  // the player (PT_PATTERNS 0: the Pico W, the Pico) never calls this and answers the pattern ops unsupported.
+  void setPatternStore(Storage* store);
+  bool hasPatterns() const;
+  // The player's numbers for `mem`: the pattern playing, its memory, its longest frame and steps since the last
+  // report (then cleared); "" when no pattern has played.
+  std::string patternReport();
   const RunCounter& runs() const { return runs_; }
   void setDmx(DmxOut* dmx) { dmx_ = dmx; }
   // Check a script against the board as it is set now; nothing changes.
@@ -432,6 +442,7 @@ class Controller : public Firmware {
     Millis start = 0;
     uint8_t brightness = 100;
     uint16_t count = 0;
+    uint32_t play = 0;  // a pattern's play: a new number each time a pattern (re)starts (device_pattern.cpp)
   };
   PixelRequest pixel_req_, pixel_mail_;
   // scriptFreeEffects' answer for this script and this list (it runs on every sample)
@@ -611,6 +622,19 @@ class Controller : public Firmware {
   void selfCheckVerdict();
   Response backupOp(Request& r);
   Response boardOp(Request& r);
+  // LED patterns (device_pattern.cpp)
+  PatternSide* pat_ = nullptr;  // owned (deleted in ~Controller)
+  Response patternOp(Request& r);
+  void patternPixels(Frame& f) const;             // the step: a script's pixels = pattern line as the strip's effect
+  void patternPlay(PixelRequest& r);              // the step: the play number of what it hands to the strip
+  void patternPresses(Millis now);                // the step: the script's presses, to the strip
+  void patternBackground(bool flush = false);     // the loop: the program to the pixel side, the record, its notes
+  int patternRender(const PixelRequest& f, Millis now);  // the pixel side: -1 not a pattern, 0 no frame now, 1 a frame
+  std::string patternsHeldText() const;
+  bool patternEffect(const std::string& name, Effect& out) const;  // a stored pattern as the strip's effect
+  void patternScriptSlots();                      // the script's pattern names to the stored patterns
+  void patternBoard(ScriptBoard& b) const;         // the stored patterns and their buttons, for the checker
+  bool patternsWipe();                            // factory reset
   // get_defaults / apply_defaults: the running board's defaults (its board package's, else the image's own)
   Response defaultsOp(Request& r);
   // the running board's defaults as text; false when they cannot be read (`source`: "board_package", "firmware" or

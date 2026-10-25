@@ -364,6 +364,16 @@ void a_table_format_1_record_is_checked_again() {
   TEST_ASSERT_FALSE(r.has_table);
 }
 
+// A record stored with table format 2 (before pattern and button names): the same, its text is checked again.
+void a_table_format_2_record_is_checked_again() {
+  std::string rec = readFile(FIX + "records/script-record-table2.bin");
+  std::unique_ptr<ScriptProgram> q(new ScriptProgram());
+  ScriptRecordRead r = scriptRecordDecode(rec, *q);
+  TEST_ASSERT_EQUAL((int)ScriptRecordKind::Current, (int)r.kind);
+  TEST_ASSERT_EQUAL_STRING(storedDoorbell().c_str(), r.text.c_str());
+  TEST_ASSERT_FALSE(r.has_table);
+}
+
 // The committed record (FIXTURE_WRITE=1 writes it again) reads back byte for byte, and runs on a board.
 void the_record_fixture_reads_back() {
   const std::string f2 = FIX + "records/script-record.bin";
@@ -404,5 +414,6 @@ int main() {
   RUN_TEST(a_new_firmware_checks_again_and_rewrites_after_its_self_check);
   RUN_TEST(the_record_fixture_reads_back);
   RUN_TEST(a_table_format_1_record_is_checked_again);
+  RUN_TEST(a_table_format_2_record_is_checked_again);
   return UNITY_END();
 }

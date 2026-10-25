@@ -43,6 +43,7 @@ bool Effect::operator==(const Effect& o) const {
     case Kind::Sparkle: return color == o.color;
     case Kind::Breathe: return color == o.color && period_ms == o.period_ms;
     case Kind::Fire: return true;
+    case Kind::Pattern: return pattern == o.pattern && pattern_gen == o.pattern_gen;
   }
   return true;
 }
@@ -60,6 +61,7 @@ std::string Effect::describe() const {
     case Kind::Sparkle: return "sparkle " + colorText(color);
     case Kind::Breathe: return "breathe " + colorText(color);
     case Kind::Fire: return "fire";
+    case Kind::Pattern: return "pattern";
   }
   return "off";
 }
@@ -86,6 +88,7 @@ void render(const Effect& e, uint64_t t, Rgb* out, size_t n) {
   if (e.speed != 100) t = t * e.speed / 100;
   switch (e.kind) {
     case Effect::Kind::Off:
+    case Effect::Kind::Pattern:  // played by the controller (pattern_vm.h); dark here
       for (size_t i = 0; i < n; i++) out[i] = Rgb();
       break;
     case Effect::Kind::Fill:
@@ -184,6 +187,7 @@ Effect pixelEffect(Effect::Kind kind, Rgb color, uint16_t speed) {
     case Effect::Kind::Comet: e.step_ms = PIXEL_COMET_STEP_MS; e.width = PIXEL_COMET_TAIL; break;
     case Effect::Kind::Breathe: e.period_ms = PIXEL_BREATHE_MS; break;
     case Effect::Kind::Off: case Effect::Kind::Fill: case Effect::Kind::Flicker: case Effect::Kind::Sparkle: case Effect::Kind::Fire:
+    case Effect::Kind::Pattern:
     default: break;
   }
   return e;

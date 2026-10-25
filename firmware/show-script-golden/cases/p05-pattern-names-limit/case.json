@@ -1,0 +1,21 @@
+{
+  "spec": [
+    "SS-X"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 19,
+        "message": "line 19: a script names at most 16 patterns and buttons."
+      },
+      {
+        "line": 20,
+        "message": "line 20: a script names at most 16 patterns and buttons."
+      }
+    ],
+    "warnings": []
+  }
+}

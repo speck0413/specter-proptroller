@@ -68,6 +68,8 @@ exactly (byte for byte).
 | `pulse <target> for <time>` | SS-G5: targets `out1`-`out4`, `rly1`, `rly2`, `cc1`, `cc2`; the time a time or a time setting |
 | `audio_loop = off` / `false` / `""` | SS-R7: the background loop off (the step `audio_loop_off`); a bare `audio_loop =` is still M-nosound |
 | `pixels = <effect> [<colour>]` / `pixels = <colour>` | SS-X: `=` or `:`. Effects `off`, `fill`, `chase`, `rainbow`, `flash`, `fade`, `flicker`, `comet`, `sparkle`, `breathe`, `fire`; colours `red` (#ff0000), `orange` (#ff6000), `yellow` (#ffc000), `green` (#00ff00), `cyan` (#00ffff), `blue` (#0000ff), `purple` (#8000ff), `pink` (#ff40a0), `white` (#ffffff), `warm white` (#ffa040), or `0x` and six hex digits. Words compared lower case with runs of spaces made one. A colour alone is `fill` in that colour; an effect that takes a colour and has none is white; `off`, `rainbow` and `fire` take none. The step `{ "line", "op": "pixels", "effect", "color" }` (`"color"` as `"#rrggbb"`, only for an effect that takes one). A pixels line may come before the first `wait for`, as a sound line may |
+| `pixels = pattern <name>` | SS-X7: a stored LED pattern. The name is the rest of the value, lower case with runs of spaces made one: 1-32 letters, digits, spaces and `- _ ( )` (else M-patname; none: M-patempty). Whether the board has it is not checked (a missing one is told when the line runs). The step `{ "line", "op": "pixels", "effect": "pattern", "pattern" }` |
+| `pixels press <button>` | SS-X8: presses a trigger button of the pattern the strip shows. No `=` (`pixels = press x` is M-presseq). The button's name follows the pattern name's rules (M-pressname; none: M-pressform); `pixels`, `press` and the name compared lower case with runs of spaces made one. May come before the first `wait for`, as a `pixels` line may. When the checker's board has every pattern the script's `pixels = pattern` lines name, a button none of them has is M-nobutton (one pattern; M-nobuttons when it has none) or M-nobuttonany (several), on a press line with no other error; the golden board stores no patterns. The step `{ "line", "op": "pixels_press", "button" }` |
 | sound lines before the first `wait for` | SS-R1: `audio_single`, `audio_loop`, `audio_volume`, `audio_stop` (and `pixels`) may come first; M-first applies to the first other line |
 
 - **Settings as times and counts** (SS-G6): where `wait`, `sleep`, `pulse` or `limit` take a time, a word that is not a time
@@ -125,6 +127,15 @@ exactly (byte for byte).
 | M-pixnocolor | `line {n}: {e} takes no colour: write "pixels = {e}".` (`off`, `rainbow` or `fire` with more words) |
 | M-pixhash | `line {n}: "#{h}" starts a comment, so the colour is lost: write it as 0x{h}.` (no colour, or no value, and the comment starts with six hex digits `{h}`, lower case) |
 | M-pixline | `line {n}: the pixel strip has its own line: "pixels = <effect> <colour>", for example "pixels = chase red".` |
+| M-patempty | `line {n}: say which pattern, for example "pixels = pattern ghost" (a pattern Studio sent to the board).` |
+| M-patname | `line {n}: "{p}" is not a pattern's name. A name has at most 32 letters, digits, spaces and - _ ( ).` (`{p}` the name as written, runs of spaces made one) |
+| M-pressform | `line {n}: say which button, for example "pixels press clue1" (a button of the pattern the strip shows).` |
+| M-pressname | `line {n}: "{b}" is not a button's name. A name has at most 32 letters, digits, spaces and - _ ( ).` (`{b}` as written) |
+| M-presseq | `line {n}: a button press has no "=": write "pixels press {b}".` (`{b}` lower case, `clue1` when none) |
+| M-names | `line {n}: a script names at most 16 patterns and buttons.` (on each line that would name a 17th) |
+| M-nobutton | `line {n}: pattern "{p}" has no button "{b}". Its buttons are {list}.` (`{list}` the stored pattern's trigger buttons, lower case: `a, b and c`) |
+| M-nobuttons | `line {n}: pattern "{p}" has no buttons to press (a button is an export function trigger... in the pattern).` |
+| M-nobuttonany | `line {n}: no pattern this script shows has a button "{b}".` |
 | M-dmxoff | `line {n}: {x} needs the DMX add-on, and it is not turned on. Turn it on with the setting dmx_port = s4.` |
 | M-role | `line {n}: {x} is set to {role} ({x}_role). Set {x}_role to shows to use it in a script.` with `{role}` = `pulse on every trigger` (trigger_repeat), `pulse when a sound starts` (sound_trigger) or `not used` (none) |
 | M-owned | `line {n}: {x} belongs to the built-in pulse-and-recover effect. Turn the effect off (setting effect = none) or use another terminal.` |
@@ -223,7 +234,8 @@ Keys in this order; targets `OUT1`-`OUT4`, `RLY1`, `RLY2`, `CC1`, `CC2`, `DMX1`-
 
 The added lines add, only where an effect has them: after `"line"`,
 `"limit": {"runs": N or "<setting>", "ms": T or "<setting>"}`; the step `{ "line", "op": "audio_loop_off" }`; the step `{ "line", "op": "pulse", "target", "ms" }`; and
-the step `{ "line", "op": "audio_volume", "volume" }`; the step `{ "line", "op": "pixels", "effect", "color" }`; and
+the step `{ "line", "op": "audio_volume", "volume" }`; the step `{ "line", "op": "pixels", "effect", "color" }`; the
+step `{ "line", "op": "pixels", "effect": "pattern", "pattern" }`; the step `{ "line", "op": "pixels_press", "button" }`; and
 on a `sleep` or a `pulse` whose time is a setting, `"setting": "<name>"` instead of `"ms"`.
 
 ## Running (what the traces check)
@@ -260,7 +272,8 @@ choices within their tolerances):
 - **Pixels** (SS-X): a `pixels` step sets the strip's effect from that sample until another `pixels` step (any
   effect's); it takes no time and the strip keeps it after the run ends. Effects with a `pixels` line share the
   strip as an output (SS-R8). A pause and a script load start the strip dark until a `pixels` step runs again.
-  The traces do not record the strip.
+  A `pixels_press` step takes no time and does not use the strip (effects that only press share nothing). The
+  traces do not record the strip.
 - **Sound** (SS-C4, SS-R7): sound N is the one file in the card's folder `NN`, its track 1 (`05/001-scream.mp3` is
   sound 5; the player reads the folder's two digits and the file's three). `audio_single` sends DFPlayer command
   `0x0F` with parameter `(N << 8) | 1`; `audio_loop` sends `0x17` with parameter `N` (the player loops that folder,

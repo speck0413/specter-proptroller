@@ -11,7 +11,8 @@ std::string colorText(const Rgb& c);  // "#rrggbb", lower case
 
 struct Effect {
   // Comet, Sparkle, Breathe and Fire come from show scripts only (pixelEffect); new kinds go at the end.
-  enum class Kind : uint8_t { Off, Fill, Chase, Rainbow, Flash, Fade, Flicker, Comet, Sparkle, Breathe, Fire };
+  // Pattern: a stored LED pattern (pattern_vm.h), played by the controller's pixel side, never by render().
+  enum class Kind : uint8_t { Off, Fill, Chase, Rainbow, Flash, Fade, Flicker, Comet, Sparkle, Breathe, Fire, Pattern };
   Kind kind = Kind::Off;
   Rgb color;
   uint32_t step_ms = 0;    // Chase, Comet: ms a pixel
@@ -19,6 +20,8 @@ struct Effect {
   uint32_t period_ms = 0;  // Rainbow, Flash, Breathe
   uint32_t ms = 0;         // Fade
   uint16_t speed = 100;    // % of the effect's own time (pixel_speed): 200 runs it twice as fast
+  uint8_t pattern = 0;     // Pattern: the stored pattern's place in the controller's list
+  uint32_t pattern_gen = 0;  // Pattern: that pattern's number (a new one each time it is sent)
   bool operator==(const Effect& o) const;
   bool operator!=(const Effect& o) const { return !(*this == o); }
   bool animated() const { return kind != Kind::Off && kind != Kind::Fill; }

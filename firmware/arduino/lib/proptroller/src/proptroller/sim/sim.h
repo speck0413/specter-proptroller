@@ -86,6 +86,7 @@ class Sim : public NetApp {
   SimWorld& world() { return world_; }
   MemStorage& flash() { return flash_; }
   MemStorage& scriptFlash() { return script_flash_; }
+  MemStorage& patternFlash() { return pattern_flash_; }
   MemStorage& runsFlash() { return runs_flash_; }  // the lifetime run count (runs.h)
   MemStorage& boardFlash() { return board_flash_; }  // the board package (board_package.h)
   // the chip the simulated board has (default: an ESP32 DevKit), from the next power-on
@@ -176,6 +177,7 @@ class Sim : public NetApp {
   SimPixels pixels_;
   MemStorage flash_;
   MemStorage script_flash_{SCRIPT_STORE_CAPACITY};
+  MemStorage pattern_flash_{PATTERN_STORE_CAPACITY};
   MemStorage runs_flash_{RUNS_STORE_CAPACITY};
   MemStorage board_flash_{BOARD_STORE_CAPACITY};
   ChipRules chip_;

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include "pattern_math.h"
 
+#if PT_PATTERNS
 namespace pt {
 
 using namespace pmath;
@@ -693,3 +694,4 @@ PatternVal PatternVM::builtin(int32_t id, const PatternVal* a, int n, uint32_t p
 }
 
 }  // namespace pt
+#endif  // PT_PATTERNS

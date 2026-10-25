@@ -120,6 +120,7 @@ struct BoardParts {
   PixelOut* pixels = nullptr;
   Storage* store = nullptr;
   Storage* script_store = nullptr;  // the show script's own record (SHOW-SCRIPT.md)
+  Storage* pattern_store = nullptr; // the LED patterns' record (boards with the pattern player)
   Storage* run_store = nullptr;     // the lifetime run count's own record (runs.h)
   class DmxOut* dmx = nullptr;      // the DMX port on expansion S4
   AnalogIn* analog = nullptr;

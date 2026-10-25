@@ -288,7 +288,7 @@ const char* errorCodeName(ErrorCode c) {
   return n[(int)c];
 }
 
-static const char* const READ_ONLY_OPS[] = {"info", "state", "list_shows", "get_show", "get_params", "get_profile", "get_script", "check_script", "get_backup", "wifi_scan", "get_board", "get_defaults"};
+static const char* const READ_ONLY_OPS[] = {"info", "state", "list_shows", "get_show", "get_params", "get_profile", "get_script", "check_script", "get_backup", "wifi_scan", "get_board", "get_defaults", "list_patterns"};
 bool Request::mutates() const {
   for (auto o : READ_ONLY_OPS)
     if (op == o) return false;
@@ -424,6 +424,7 @@ static bool checkOp(Request& r, std::string& why, bool allow_custom) {
   }
   if (op == "pixel") {
     if (r["action"].isNull()) return true;
+    if (!strcmp(r["action"]["do"] | "", "pattern")) return need(r["action"]["name"].is<const char*>(), "action.name");
     Action a;
     std::string e;
     if (!actionFromJson(r["action"], a, e)) { why = "action: " + e; return false; }
@@ -452,7 +453,11 @@ static bool checkOp(Request& r, std::string& why, bool allow_custom) {
   }
   if (op == "custom") return need(r["name"].is<const char*>(), "name");
   if (op == "set_profile") return need(r["data"].is<JsonObjectConst>(), "data");
-  if (op == "get_script" || op == "get_backup") return true;
+  if (op == "get_script" || op == "get_backup" || op == "list_patterns") return true;
+  if (op == "put_pattern")
+    return need(r["name"].is<const char*>(), "name") && need(r["program"].is<const char*>(), "program") &&
+           need(r["controls"].isNull() || r["controls"].is<JsonObjectConst>(), "controls");
+  if (op == "delete_pattern") return need(r["name"].is<const char*>(), "name");
   if (op == "wifi_scan") return need(r["rescan"].isNull() || r["rescan"].is<bool>(), "rescan");
   if (op == "put_backup") return need(r["data"].is<JsonObjectConst>(), "data") && need(r["keep_name"].isNull() || r["keep_name"].is<bool>(), "keep_name");
   if (op == "check_script" || op == "set_script")

@@ -1,6 +1,7 @@
 #include "script_record.h"
 #include <string.h>
 #include "lz.h"
+#include "pixels.h"
 #include "settings.h"
 
 namespace pt {
@@ -16,6 +17,7 @@ uint32_t get32(const uint8_t* p) { return (uint32_t)get16(p) | (uint32_t)get16(p
 const size_t EFFECT_BYTES = SCRIPT_MAX_NAME + 1 + 6 + 8;
 const size_t STEP_BYTES = 12;                          // ms, target, value, line, op, setting
 const size_t TABLE_HEAD = 6;                           // effects, steps, channels, inputs, dmx
+const size_t NAME_BYTES = SCRIPT_MAX_NAME + 1;          // a pattern's or button's name, NUL padded (after the steps)
 
 uint32_t fnv1a(uint32_t h, const void* data, size_t n) {
   const uint8_t* p = (const uint8_t*)data;
@@ -26,7 +28,7 @@ uint32_t fnv1a(uint32_t h, const void* data, size_t n) {
 
 std::string scriptTableEncode(const ScriptProgram& p) {
   std::string b;
-  b.reserve(TABLE_HEAD + p.effects * EFFECT_BYTES + p.steps * STEP_BYTES);
+  b.reserve(TABLE_HEAD + p.effects * EFFECT_BYTES + p.steps * STEP_BYTES + 1 + p.names * NAME_BYTES);
   put8(b, p.effects);
   put16(b, p.steps);
   put8(b, p.channels);
@@ -53,6 +55,8 @@ std::string scriptTableEncode(const ScriptProgram& p) {
     put8(b, (uint8_t)st.op);
     put8(b, st.setting);
   }
+  put8(b, p.names);
+  for (int k = 0; k < p.names; k++) b.append(p.name[k], NAME_BYTES);
   return b;
 }
 
@@ -62,7 +66,16 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
   uint8_t effects = b[0];
   uint16_t steps = get16(b + 1);
   if (effects == 0 || effects > SCRIPT_MAX_EFFECTS || steps > SCRIPT_MAX_LINES) return false;
-  if (n != TABLE_HEAD + effects * EFFECT_BYTES + steps * STEP_BYTES) return false;
+  size_t at_names = TABLE_HEAD + effects * EFFECT_BYTES + steps * STEP_BYTES;
+  if (n < at_names + 1) return false;
+  uint8_t names = b[at_names];
+  if (names > SCRIPT_MAX_NAMES || n != at_names + 1 + names * NAME_BYTES) return false;
+  for (int k = 0; k < names; k++) {
+    const uint8_t* q = b + at_names + 1 + k * NAME_BYTES;
+    if (q[SCRIPT_MAX_NAME] != 0 || q[0] == 0) return false;
+    memcpy(out.name[k], q, NAME_BYTES);
+  }
+  out.names = names;
   if (b[4] >> INPUT_COUNT || b[5] > 1) return false;
   out.channels = b[3];
   out.inputs = b[4];
@@ -92,7 +105,7 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
     st.line = get16(p + 8);
     uint8_t op = p[10];
     st.setting = p[11];
-    if (op > (uint8_t)ScriptStep::Op::Pixels || st.setting > SCRIPT_SETTING_COUNT) { out.reset(); return false; }
+    if (op > (uint8_t)ScriptStep::Op::Press || st.setting > SCRIPT_SETTING_COUNT) { out.reset(); return false; }
     st.op = (ScriptStep::Op)op;
     bool ok = true;
     switch (st.op) {
@@ -107,7 +120,10 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
       case ScriptStep::Op::Stop:
       case ScriptStep::Op::LoopOff: break;
       case ScriptStep::Op::Volume: ok = st.value <= 30; break;
-      case ScriptStep::Op::Pixels: ok = st.target < SCRIPT_PIXEL_EFFECT_COUNT && st.ms <= 0xFFFFFF; break;
+      case ScriptStep::Op::Pixels:
+        ok = st.target == (uint16_t)Effect::Kind::Pattern ? st.value < names : st.target < SCRIPT_PIXEL_EFFECT_COUNT && st.ms <= 0xFFFFFF;
+        break;
+      case ScriptStep::Op::Press: ok = st.value < names; break;
     }
     if (!ok || st.ms > SCRIPT_MAX_TIME_MS) { out.reset(); return false; }
   }
