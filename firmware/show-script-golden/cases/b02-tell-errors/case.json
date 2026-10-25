@@ -1,0 +1,73 @@
+{
+  "spec": [
+    "SS-B"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 1,
+        "message": "line 1: effect \"a\" must start with \"wait for\", for example \"wait for trig1\"."
+      },
+      {
+        "line": 4,
+        "message": "line 4: write it as \"tell porch blackout\" (a board's name, then one of its effects) or \"tell porch pixel_speed = 150\" (a setting)."
+      },
+      {
+        "line": 5,
+        "message": "line 5: write it as \"tell porch blackout\" (a board's name, then one of its effects) or \"tell porch pixel_speed = 150\" (a setting)."
+      },
+      {
+        "line": 6,
+        "message": "line 6: \"porch_2\" is not a board's name. Use the name the board has on the network (letters, digits and -, as in porch.local), or all."
+      },
+      {
+        "line": 7,
+        "message": "line 7: \"-porch\" is not a board's name. Use the name the board has on the network (letters, digits and -, as in porch.local), or all."
+      },
+      {
+        "line": 8,
+        "message": "line 8: \"broadcast\" is not a board's name. Use the name the board has on the network (letters, digits and -, as in porch.local), or all."
+      },
+      {
+        "line": 9,
+        "message": "line 9: \"an effect name that is far too long to send\" cannot be sent as an effect's name: it has at most 32 characters, and no / or +."
+      },
+      {
+        "line": 10,
+        "message": "line 10: \"fog/on\" cannot be sent as an effect's name: it has at most 32 characters, and no / or +."
+      },
+      {
+        "line": 11,
+        "message": "line 11: \"pixel speed\" is not a setting's name. A setting is one word of letters, digits and _, for example pixel_speed."
+      },
+      {
+        "line": 12,
+        "message": "line 12: \"9lives\" is not a setting's name. A setting is one word of letters, digits and _, for example pixel_speed."
+      },
+      {
+        "line": 13,
+        "message": "line 13: wifi_pass cannot be changed by another board: its name, passwords, Wi-Fi, MQTT, board link, page lock, remote trigger and built-in effect stay with the board."
+      },
+      {
+        "line": 14,
+        "message": "line 14: remote_trigger_enable cannot be changed by another board: its name, passwords, Wi-Fi, MQTT, board link, page lock, remote trigger and built-in effect stay with the board."
+      },
+      {
+        "line": 15,
+        "message": "line 15: say the value, for example \"tell porch pixel_speed = 150\"."
+      },
+      {
+        "line": 16,
+        "message": "line 16: the value is longer than 64 characters."
+      },
+      {
+        "line": 17,
+        "message": "line 17: write it as \"tell porch blackout\" (a board's name, then one of its effects) or \"tell porch pixel_speed = 150\" (a setting)."
+      }
+    ],
+    "warnings": []
+  }
+}

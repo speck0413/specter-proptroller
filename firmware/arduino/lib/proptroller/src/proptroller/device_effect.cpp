@@ -289,10 +289,11 @@ Response Controller::scriptStart(const Request& r, int e) {
   bool free = (scriptFreeEffects() >> e) & 1;
   ScriptRunner::Answer a = script_run_->remoteStart(e, now, free || settings_.fx.remote_trigger_enable);
   std::string fxname = std::string(script_prog_->fx[e].name);
+  const std::string by = remote_by_.empty() ? std::string() : " by " + remote_by_;  // another board's tell
   switch (a) {
-    case ScriptRunner::Answer::Starts: log("remote start: effect \"" + fxname + "\""); return Response::done(r);
+    case ScriptRunner::Answer::Starts: log("remote start" + by + ": effect \"" + fxname + "\""); return Response::done(r);
     case ScriptRunner::Answer::Queued:
-      log("remote start queued: effect \"" + fxname + "\" starts when it can");
+      log("remote start queued" + by + ": effect \"" + fxname + "\" starts when it can");
       return Response::done(r);
     case ScriptRunner::Answer::AlreadyQueued: return Response::err(r, ErrorCode::Refused, refusedText(EffectRefused::AlreadyQueued));
     case ScriptRunner::Answer::Disabled: return Response::err(r, ErrorCode::Refused, refusedText(EffectRefused::RemoteDisabled));
@@ -436,7 +437,8 @@ std::string Controller::callSerial(const char* body, size_t len) {
 
 // A secret on the console: whether it is set, never its value.
 static std::string secretShown(const Settings& st, const std::string& key) {
-  bool set = key == "pin" ? !st.pin_hash.empty() : key == "wifi_pass" ? !st.wifi_pass.empty() : key == "ap_pass" ? !st.ap_pass.empty() : false;
+  bool set = key == "pin" ? !st.pin_hash.empty() : key == "wifi_pass" ? !st.wifi_pass.empty() : key == "ap_pass" ? !st.ap_pass.empty()
+           : key == "link_key" ? !st.link_key.empty() : false;
   return set ? "(set)" : "(empty)";
 }
 

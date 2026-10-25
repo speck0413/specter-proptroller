@@ -142,6 +142,7 @@ void Controller::expireTests(Millis now) {
 
 void Controller::applySettings() {
   const Settings& s = settings_;
+  link_epoch_.fetch_add(1, std::memory_order_relaxed);  // the board link reads its settings again (link.h)
   // a changed input type re-arms that trigger as at power-on: it must be seen released before anything starts
   for (int k = 0; k < 2; k++) {
     if (s.trig_sensor_high[k] == sensor_high_[k]) continue;
@@ -637,7 +638,14 @@ PT_STEP_CODE Pattern Controller::pattern() const {
 
 void Controller::storedDoc(JsonDocument& d, const Show* replace) const {
   d["version"] = STORED_VERSION;
-  settings_.toJson(d["settings"].to<JsonObject>());
+  if (link_kept_.empty()) {
+    settings_.toJson(d["settings"].to<JsonObject>());
+  } else {
+    // another board's changes are not saved: the record keeps the values from before them
+    std::unique_ptr<Settings> kept(new Settings(settings_));
+    for (auto& k : link_kept_) (void)kept->set(k.first, k.second);
+    kept->toJson(d["settings"].to<JsonObject>());
+  }
   JsonArray a = d["shows"].to<JsonArray>();
   bool replaced = false;
   for (size_t i = 0; i < engine_.showCount(); i++) {
@@ -1492,6 +1500,7 @@ Response Controller::handle(Request& r) {
       if (k == "pin") x["set"] = !settings_.pin_hash.empty();
       else if (k == "wifi_pass") x["set"] = !settings_.wifi_pass.empty();
       else if (k == "ap_pass") x["set"] = !settings_.ap_pass.empty();
+      else if (k == "link_key") x["set"] = !settings_.link_key.empty();
     }
     return resp;
   }
@@ -1648,7 +1657,7 @@ Response Controller::handle(Request& r) {
   return Response::err(r, ErrorCode::BadRequest, "unknown op");
 }
 
-Response Controller::setParams(const Request& r, const std::vector<ParamValue>& values) {
+Response Controller::setParams(const Request& r, const std::vector<ParamValue>& values, bool save) {
   // the serial console and MQTT come here directly: nothing changes while a firmware update runs
   if (updating()) return Response::err(r, ErrorCode::Refused, update_text::IN_UPDATE_MODE);
   // called directly by a sketch (Proptroller::setting ...) as well as by handle(): refused from the step while
@@ -1666,8 +1675,13 @@ Response Controller::setParams(const Request& r, const std::vector<ParamValue>& 
   for (auto& pv : values) {
     const ParamDesc* d = Settings::find(pv.key);
     if (!d) return Response::err(r, ErrorCode::NotFound, "unknown setting " + pv.key);
+    // another board's tell: never who the board is, how it is reached, its locks or the remote start gate
+    if (!save && (scriptTellRefused(pv.key) || d->isSecret() || d->reboot))
+      return Response::err(r, ErrorCode::Refused, pv.key + " is not taken from another board");
     // an empty secret means "keep the current one" (reads return secrets blank); the page password can be cleared
-    if (d->isSecret() && pv.value == Value::text("") && pv.key != "pin") continue;
+    // (the page sends a secret only when one was typed; the page password and the board link key are removed by
+    // sending them empty from the serial console or set_params)
+    if (d->isSecret() && pv.value == Value::text("") && pv.key != "pin" && pv.key != "link_key") continue;
     if (pv.key == "pin" && pv.value.type == Value::Type::Text && !pv.value.s.empty() && pv.value.s.size() < PIN_MIN_LEN)
       return Response::err(r, ErrorCode::BadRequest, "the page password needs at least 6 characters");
     // in the words the page shows it under: a key alias's label and group (SM-AL2)
@@ -1749,10 +1763,18 @@ Response Controller::setParams(const Request& r, const std::vector<ParamValue>& 
   // flash wear: the same values again (a retained MQTT config/set redelivered at every reconnect, a value not
   // stored such as remote_trigger_enable) mark nothing to save
   bool stored_changed = !(next == settings_);
+  // another board's change is used, not saved: the value the flash keeps is remembered for every save until a
+  // change here, a restored backup or a restart; a change here is saved and ends it
+  for (auto& pv : values) {
+    int k = linkKeptAt(pv.key);
+    if (save) { if (k >= 0) link_kept_.erase(link_kept_.begin() + k); continue; }
+    Value was;
+    if (k < 0 && settings_.get(pv.key, was)) link_kept_.push_back({pv.key, was});
+  }
   settings_ = next;
   applySettings();
   if (df_changed) df_ = DfPlayer(dfConfig(settings_, false));
-  if (stored_changed) markDirty();
+  if (stored_changed && save) markDirty();
   events_.push("params_changed");
   return Response::done(r);
 }
@@ -1799,8 +1821,16 @@ std::vector<std::string> Controller::mqttSubscriptions() {
   mqtt_.prefix = mqttPrefixNow();
   mqtt_.has_target = mqttTarget(mqtt_.host, mqtt_.port);
   const std::string& p = mqtt_.prefix;
-  return {p.substr(0, p.find('/')) + "/broadcast/getName", p + "/rpc", p + "/config/get/+", p + "/config/set/+", p + "/cue", p + "/control/+",
-          p + "/status/get/+", p + "/script/set", p + "/script/check"};
+  std::vector<std::string> v = {p.substr(0, p.find('/')) + "/broadcast/getName", p + "/rpc", p + "/config/get/+", p + "/config/set/+", p + "/cue", p + "/control/+",
+          p + "/status/get/+", p + "/script/set", p + "/script/check", p + "/config/now/+"};
+  // the board link over MQTT: answers to this board's tells; with a script that tells all, which boards are online
+  mqtt_.answers = linkVia() == LinkVia::Mqtt;
+  link_mqtt_out_.clear();  // a new session starts nothing told before it
+  if (mqtt_.answers) v.push_back(p + "/link/answer");
+  mqtt_.names = mqttWantsNames();
+  mqtt_names_.clear();
+  if (mqtt_.names) v.push_back(p.substr(0, p.find('/')) + "/+/online");
+  return v;
 }
 
 // Every setting (under its alias when the profile gives one, SM-AL2) and the effect's status values.
@@ -1854,6 +1884,16 @@ std::vector<MqttMsg> Controller::mqttOnMessage(const std::string& topic, const s
   // the only broadcast request: every device answers with its topic name (settings and controls are per device)
   std::string root = p.substr(0, p.find('/'));
   if (topic == root + "/broadcast/getName") return {MqttMsg(root + "/broadcast/name", p.substr(root.size() + 1), false)};
+  if (mqtt_.names && topic.size() > root.size() + 8 && topic.compare(0, root.size() + 1, root + "/") == 0 &&
+      topic.compare(topic.size() - 7, 7, "/online") == 0) {
+    // the boards on the broker (their retained online), for tell all over MQTT: read only, this board left out
+    std::string n = topic.substr(root.size() + 1, topic.size() - root.size() - 8);
+    if (n.find('/') != std::string::npos || n == p.substr(root.size() + 1)) return {};
+    auto it = std::find(mqtt_names_.begin(), mqtt_names_.end(), n);
+    if (payload != "true") { if (it != mqtt_names_.end()) mqtt_names_.erase(it); }
+    else if (it == mqtt_names_.end() && mqtt_names_.size() < LINK_NAMES_MAX) mqtt_names_.push_back(n);
+    return {};
+  }
   if (topic.compare(0, p.size() + 1, p + "/") != 0) return {};
   std::string rest = topic.substr(p.size() + 1);
   auto err = [&](const std::string& m) { return std::vector<MqttMsg>{MqttMsg(p + "/error", m, false)}; };
@@ -1881,17 +1921,62 @@ std::vector<MqttMsg> Controller::mqttOnMessage(const std::string& topic, const s
     serializeJson(out["result"], res);
     return {MqttMsg(p + "/script/result", res, false)};
   }
+  // another board's tell over MQTT (PROTOCOL.md "Board link"): a control or config/now/ payload
+  // {"from", "id", "seq", "group"} is answered on <root>/<from>/link/answer; another group's is not taken
+  JsonDocument tell;
+  bool told = (rest.compare(0, 8, "control/") == 0 || rest.compare(0, 11, "config/now/") == 0) && !payload.empty() &&
+              payload[0] == '{' && !deserializeJson(tell, payload) && tell["from"].is<const char*>() && tell["seq"].is<uint32_t>();
+  if (told && tell["group"].is<const char*>() && settings_.link_group != tell["group"].as<const char*>()) return {};
+  auto answer = [&](bool ok, const std::string& text, std::vector<MqttMsg> v) {
+    if (!told) return v;
+    JsonDocument a;
+    a["from"] = hostLabel(settings_.name, identity_.id);
+    a["id"] = identity_.id;
+    a["seq"] = tell["seq"].as<uint32_t>();
+    a["ok"] = ok;
+    a["message"] = text;
+    std::string body;
+    serializeJson(a, body);
+    v.push_back(MqttMsg(root + "/" + tell["from"].as<std::string>() + "/link/answer", body, false));
+    return v;
+  };
   if (rest.compare(0, 8, "control/") == 0) {
-    // an alias works as its control; errors name the control
-    std::string c = resolveControl(rest.substr(8));
-    // locked: MQTT is read-only, but for a trigger, which has its own gate (remote_trigger_enable)
-    // a script effect that needs remote_trigger_enable has that gate too; one started without it does not
-    bool gated = c == "trigger" || (c.compare(0, 7, "script:") == 0 && !((scriptFreeEffects() >> atoi(c.c_str() + 7)) & 1));
-    if (locked() && !gated && !c.empty()) return err("the page is locked: " + rest.substr(8) + " on the web page with the page password");
-    if (c.empty()) return err("unknown control");
-    Request req;
-    Response r = effectAction(req, c);
-    if (!r.isOk() && c != "restart") return err((c.compare(0, 7, "script:") == 0 ? rest.substr(8) : c) + ": " + r.errorMessage());
+    std::string why;
+    if (told) remote_by_ = tell["from"].as<std::string>();
+    bool ok = remoteControl(rest.substr(8), told, why);
+    remote_by_.clear();
+    if (told && !ok) log(tell["from"].as<std::string>() + " (board link, MQTT): " + why);
+    return answer(ok, ok ? "ok" : why, ok ? std::vector<MqttMsg>{} : err(why));
+  }
+  if (rest.compare(0, 11, "config/now/") == 0) {
+    // a setting used now and not saved (another board's tell, or any tool that wants that)
+    std::string name = rest.substr(11), why;
+    std::string value = payload;
+    if (told) {
+      value.clear();
+      if (tell["value"].is<const char*>()) value = tell["value"].as<std::string>();
+      else if (!tell["value"].isNull()) serializeJson(tell["value"], value);  // a number or true / false
+    }
+    bool ok = remoteSetting(name, value, false, why);
+    std::string who = told ? tell["from"].as<std::string>() : std::string("MQTT");
+    if (ok) log(who + (told ? " (board link, MQTT)" : "") + " set " + name + " = " + value + " (until a restart or a change here; not saved)");
+    else log(who + (told ? " (board link, MQTT)" : "") + ": " + why);
+    if (!ok) return answer(false, why, err(why));
+    Value now;
+    std::vector<MqttMsg> v;
+    const AliasEntry* a = aliasNamed(name);
+    std::string key = a && a->kind == AliasEntry::Kind::Key ? a->target : name;
+    if (settings_.get(key, now)) {
+      if (a && a->kind == AliasEntry::Kind::Key && a->invert && now.type == Value::Type::Bool) now.b = !now.b;
+      if (a && a->kind == AliasEntry::Kind::Key && a->scale && now.type == Value::Type::Int) now.i /= a->scale;
+      v.push_back(MqttMsg(p + "/config/" + name, now.plain(), true));
+    }
+    return answer(true, "ok", v);
+  }
+  if (rest == "link/answer") {
+    JsonDocument a;
+    if (deserializeJson(a, payload) || !a["seq"].is<uint32_t>()) return {};
+    linkAnswer(a["seq"].as<uint32_t>(), a["from"] | "", a["ok"] | false, a["message"] | "");
     return {};
   }
   if (rest.compare(0, 11, "status/get/") == 0) {
@@ -1921,20 +2006,8 @@ std::vector<MqttMsg> Controller::mqttOnMessage(const std::string& topic, const s
     const ParamDesc* d = Settings::find(key);
     if (!d) return err("unknown setting");
     if (set) {
-      Value v;
-      std::string e;
-      if (!d->parsePlain(payload, v, e)) return err(name + ": " + e);
-      if (a) {
-        if (a->invert && v.type == Value::Type::Bool) v.b = !v.b;
-        if (a->scale && v.type == Value::Type::Int) {
-          int64_t lo = aliasMin(d->min, a->scale), hi = aliasMax(d->max, a->scale);
-          if (v.i < lo || v.i > hi) return err(name + ": allows " + std::to_string((long long)lo) + "-" + std::to_string((long long)hi) + (a->unit.empty() ? "" : " " + a->unit));
-          v.i *= a->scale;
-        }
-      }
-      Request req;
-      Response resp = setParams(req, withAlso(a, key, v));
-      if (!resp.isOk()) return err(name + ": " + resp.errorMessage());
+      std::string why;
+      if (!remoteSetting(name, payload, true, why)) return err(why);
     }
     if (d->isSecret()) return {};
     Value now;
@@ -1951,7 +2024,8 @@ std::vector<MqttMsg> Controller::mqttPoll() {
     std::string host;
     uint16_t port = 0;
     bool has = mqttTarget(host, port);
-    if (mqttPrefixNow() != mqtt_.prefix || has != mqtt_.has_target || host != mqtt_.host || port != mqtt_.port) {
+    if (mqttPrefixNow() != mqtt_.prefix || has != mqtt_.has_target || host != mqtt_.host || port != mqtt_.port ||
+        mqttWantsNames() != mqtt_.names || (linkVia() == LinkVia::Mqtt) != mqtt_.answers) {  // (a script that tells all over MQTT came or went: subscribe again)
       // renamed, a new topic_prefix, or another broker: end this session so the client reconnects; nothing more
       // is published on the old connection
       mqtt_.epoch++;
@@ -1961,6 +2035,10 @@ std::vector<MqttMsg> Controller::mqttPoll() {
   }
   std::string p = mqttPrefix();
   std::vector<MqttMsg> v;
+  // the board link: this board's tells
+  for (auto& m : link_mqtt_out_)
+    if (now_ - m.first < LINK_ANSWER_MS) v.push_back(m.second);  // an older one is already "no answer"
+  link_mqtt_out_.clear();
   std::vector<std::string> evs;
   uint32_t seq = events_.since(mqtt_.seq, evs);
   mqtt_.seq = seq;

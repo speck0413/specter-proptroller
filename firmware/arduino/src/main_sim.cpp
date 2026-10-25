@@ -3,7 +3,7 @@
 //
 //   pio run -e sim && .pio/build/sim/program [--port 8080] [--discovery-port 47800] [--id sim1] [--name Name]
 //                                            [--speed 1.0] [--fail-self-check] [--swap-ms 16000]
-//                                            [--mqtt host[:port]]
+//                                            [--mqtt host[:port]] [--link-peers host:port,...]
 //
 // POST /api/v1/update takes simulator images (`tools/ptclient.py image OUT.bin --version 0.2.0`): the board restarts into that version and build, pending, and is
 // valid 30 s later; --fail-self-check makes every new image fail its self-check and roll back. --swap-ms models
@@ -12,6 +12,10 @@
 //
 // --mqtt connects to that broker (the settings mqtt_broker / mqtt_port, as set on the Settings page): the same
 // MQTT session as the ESP32 (state, events, rpc, the will; tools/mqtt_check.py checks it with a broker of its own).
+//
+// --link-peers sends the board link's peer-to-peer frames (tell lines, PROTOCOL.md "Board link") to those UDP
+// addresses instead of a broadcast on the discovery port: two simulated boards on one computer, each with its own
+// --discovery-port, tell each other (tools/link_check.py).
 //
 // Open http://localhost:8080/ : the Live tab's input chips press TRIG1 / TRIG2 / USER1-3.
 //
@@ -119,19 +123,19 @@ static int checkFiles(int argc, char** argv) {
 int main(int argc, char** argv) {
   if (argc > 1 && !strcmp(argv[1], "--check")) return checkFiles(argc, argv);
   int port = 8080, disc = DISCOVERY_PORT;
-  std::string id = "sim0000c0de", name, mqtt;
+  std::string id = "sim0000c0de", name, mqtt, link_peers;
   double speed = 1.0;
   bool fail_self_check = false;
   Millis swap_ms = 0;
   static const char* const USAGE =
       "usage: program [--port 8080] [--discovery-port 47800] [--id sim1] [--name Name] [--speed 1.0]\n"
-      "               [--fail-self-check] [--swap-ms 16000] [--mqtt host[:port]]\n"
+      "               [--fail-self-check] [--swap-ms 16000] [--mqtt host[:port]] [--link-peers host:port,...]\n"
       "A simulated Proptroller: open http://localhost:<port>/ for its phone page.\n"
       "       program --check [--dmx] [--sounds sounds.json] FILE...   (show scripts: FILE:LINE:COL: error: message)\n";
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-h")) { (void)fputs(USAGE, stdout); return 0; }
     if (!strcmp(argv[i], "--fail-self-check")) { fail_self_check = true; continue; }
-    static const char* const WITH_VALUE[] = {"--port", "--discovery-port", "--id", "--name", "--speed", "--mqtt", "--swap-ms"};
+    static const char* const WITH_VALUE[] = {"--port", "--discovery-port", "--id", "--name", "--speed", "--mqtt", "--swap-ms", "--link-peers"};
     bool known = false;
     for (const char* o : WITH_VALUE) known = known || !strcmp(argv[i], o);
     if (!known || i + 1 >= argc) {
@@ -145,6 +149,7 @@ int main(int argc, char** argv) {
     else if (!strcmp(argv[i], "--speed")) speed = strtod(argv[i + 1], nullptr);
     else if (!strcmp(argv[i], "--mqtt")) mqtt = argv[i + 1];
     else if (!strcmp(argv[i], "--swap-ms")) swap_ms = (Millis)strtoull(argv[i + 1], nullptr, 10);
+    else if (!strcmp(argv[i], "--link-peers")) link_peers = argv[i + 1];
     i++;
   }
   Sim sim(id, PROPTROLLER_FW_BUILD, PT_SIM_MAP);  // the real build (the tests' Sim reports "sim")
@@ -185,7 +190,16 @@ int main(int argc, char** argv) {
     Response r = sim.request(s);
     if (!r.isOk()) { (void)fprintf(stderr, "--mqtt: %s\n", r.errorMessage().c_str()); return 1; }
   }
+  std::vector<std::pair<std::string, uint16_t>> peers;
+  for (size_t at = 0; at < link_peers.size();) {
+    size_t end = link_peers.find(',', at);
+    std::string one = link_peers.substr(at, end == std::string::npos ? std::string::npos : end - at);
+    size_t colon = one.rfind(':');
+    if (colon != std::string::npos) peers.push_back({one.substr(0, colon), (uint16_t)strtol(one.c_str() + colon + 1, nullptr, 10)});
+    at = end == std::string::npos ? link_peers.size() : end + 1;
+  }
   std::unique_ptr<PosixNet> net(new PosixNet(sim));
+  net->setLinkPeers(peers);
   if (!net->start((uint16_t)port, (uint16_t)disc)) {
     (void)fprintf(stderr, "cannot open port %d or discovery port %d\n", port, disc);
     return 1;
@@ -211,6 +225,7 @@ int main(int argc, char** argv) {
           (void)fflush(stdout);
           std::this_thread::sleep_for(std::chrono::milliseconds((long long)((double)swap_ms / speed)));
           net.reset(new PosixNet(sim));
+          net->setLinkPeers(peers);
           if (!net->start(bound, (uint16_t)disc)) {
             (void)fprintf(stderr, "cannot open port %u again\n", bound);
             return 1;

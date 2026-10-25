@@ -322,6 +322,7 @@ PT_STEP_CODE void Controller::scriptTick(Millis now) {
   scriptValues();
   std::vector<SoundCommand> snd;
   if (!engine_.isPaused()) script_run_->tick(now, scriptInputs(), snd);  // nothing runs while paused
+  if (script_run_->tellsWaiting()) link_work_.store(true, std::memory_order_relaxed);  // for the network loop (linkTake)
   // an effect that left its first `wait for` started a run
   for (int e = 0; e < script_prog_->effects && e < SCRIPT_MAX_EFFECTS; e++)
     while (script_runs_seen_[e] < script_run_->runs(e)) {

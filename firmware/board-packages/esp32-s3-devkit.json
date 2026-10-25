@@ -1,0 +1,70 @@
+{
+  "board_package": 1,
+  "id": "esp32-s3-devkit",
+  "name": "ESP32-S3 DevKit",
+  "mcu": "esp32-s3",
+  "terminals": {
+    "OUT1": {
+      "pin": 4
+    },
+    "OUT2": {
+      "pin": 5
+    },
+    "OUT3": {
+      "pin": 6
+    },
+    "OUT4": {
+      "pin": 7
+    },
+    "RLY1": {
+      "pin": 15
+    },
+    "RLY2": {
+      "pin": 16
+    },
+    "CC1": {
+      "pin": 17
+    },
+    "CC2": {
+      "pin": 18
+    },
+    "TRIG1": {
+      "pin": 9,
+      "active": "low",
+      "pull": "chip"
+    },
+    "TRIG2": {
+      "pin": 10,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER1": {
+      "pin": 11,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER2": {
+      "pin": 12,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER3": {
+      "pin": 13,
+      "active": "low",
+      "pull": "chip"
+    }
+  },
+  "pixel": {
+    "pin": 8,
+    "inverted": false
+  },
+  "sound": {
+    "tx": 40,
+    "rx": 41
+  },
+  "analog": 1,
+  "expansion": {
+    "S4": 47,
+    "S5": 14
+  }
+}

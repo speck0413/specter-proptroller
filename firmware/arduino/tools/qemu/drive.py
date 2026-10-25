@@ -13,7 +13,7 @@ The flash file is changed in place (LittleFS, the stores): pass a copy. Exit cod
 import argparse, json, os, queue, re, shutil, socket, subprocess, sys, threading, time
 
 FATAL = re.compile(r"Guru Meditation|abort\(\) was called|Stack canary|stack overflow|Task watchdog|"
-                   r"task_wdt|rst:0x[0-9a-f]+ \((?!POWERON|SW_CPU)|CORRUPT HEAP|assert failed")
+                   r"task_wdt|rst:0x[0-9a-f]+ \((?!POWERON|SW_CPU|RTC_SW_CPU)|CORRUPT HEAP|assert failed")
 SHOW = {"id": 9, "name": "QEMU loop", "enabled": True, "looping": False, "cooldown_ms": 0,
         "triggers": [{"on": "every", "period_ms": 1500}],
         "tracks": [{"target": "OUT1", "cues": [{"at": 0, "do": "on"}, {"at": 300, "do": "off"}]},
@@ -50,7 +50,7 @@ class Board:
     def __init__(self, a, log):
         self.a, self.log, self.lines, self.id = a, log, queue.Queue(), 0
         self.all = []  # every line, for the fatal check and the backtraces
-        cmd = [a.qemu, "-machine", "esp32", "-display", "none", "-monitor", "none", "-serial", "stdio",
+        cmd = [a.qemu, "-machine", a.machine, "-display", "none", "-monitor", "none", "-serial", "stdio",
                "-drive", f"file={a.flash},if=mtd,format=raw"]
         if a.icount:
             cmd[1:1] = ["-icount", f"shift={a.icount}"]
@@ -170,7 +170,7 @@ def boot(b, results, label, timeout, fatal_ok=False):
 def run_full(a, b, results):
     """The board's own image: QEMU has no radio, so the Wi-Fi driver faults in the closed PHY code
     (register_chipv7_phy reads a register block QEMU does not map). Everything before it must have worked."""
-    banner = b.wait_for(r"Proptroller \S+ on esp32-devkit", a.boot_timeout)
+    banner = b.wait_for(r"Proptroller \S+ on " + re.escape(a.mcu), a.boot_timeout)
     check(results, "banner (bootloader, app, LittleFS, settings, controller)", banner, banner or "not seen")
     fault = b.wait_for(r"ready after \d+ ms|Guru Meditation", 30)
     time.sleep(1.5)
@@ -192,7 +192,7 @@ def run_smoke(a, b, results):
     mem0 = b.ask_line("mem", r"free heap", 10)
     check(results, "mem after boot", mem0, mem0 or "")
     r = b.call("info")
-    check(results, "info", r and r["ok"] and r["result"].get("mcu") == "esp32-devkit",
+    check(results, "info", r and r["ok"] and r["result"].get("mcu") == a.mcu,
           r and json.dumps(r["result"])[:200])
     check(results, "state", b.uptime() is not None)
     r = b.call("set_params", values=[{"key": "name", "value": "QEMU test"}])
@@ -201,8 +201,14 @@ def run_smoke(a, b, results):
     check(results, "put_show", r and r["ok"], r and json.dumps(r)[:200])
     r = b.call("run", show=9)
     check(results, "run", r and r["ok"], r and json.dumps(r)[:200])
-    r = b.call("state")
-    running = r and any(s.get("id") == 9 and s.get("state") in ("running", "cooldown") for s in r["result"].get("shows", []))
+    # the run starts at the next 10 ms tick: a state request can be answered just before it (seen on the S3)
+    running = False
+    for _ in range(5):
+        r = b.call("state")
+        running = r and any(s.get("id") == 9 and s.get("state") in ("running", "cooldown") for s in r["result"].get("shows", []))
+        if running:
+            break
+        time.sleep(0.2)
     check(results, "the show runs", running)
     r = b.call("set_params", values=[{"key": "dmx_port", "value": "s4"}])  # the largest script uses DMX
     check(results, "set_params dmx_port=s4", r and r["ok"], r and json.dumps(r)[:200])
@@ -608,6 +614,8 @@ def main():
     ap.add_argument("--flash", required=True)
     ap.add_argument("--elf", required=True)
     ap.add_argument("--addr2line", default=shutil.which("xtensa-esp32-elf-addr2line"))
+    ap.add_argument("--machine", default="esp32", help="QEMU machine: esp32, or esp32s3 (the bare S3 image)")
+    ap.add_argument("--mcu", default="esp32-devkit", help="the info.mcu the image reports (esp32-s3 for the S3)")
     ap.add_argument("--icount", default="2", help="instruction count shift (2 = 4 ns per instruction); 0 = off")
     ap.add_argument("--boot-timeout", type=float, default=60, help="wall seconds")
     ap.add_argument("--soak", type=int, default=0, help="emulated seconds of shows and requests after the smoke test")

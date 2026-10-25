@@ -1,0 +1,8 @@
+{
+  "name": "proptroller-bsp-esp32-c3-supermini",
+  "version": "0.1.0",
+  "description": "Board support package for the Proptroller library: an ESP32-C3 SuperMini, every terminal on a plain GPIO (outputs need a driver module)",
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": ["espressif32"]
+}

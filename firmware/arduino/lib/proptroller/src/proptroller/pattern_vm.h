@@ -13,10 +13,16 @@
 #include <vector>
 #include "ws2812.h"
 
-// The player is built for the boards with room for it: the ESP32 and the Pico 2 W (and the host). The Pico W and
-// the plain Pico (RP2040) have no pattern player.
+// The player is built for the boards with room and a core to spare for it: the ESP32 and ESP32-S3 (two cores) and
+// the Pico 2 W (and the host). The Pico W and the plain Pico (RP2040) have no room; the ESP32-C3 has one core, which
+// the 10 ms step and the 1 ms samples share with everything else: no pattern player there either.
+#if defined(ESP32) && __has_include(<sdkconfig.h>)
+#include <sdkconfig.h>
+#endif
 #if !defined(PT_PATTERNS)
 #if defined(ARDUINO_ARCH_RP2040) && !defined(PICO_RP2350)
+#define PT_PATTERNS 0
+#elif defined(ESP32) && (defined(CONFIG_IDF_TARGET_ESP32C3) || defined(CONFIG_FREERTOS_UNICORE))
 #define PT_PATTERNS 0
 #else
 #define PT_PATTERNS 1

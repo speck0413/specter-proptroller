@@ -55,6 +55,9 @@ std::string scriptTableEncode(const ScriptProgram& p) {
     put8(b, (uint8_t)st.op);
     put8(b, st.setting);
   }
+  // format 3: the tell lines' pool
+  put16(b, p.tell_bytes);
+  b.append(p.tell, p.tell_bytes);
   put8(b, p.names);
   for (int k = 0; k < p.names; k++) b.append(p.name[k], NAME_BYTES);
   return b;
@@ -66,13 +69,19 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
   uint8_t effects = b[0];
   uint16_t steps = get16(b + 1);
   if (effects == 0 || effects > SCRIPT_MAX_EFFECTS || steps > SCRIPT_MAX_LINES) return false;
-  size_t at_names = TABLE_HEAD + effects * EFFECT_BYTES + steps * STEP_BYTES;
+  const size_t fixed = TABLE_HEAD + effects * EFFECT_BYTES + steps * STEP_BYTES;
+  if (n < fixed + 2) return false;
+  const uint16_t tell_bytes = get16(b + fixed);
+  if (tell_bytes > SCRIPT_TELL_BYTES) { out.reset(); return false; }
+  size_t at_names = fixed + 2 + tell_bytes;
   if (n < at_names + 1) return false;
   uint8_t names = b[at_names];
-  if (names > SCRIPT_MAX_NAMES || n != at_names + 1 + names * NAME_BYTES) return false;
+  if (names > SCRIPT_MAX_NAMES || n != at_names + 1 + names * NAME_BYTES) { out.reset(); return false; }
+  memcpy(out.tell, b + fixed + 2, tell_bytes);
+  out.tell_bytes = tell_bytes;
   for (int k = 0; k < names; k++) {
     const uint8_t* q = b + at_names + 1 + k * NAME_BYTES;
-    if (q[SCRIPT_MAX_NAME] != 0 || q[0] == 0) return false;
+    if (q[SCRIPT_MAX_NAME] != 0 || q[0] == 0) { out.reset(); return false; }
     memcpy(out.name[k], q, NAME_BYTES);
   }
   out.names = names;
@@ -124,6 +133,12 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
         ok = st.target == (uint16_t)Effect::Kind::Pattern ? st.value < names : st.target < SCRIPT_PIXEL_EFFECT_COUNT && st.ms <= 0xFFFFFF;
         break;
       case ScriptStep::Op::Press: ok = st.value < names; break;
+      case ScriptStep::Op::Tell: {
+        ScriptTell t;
+        ok = st.target <= 1 && scriptTellOf(out, st, t);
+        if (ok && t.board == "all") out.tell_all = true;
+        break;
+      }
     }
     if (!ok || st.ms > SCRIPT_MAX_TIME_MS) { out.reset(); return false; }
   }

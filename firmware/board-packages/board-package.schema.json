@@ -12,7 +12,7 @@
     "board_package": {"const": 1},
     "id": {"type": "string", "pattern": "^[a-z0-9_-]{1,32}$", "not": {"const": "none"}},
     "name": {"type": "string", "minLength": 1, "maxLength": 60},
-    "mcu": {"enum": ["esp32-devkit", "pico"]},
+    "mcu": {"enum": ["esp32-devkit", "pico", "esp32-s3", "esp32-c3"]},
     "base": {"type": "string", "description": "a built-in board's id: its pins (no pin fields beside it)"},
     "terminals": {
       "type": "object",

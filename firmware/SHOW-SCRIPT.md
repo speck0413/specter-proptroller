@@ -341,8 +341,8 @@ effect graveyard:
   the pattern starts afresh, from its first frame. A pattern the board does not have leaves the strip dark and
   says so in the event log, once each time the line runs; the show goes on. The board plays a pattern with a
   budget per frame: one that never finishes a frame (a loop that never ends) is stopped, the strip goes dark and
-  the event log says why, until the line runs again. The Pico W and the plain Pico have no pattern player (the
-  checker says so); `pixel_speed` does not apply (a pattern keeps its own time), `pixel_brightness` does.
+  the event log says why, until the line runs again. The Pico W, the plain Pico and the ESP32-C3 have no pattern
+  player (the checker says so); `pixel_speed` does not apply (a pattern keeps its own time), `pixel_brightness` does.
 
   ```
   effect puzzle:
@@ -365,3 +365,59 @@ effect graveyard:
   the checker also knows their buttons and says which there are. Starting an effect from the phone page, MQTT or
   another board presses its buttons as its input would. `pixels press` lines may come before the first
   `wait for`, as a `pixels` line may.
+
+## 11. Telling other boards (SS-B)
+
+One board's script can start an effect on another board and change its settings, over the Wi-Fi network: with an
+MQTT broker, or straight from board to board without one.
+
+```
+# board "front door"                       # board "porch"
+effect doorbell:                           effect blackout:
+  wait for trig1                             wait for trig1
+  tell porch blackout                        out1 = off
+  audio_single = 1                           pixels = off
+  wait 5                                     wait 1
+  tell porch bright
+  tell all pixel_speed = 150               effect bright:
+  wait 30                                    wait for trig2
+                                             out1 = on
+                                             pixels = warm white
+                                             wait 1
+```
+
+With `remote_free_effects = blackout, bright` on the porch board, the front door's doorbell turns the porch dark,
+then bright again five seconds later, and makes every board of the group run its pixel effects one and a half
+times as fast.
+
+- **SS-B1 `tell <board> <effect>`** starts that effect on that board, exactly as a start by name from the phone,
+  MQTT or the serial console does (SS-R10): the other board's `remote_trigger_enable` and `remote_free_effects`
+  decide, its page lock applies, and its effects take turns as always (a start that finds the effect busy waits,
+  one deep). The board is named by its network name, the one in `<name>.local` (`Front Door` is `front-door`);
+  `all` is every other board of the group. An effect's name is written as in its own script; spaces become `_`
+  (`tell porch porch light` starts `porch light`).
+- **SS-B2 `tell <board> <setting> = <value>`** changes one of that board's settings, as `config/set` over MQTT
+  does, with the same names, aliases and ranges (`on` / `off` for a switch, `50%` for a percentage). The board
+  uses the new value at once and **does not save it**: it lasts until that board restarts or the setting is
+  changed there (a save of the board's own settings writes the value it had before). A board never takes its name,
+  passwords, Wi-Fi, MQTT, board link, page lock, remote trigger settings or built-in effect from another board
+  (the checker refuses those lines), and a page-locked board takes no settings at all.
+- **SS-B3 Never waits.** A tell line hands its message to the network and the next line runs at once; at most 20
+  tells a second go out. The sending board's event log (the phone page's log) says `tell porch blackout: sent
+  (Wi-Fi)`, then, if the other board refuses, why (`tell porch blackout: porch refused: blackout: ...`), or, after
+  2 s without an answer, `tell porch blackout: no answer from porch` (`tell all` says how many boards answered).
+  The receiving board logs who started what (`remote start by front-door: effect "blackout"`) and every setting
+  another board changed.
+- **SS-B4 Checked here, run there.** The checker knows the form of a tell line but not the other board's effects
+  or settings: a name the other board does not have is refused there, and the sender logs it.
+- **SS-B5 How it travels** is the setting `board_link`: `auto` (the default: MQTT when a broker is set, otherwise
+  straight to the other boards), `mqtt`, `wifi` (straight to the boards on the same Wi-Fi network; an ESP32 also
+  sends by ESP-NOW, which needs no router), or `off`. Boards joined to another board's own hotspot do not hear each
+  other this way (every hotspot has the same address, 192.168.4.1), except ESP32 boards by ESP-NOW. A board hears tells
+  over MQTT whenever it has a broker, and straight from other boards unless `board_link` is `mqtt` or `off`.
+  PROTOCOL.md "Board link" has the wire formats.
+- **SS-B6 Groups and the key.** Boards hear tells sent straight to them only from boards with the same
+  `link_group` (empty by default). **Without a key, anyone on the network can tell a board what to do**, as anyone
+  on it can open its page. With `link_key` set (the same on every board of the group; never shown or read back),
+  messages are signed, and a message recorded on the network and sent again is dropped. MQTT has no key: a
+  broker on the show network is as open as the boards' pages.

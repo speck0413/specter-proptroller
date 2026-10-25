@@ -561,7 +561,7 @@ void words_js_matches_the_checker() {
   // every keyword in a script the checker passes
   const char* every = "effect a:\n  pixels = rainbow\n  wait for trig1\n  limit 2 runs per 1 min\n  fade out1 to 50% over 1\n"
                       "  flicker out1 for 1\n  pulse rly1 for 200 ms\n  sleep 1\n  audio_single = 1\n  audio_loop = 2\n"
-                      "  audio_volume = 50%\n  audio_stop\n  out1 = off\n  pixels = pattern ghost\n  pixels press flash\n";
+                      "  audio_volume = 50%\n  audio_stop\n  out1 = off\n  tell porch blackout\n  pixels = pattern ghost\n  pixels press flash\n";
   std::unique_ptr<ScriptProgram> p(new ScriptProgram());
   ScriptBoard b;
   ScriptCheck c = scriptCompile(every, {}, b, *p);
@@ -571,6 +571,86 @@ void words_js_matches_the_checker() {
     if (!strcmp(k, "run")) continue;  // "limit 1 run per ..." (the same line as runs)
     TEST_ASSERT_TRUE_MESSAGE(std::regex_search(low, std::regex(std::string("(^|[^a-z0-9_])") + k + "($|[^a-z0-9_])")), k);
   }
+}
+
+// tell lines (SHOW-SCRIPT.md §11): the form is checked here, the other board's effects and settings are not known
+void tell_lines_go_into_the_pool_and_run_without_waiting() {
+  std::unique_ptr<ScriptProgram> p(new ScriptProgram());
+  ScriptBoard b;
+  const char* text = "effect a:\n  wait for trig1\n  tell Porch Black Out\n  tell all pixel_speed = 150\n"
+                     "  tell front-door title: Hello There\n  wait 1\n";
+  ScriptCheck c = scriptCompile(text, {}, b, *p);
+  TEST_ASSERT_TRUE_MESSAGE(c.ok(), c.ok() ? "" : c.errors[0].text.c_str());
+  TEST_ASSERT_TRUE(p->tell_all);
+  ScriptTell t;
+  TEST_ASSERT_TRUE(scriptTellOf(*p, p->step[1], t));
+  TEST_ASSERT_FALSE(t.set);
+  TEST_ASSERT_EQUAL_STRING("porch", t.board.c_str());
+  TEST_ASSERT_EQUAL_STRING("black_out", t.what.c_str());  // spaces as _, as a remote start takes the name
+  TEST_ASSERT_TRUE(scriptTellOf(*p, p->step[2], t));
+  TEST_ASSERT_TRUE(t.set);
+  TEST_ASSERT_EQUAL_STRING("all", t.board.c_str());
+  TEST_ASSERT_EQUAL_STRING("pixel_speed", t.what.c_str());
+  TEST_ASSERT_EQUAL_STRING("150", t.value.c_str());
+  TEST_ASSERT_TRUE(scriptTellOf(*p, p->step[3], t));
+  TEST_ASSERT_EQUAL_STRING("Hello There", t.value.c_str());  // a value keeps its case
+  // the table round trip keeps the pool
+  std::string enc = scriptTableEncode(*p);
+  std::unique_ptr<ScriptProgram> q(new ScriptProgram());
+  TEST_ASSERT_TRUE(scriptTableDecode((const uint8_t*)enc.data(), enc.size(), *q));
+  TEST_ASSERT_TRUE(scriptTellOf(*q, q->step[3], t));
+  TEST_ASSERT_EQUAL_STRING("front-door", t.board.c_str());
+  TEST_ASSERT_TRUE(q->tell_all);
+  // the runner hands the lines out in order and goes on at once
+  ScriptRunner r;
+  r.load(p.get(), 0);
+  r.setTimes(100, 100, 0);
+  ScriptInputs in;
+  in.closed[0] = false;
+  for (Millis t0 = 0; t0 < 300; t0++) r.sample(t0, in);
+  in.closed[0] = true;
+  in.since[0] = 300;
+  for (Millis t0 = 300; t0 < 420; t0++) r.sample(t0, in);
+  uint16_t s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+  TEST_ASSERT_TRUE(r.takeTell(s0));
+  TEST_ASSERT_TRUE(r.takeTell(s1));
+  TEST_ASSERT_TRUE(r.takeTell(s2));
+  TEST_ASSERT_FALSE(r.takeTell(s3));
+  TEST_ASSERT_EQUAL(1, s0);
+  TEST_ASSERT_EQUAL(2, s1);
+  TEST_ASSERT_EQUAL(3, s2);
+  TEST_ASSERT_EQUAL(6, r.line(0));  // on the wait 1 already
+}
+
+void tell_line_errors() {
+  std::unique_ptr<ScriptProgram> p(new ScriptProgram());
+  ScriptBoard b;
+  auto first = [&](const std::string& line) {
+    ScriptCheck c = scriptCompile("effect a:\n  wait for trig1\n  " + line + "\n", {}, b, *p);
+    return c.errors.empty() ? std::string() : c.errors[0].text;
+  };
+  TEST_ASSERT_EQUAL_STRING("line 3: write it as \"tell porch blackout\" (a board's name, then one of its effects) or \"tell porch pixel_speed = 150\" (a setting).", first("tell porch").c_str());
+  TEST_ASSERT_EQUAL_STRING("line 3: \"porch_2\" is not a board's name. Use the name the board has on the network (letters, digits and -, as in porch.local), or all.", first("tell porch_2 blackout").c_str());
+  TEST_ASSERT_EQUAL_STRING("line 3: wifi_pass cannot be changed by another board: its name, passwords, Wi-Fi, MQTT, board link, page lock, remote trigger and built-in effect stay with the board.", first("tell porch wifi_pass = x").c_str());
+  TEST_ASSERT_EQUAL_STRING("line 3: \"pixel speed\" is not a setting's name. A setting is one word of letters, digits and _, for example pixel_speed.", first("tell porch pixel speed = 3").c_str());
+  TEST_ASSERT_EQUAL_STRING("line 3: say the value, for example \"tell porch pixel_speed = 150\".", first("tell porch pixel_speed =").c_str());
+  TEST_ASSERT_EQUAL_STRING("", first("tell all blackout").c_str());
+  // a tell line first in an effect is not a wait for
+  ScriptCheck c = scriptCompile("effect a:\n  tell porch blackout\n", {}, b, *p);
+  TEST_ASSERT_EQUAL_STRING("line 1: effect \"a\" must start with \"wait for\", for example \"wait for trig1\".", c.errors[0].text.c_str());
+  // the pool's limit
+  std::string big = "effect a:\n  wait for trig1\n";
+  for (int i = 0; i < 20; i++) big += "  tell porch-number-" + std::to_string(i) + " an_effect_with_a_long_name_x\n";
+  c = scriptCompile(big, {}, b, *p);
+  TEST_ASSERT_FALSE(c.ok());
+  TEST_ASSERT_EQUAL_STRING("the tell lines hold more than 512 characters of board names, effects, settings and values in all.",
+                           c.errors[0].text.substr(c.errors[0].text.find(": ") + 2).c_str());
+  TEST_ASSERT_EQUAL(0, p->tell_bytes);  // a refused script leaves no pool
+  // a terminal cannot be named tell
+  ScriptBoard n;
+  n.names.push_back({0, "tell"});
+  c = scriptCompile("effect a:\n  wait for trig1\n  tell = on\n", {}, n, *p);
+  TEST_ASSERT_FALSE(c.ok());
 }
 
 int main() {
@@ -599,5 +679,7 @@ int main() {
   RUN_TEST(names_that_cannot_be_used_are_said_plainly);
   RUN_TEST(names_change_the_stored_table_key);
   RUN_TEST(words_js_matches_the_checker);
+  RUN_TEST(tell_lines_go_into_the_pool_and_run_without_waiting);
+  RUN_TEST(tell_line_errors);
   return UNITY_END();
 }

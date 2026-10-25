@@ -1,0 +1,8 @@
+{
+  "name": "proptroller-bsp-esp32-devkit-bare",
+  "version": "0.1.0",
+  "description": "Board support package for the Proptroller library: a bare ESP32 30-pin DevKit (ESP32-WROOM-32), every terminal on a plain GPIO (outputs need a driver module)",
+  "license": "MIT",
+  "frameworks": "arduino",
+  "platforms": ["espressif32"]
+}

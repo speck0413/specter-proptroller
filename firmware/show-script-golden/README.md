@@ -46,7 +46,7 @@ exactly (byte for byte).
    is `wait 3`, `wait 0.4.` is `wait 0.4`; the `.` inside `0.4` stays).
 4. Blank lines (after the above) are ignored.
 5. Everything is lower case except the value of an `audio_single` / `audio_loop` line (a file name keeps its
-   case). Spaces between words do not matter: `out1=on`, `out1 = on`, `OUT1 =ON` are the same line.
+   case) and the value of a `tell` line's setting. Spaces between words do not matter: `out1=on`, `out1 = on`, `OUT1 =ON` are the same line.
 6. A header with an error still starts an effect, so the lines under it are checked as its lines. A line with
    an error still counts as its kind (a `wait for trig7` first line gives M-input, not also M-first), but it
    adds no step: W-stillon and W-twosound look only at lines without errors.
@@ -68,6 +68,7 @@ exactly (byte for byte).
 | `pulse <target> for <time>` | SS-G5: targets `out1`-`out4`, `rly1`, `rly2`, `cc1`, `cc2`; the time a time or a time setting |
 | `audio_loop = off` / `false` / `""` | SS-R7: the background loop off (the step `audio_loop_off`); a bare `audio_loop =` is still M-nosound |
 | `pixels = <effect> [<colour>]` / `pixels = <colour>` | SS-X: `=` or `:`. Effects `off`, `fill`, `chase`, `rainbow`, `flash`, `fade`, `flicker`, `comet`, `sparkle`, `breathe`, `fire`; colours `red` (#ff0000), `orange` (#ff6000), `yellow` (#ffc000), `green` (#00ff00), `cyan` (#00ffff), `blue` (#0000ff), `purple` (#8000ff), `pink` (#ff40a0), `white` (#ffffff), `warm white` (#ffa040), or `0x` and six hex digits. Words compared lower case with runs of spaces made one. A colour alone is `fill` in that colour; an effect that takes a colour and has none is white; `off`, `rainbow` and `fire` take none. The step `{ "line", "op": "pixels", "effect", "color" }` (`"color"` as `"#rrggbb"`, only for an effect that takes one). A pixels line may come before the first `wait for`, as a sound line may |
+| `tell <board> <effect>` / `tell <board> <setting> = <value>` | SS-B (SHOW-SCRIPT.md §11): checked before the other lines (a tell line may hold `=` or `wait`). `<board>` is the first word after `tell` (up to a space, `=` or `:`): `all`, or a network name of 1-40 letters, digits and `-`, not starting or ending with `-`, not `broadcast`. The rest is a setting when it holds `=` or `:` (the first one splits), else an effect's name: lower case, runs of spaces made one `_` (as a remote start takes it), at most 32 characters, no `/` or `+`. A setting's name is `[a-z][a-z0-9_]*`, at most 32 characters, not one a board never takes from another (`name`, `page_lock`, `pin`, `wifi_ssid`, `wifi_pass`, `ap_pass`, `mqtt_broker`, `mqtt_port`, `board_link`, `link_group`, `link_key`, `remote_trigger_enable`, `remote_free_effects`, `effect`); its value is as written (case kept, surrounding `'` or `"` removed), 1-64 characters. The other board's effects and settings are not checked. The step `{ "line", "op": "tell", "board", "effect" }` or `{ "line", "op": "tell", "board", "setting", "value" }`. Not a sound line: a tell line first in an effect is M-first |
 | `pixels = pattern <name>` | SS-X7: a stored LED pattern. The name is the rest of the value, lower case with runs of spaces made one: 1-32 letters, digits, spaces and `- _ ( )` (else M-patname; none: M-patempty). Whether the board has it is not checked (a missing one is told when the line runs). The step `{ "line", "op": "pixels", "effect": "pattern", "pattern" }` |
 | `pixels press <button>` | SS-X8: presses a trigger button of the pattern the strip shows. No `=` (`pixels = press x` is M-presseq). The button's name follows the pattern name's rules (M-pressname; none: M-pressform); `pixels`, `press` and the name compared lower case with runs of spaces made one. May come before the first `wait for`, as a `pixels` line may. When the checker's board has every pattern the script's `pixels = pattern` lines name, a button none of them has is M-nobutton (one pattern; M-nobuttons when it has none) or M-nobuttonany (several), on a press line with no other error; the golden board stores no patterns. The step `{ "line", "op": "pixels_press", "button" }` |
 | sound lines before the first `wait for` | SS-R1: `audio_single`, `audio_loop`, `audio_volume`, `audio_stop` (and `pixels`) may come first; M-first applies to the first other line |
@@ -136,6 +137,7 @@ exactly (byte for byte).
 | M-nobutton | `line {n}: pattern "{p}" has no button "{b}". Its buttons are {list}.` (`{list}` the stored pattern's trigger buttons, lower case: `a, b and c`) |
 | M-nobuttons | `line {n}: pattern "{p}" has no buttons to press (a button is an export function trigger... in the pattern).` |
 | M-nobuttonany | `line {n}: no pattern this script shows has a button "{b}".` |
+| M-noplayer | `line {n}: this board has no pattern player (an ESP32, an ESP32-S3 or a Pico 2 W has one; the Pico W, the Pico and the ESP32-C3 do not).` (any `pixels = pattern` or `pixels press` line, first, on a board without the player; the golden board has one) |
 | M-dmxoff | `line {n}: {x} needs the DMX add-on, and it is not turned on. Turn it on with the setting dmx_port = s4.` |
 | M-role | `line {n}: {x} is set to {role} ({x}_role). Set {x}_role to shows to use it in a script.` with `{role}` = `pulse on every trigger` (trigger_repeat), `pulse when a sound starts` (sound_trigger) or `not used` (none) |
 | M-owned | `line {n}: {x} belongs to the built-in pulse-and-recover effect. Turn the effect off (setting effect = none) or use another terminal.` |
@@ -157,6 +159,20 @@ exactly (byte for byte).
 | M-pulseshort | `line {n}: {x} is a relay or a contact: pulse it for at least 0.1 s.` (a literal time under 100 ms; a setting is held to 100 ms when it runs) |
 
 A pulse line then has the target checks of any line that changes a target (M-dmxoff, M-role, M-owned, M-lamp). For M-relayfast a pulse leaves its relay or contact off with no time since its last change.
+
+`tell` (SS-B) has its own messages, checked in this order on its line (`{w}` the word as written in lower case;
+for M-tellboard as written):
+
+| Id | Message |
+|---|---|
+| M-tellform | `line {n}: write it as "tell porch blackout" (a board's name, then one of its effects) or "tell porch pixel_speed = 150" (a setting).` (`tell` alone, a board and nothing after it, a `=` or `:` in the board's word, or an empty setting name) |
+| M-tellboard | `line {n}: "{w}" is not a board's name. Use the name the board has on the network (letters, digits and -, as in porch.local), or all.` |
+| M-tellname | `line {n}: "{w}" cannot be sent as an effect's name: it has at most 32 characters, and no / or +.` (`{w}` with runs of spaces made one) |
+| M-tellkey | `line {n}: "{w}" is not a setting's name. A setting is one word of letters, digits and _, for example pixel_speed.` |
+| M-tellrefused | `line {n}: {w} cannot be changed by another board: its name, passwords, Wi-Fi, MQTT, board link, page lock, remote trigger and built-in effect stay with the board.` |
+| M-tellvalue | `line {n}: say the value, for example "tell porch pixel_speed = 150".` |
+| M-telllong | `line {n}: the value is longer than 64 characters.` |
+| M-tellspace | `line {n}: the tell lines hold more than 512 characters of board names, effects, settings and values in all.` (each line counts its board, its effect or setting, its value and 2; the first line past the limit, and every one after it that does not fit) |
 
 Then, per effect, on its header line: **M-empty** `line {n}: effect "{name}" has no lines.`, **M-first**
 `line {n}: effect "{name}" must start with "wait for", for example "wait for trig1".`, **M-effectlines**
@@ -199,7 +215,7 @@ spaces made one. Where a target or an input is read and the word is not a termin
 the names of the outputs (for a target) or of the inputs (for `wait for`) are looked up. A name is usable when
 it is one word, `[a-z][a-z0-9_]*`, not a terminal's own name, and not `effect…`, `wait…`, `sleep` /
 `sleep<digit>…`, `fade`, `flicker`, `pulse`, `limit`, `takes`, `audio_single`, `audio_loop`, `audio_stop`, `on`,
-`off`, `to`, `over`, `for`, `turn`, `play`, `pixel` or `pixels`. The step table always holds the terminal. `{x}` in M-learn, M-onoff,
+`off`, `to`, `over`, `for`, `turn`, `play`, `pixel`, `pixels` or `tell`. The step table always holds the terminal. `{x}` in M-learn, M-onoff,
 M-nofade, M-noflicker, M-nopulse, M-pulseshort, M-dmxoff, M-role, M-owned, M-lamp, M-relayfast and
 W-stillon becomes `{name} ({terminal})`
 when the line (for M-relayfast and W-stillon: the effect's first line that used one) gave a name; `{x}_role`
@@ -234,8 +250,9 @@ Keys in this order; targets `OUT1`-`OUT4`, `RLY1`, `RLY2`, `CC1`, `CC2`, `DMX1`-
 
 The added lines add, only where an effect has them: after `"line"`,
 `"limit": {"runs": N or "<setting>", "ms": T or "<setting>"}`; the step `{ "line", "op": "audio_loop_off" }`; the step `{ "line", "op": "pulse", "target", "ms" }`; and
-the step `{ "line", "op": "audio_volume", "volume" }`; the step `{ "line", "op": "pixels", "effect", "color" }`; the
-step `{ "line", "op": "pixels", "effect": "pattern", "pattern" }`; the step `{ "line", "op": "pixels_press", "button" }`; and
+the step `{ "line", "op": "audio_volume", "volume" }`; the step `{ "line", "op": "pixels", "effect", "color" }`; the step
+`{ "line", "op": "tell", "board", "effect" }` or `{ "line", "op": "tell", "board", "setting", "value" }`; the step
+`{ "line", "op": "pixels", "effect": "pattern", "pattern" }`; the step `{ "line", "op": "pixels_press", "button" }`; and
 on a `sleep` or a `pulse` whose time is a setting, `"setting": "<name>"` instead of `"ms"`.
 
 ## Running (what the traces check)

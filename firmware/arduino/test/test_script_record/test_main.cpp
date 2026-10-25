@@ -258,6 +258,8 @@ void the_worst_case_fits_the_store() {
            rec.size(), SCRIPT_STORE_CAPACITY, text.size(), SCRIPT_MAX_SOUNDS - 1, sounds.size(), scriptTableEncode(*p).size());
   TEST_MESSAGE(m);
   TEST_ASSERT_TRUE(rec.size() <= SCRIPT_STORE_CAPACITY);
+  // and with a full tell pool on top (the largest script has no tell lines; a pool holds at most SCRIPT_TELL_BYTES)
+  TEST_ASSERT_TRUE(rec.size() + SCRIPT_TELL_BYTES <= SCRIPT_STORE_CAPACITY);
   // longer names: too big for the store; the board says so and the stored script stays
   JsonDocument big;
   for (int i = 0; i < SCRIPT_MAX_SOUNDS - 1; i++) big[randomName(r, 120)] = 1 + i % SCRIPT_MAX_TRACK;
@@ -374,6 +376,16 @@ void a_table_format_2_record_is_checked_again() {
   TEST_ASSERT_FALSE(r.has_table);
 }
 
+// A record stored with table format 3 (the tell pool, before pattern and button names): checked again too.
+void a_table_format_3_record_is_checked_again() {
+  std::string rec = readFile(FIX + "records/script-record-table3.bin");
+  std::unique_ptr<ScriptProgram> q(new ScriptProgram());
+  ScriptRecordRead r = scriptRecordDecode(rec, *q);
+  TEST_ASSERT_EQUAL((int)ScriptRecordKind::Current, (int)r.kind);
+  TEST_ASSERT_EQUAL_STRING(storedDoorbell().c_str(), r.text.c_str());
+  TEST_ASSERT_FALSE(r.has_table);
+}
+
 // The committed record (FIXTURE_WRITE=1 writes it again) reads back byte for byte, and runs on a board.
 void the_record_fixture_reads_back() {
   const std::string f2 = FIX + "records/script-record.bin";
@@ -415,5 +427,6 @@ int main() {
   RUN_TEST(the_record_fixture_reads_back);
   RUN_TEST(a_table_format_1_record_is_checked_again);
   RUN_TEST(a_table_format_2_record_is_checked_again);
+  RUN_TEST(a_table_format_3_record_is_checked_again);
   return UNITY_END();
 }

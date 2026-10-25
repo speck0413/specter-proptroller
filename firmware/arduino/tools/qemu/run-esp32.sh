@@ -7,6 +7,8 @@
 #   tools/qemu/run-esp32.sh --net        the network build (env esp32dev_qemu_eth, tools/qemu/eth): discovery,
 #                                        conformance, an update over HTTP, MQTT, show-first under stalled clients
 #   tools/qemu/run-esp32.sh --serve      the network build, kept up on http://127.0.0.1:18080/ for 10 minutes
+#   tools/qemu/run-esp32.sh --s3         the bare ESP32-S3 image without Wi-Fi (env esp32s3_qemu) on QEMU's esp32s3
+#                                        machine: the serial smoke test (BARE-DEVKIT.md; the C3 has no QEMU here)
 #
 # Stage 1 boots the board's own image (env esp32dev) up to the Wi-Fi start, where QEMU's missing radio ends it.
 # Stage 2 boots the same firmware without Wi-Fi (env esp32dev_qemu) and runs the serial smoke test.
@@ -46,6 +48,18 @@ merge() {
 }
 
 DRIVE=("$PY" tools/qemu/drive.py --qemu "$QEMU" --addr2line "$ADDR2LINE")
+if [ "${1:-}" = "--s3" ]; then
+  shift
+  "$PIO" run -e esp32s3_qemu
+  S=.pio/build/esp32s3_qemu
+  # the S3's bootloader sits at 0x0 (FLASH-MAP.md)
+  "$PY" "$ESPTOOL" --chip esp32s3 merge_bin --fill-flash-size 4MB --flash_mode dio --flash_freq 80m --flash_size 4MB \
+    -o "$S/qemu-flash.bin" 0x0 "$S/bootloader.bin" 0x8000 "$S/partitions.bin" 0xe000 "$BOOT_APP0" \
+    0x10000 "$S/firmware.bin" >/dev/null
+  exec "$PY" tools/qemu/drive.py --qemu "$QEMU" --machine esp32s3 --mcu esp32-s3 \
+    --addr2line "$PIO_HOME/packages/toolchain-xtensa-esp32s3/bin/xtensa-esp32s3-elf-addr2line" smoke \
+    --flash "$S/qemu-flash.bin" --elf "$S/firmware.elf" --log "$S/qemu-serial.log" "$@"
+fi
 if [ "${1:-}" = "--net" ] || [ "${1:-}" = "--serve" ]; then
   mode=${1#--}
   shift

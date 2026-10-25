@@ -38,6 +38,17 @@ First flash (USB): `pio run -e esp32dev -t upload` writes the arduino-esp32 core
 nvs and LittleFS keep what they hold. The checksums are those of the packages pinned in `platformio.ini`; a
 platform update that changes them updates this table.
 
+## Bare devkits: ESP32, ESP32-S3, ESP32-C3 (4 MB)
+
+The bare-devkit images ([BARE-DEVKIT.md](BARE-DEVKIT.md); envs `esp32dev_generic`, `esp32s3_generic`,
+`esp32c3_supermini`) use the same `esp32-4mb.csv`: the same slots, LittleFS and stores, so updates, rollback and
+the records work as on the ESP32 DevKit. They are built for 4 MB and run on boards with more flash (the rest is
+unused). The bootloader sits at **0x1000 on the classic ESP32** and at **0x0 on the S3 and the C3**; the partition
+table (0x8000), otadata (0xE000) and the app (0x10000) are where they are on the ESP32. Flash mode: the bare ESP32
+image is the esp32dev one's QIO 80 MHz; the S3 and C3 images run at DIO 80 MHz (bootloader and app), which every
+quad flash chip on these boards supports. The first-flash files keep the bootloader's own mode and speed
+(`release.py`, `--flash_mode keep --flash_freq keep`).
+
 ## Raspberry Pi Pico W and Pico 2 W: behind the Pico bootloader
 
 Our bootloader (`firmware/arduino/PICO-BOOTLOADER.md`) keeps the previous image: an update goes to the dfu slot,
@@ -90,7 +101,7 @@ Records (LittleFS, each an A/B file pair with a sequence number and CRC):
 * `/script-a.bin` / `/script-b.bin`: the show script (`SCRIPT_RECORD_VERSION`, `script_record.h`): a 24-byte
   header ("PTSR", the format, the step table's format and key, the lengths), the text and its sound list
   compressed together (`lz.h`; `get_script` and backups get the exact text back), then the checked step table
-  (table format 2, at most about 3 KB). Power-on runs the stored table while its key matches (table format, firmware version
+  (table format 3, at most about 3.5 KB). Power-on runs the stored table while its key matches (table format, firmware version
   and build, the settings the checker reads, the sound list); otherwise the text is checked again and the record
   rewritten. The worst case (8 KB of incompressible text, the largest table, 254 random 32-character sound
   names) takes 22.2 KB of the 24 KB store; a longer sound list does not fit and `set_script` says so, keeping
@@ -105,7 +116,7 @@ Records (LittleFS, each an A/B file pair with a sequence number and CRC):
   `firmware/arduino/test/fixtures/records/board-record.bin` (the whole file, A/B frame included) with its package
   `board-record.json` (`test_board_package`).
 
-* `/patterns-a.bin` / `/patterns-b.bin` (boards with the LED pattern player: the ESP32 and the Pico 2 W): the stored
+* `/patterns-a.bin` / `/patterns-b.bin` (boards with the LED pattern player: the ESP32, the ESP32-S3 and the Pico 2 W): the stored
   LED patterns (`pattern_store.h`, `PATTERN_RECORD_VERSION`): a 12-byte header ("PTPN", the format, the body's
   unpacked length), then each pattern's name, program bytes and control values packed together (`lz.h`). At most
   8 patterns, 24 KB of programs unpacked and 8,192 bytes packed (`PATTERN_STORE_CAPACITY`: two 4 KB blocks a

@@ -26,6 +26,12 @@ class LockedApp : public NetApp {
   NetConfig netConfig() override { G g(l_); return a_.netConfig(); }
   std::vector<std::string> takeCuesOut() override { G g(l_); return a_.takeCuesOut(); }
   void cueIn(const std::string& c) override { G g(l_); a_.cueIn(c); }
+  uint32_t linkEpoch() override { return a_.linkEpoch(); }  // atomics: no lock
+  bool linkWork() override { return a_.linkWork(); }
+  bool linkConfig(LinkConfig& c) override { G g(l_); return a_.linkConfig(c); }
+  std::vector<LinkOut> linkTake() override { G g(l_); return a_.linkTake(); }
+  LinkReply linkIn(const LinkIn& in) override { G g(l_); return a_.linkIn(in); }
+  void linkAnswer(uint32_t s, const std::string& f, bool ok, const std::string& t) override { G g(l_); a_.linkAnswer(s, f, ok, t); }
   void wifiScanReady(bool now) override { G g(l_); a_.wifiScanReady(now); }
   bool wifiScanWanted() override { G g(l_); return a_.wifiScanWanted(); }
   void wifiScanDone(const std::vector<WifiNetwork>& f, bool ok) override { G g(l_); a_.wifiScanDone(f, ok); }

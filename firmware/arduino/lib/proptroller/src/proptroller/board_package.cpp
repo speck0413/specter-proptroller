@@ -6,7 +6,22 @@
 
 namespace pt {
 
-const char* mcuFamily(Mcu m) { return m == Mcu::Pico ? "pico" : "esp32-devkit"; }
+const char* mcuFamily(Mcu m) {
+  switch (m) {
+    case Mcu::Esp32DevKit: return "esp32-devkit";
+    case Mcu::Pico: return "pico";
+    case Mcu::Esp32S3: return "esp32-s3";
+    case Mcu::Esp32C3: return "esp32-c3";
+  }
+  return "esp32-devkit";
+}
+
+static bool mcuFromFamily(const std::string& s, Mcu& out) {
+  const Mcu all[] = {Mcu::Esp32DevKit, Mcu::Pico, Mcu::Esp32S3, Mcu::Esp32C3};
+  for (Mcu m : all)
+    if (s == mcuFamily(m)) { out = m; return true; }
+  return false;
+}
 
 const char* boardSourceName(BoardSource s) {
   switch (s) {
@@ -25,16 +40,38 @@ static const PinMap RELAY4_BUTTON = {Mcu::Esp32DevKit, {23, 22, 21, 19}, {NO_PIN
                                      {NO_PIN, NO_PIN, NO_PIN}, NO_PIN, NO_PIN, NO_PIN, NO_PIN, NO_PIN, 39,
                                      {NO_PIN, NO_PIN}, 2, 0x02, 0x03};
 static const char* const PROPTROLLER_NAME = "Spectre Proptroller board";
+// The bare devkits (pins.h, firmware/BARE-DEVKIT.md): plain 3.3 V outputs, PIXEL not inverted. The same ids,
+// names and maps as bsp/<id>/proptroller_board.h (test/test_bsp_generic).
+static const BuiltinBoard BARE_DEVKITS[] = {
+    {"esp32-devkit-bare", "ESP32 DevKit, bare (no Proptroller board)", ESP32_DEVKIT_BARE, false},
+    {"esp32-s3-devkit", "ESP32-S3 DevKit", ESP32S3_DEVKIT, false},
+    {"esp32-c3-supermini", "ESP32-C3 SuperMini", ESP32C3_SUPERMINI, false},
+};
+
+const BuiltinBoard* bareDevkit(Mcu m) {
+  for (auto& b : BARE_DEVKITS)
+    if (b.map.mcu == m) return &b;
+  return nullptr;
+}
 
 std::vector<BuiltinBoard> builtinBoards(const ChipRules& chip, const BuiltinBoard* image_default) {
   std::vector<BuiltinBoard> v;
-  if (chip.mcu == Mcu::Esp32DevKit) {
-    v.push_back({"proptroller", PROPTROLLER_NAME, ESP32_DEVKIT, true});
-    v.push_back({"relay4-button", "Four relays and a button (example)", RELAY4_BUTTON, false});
-  } else {
-    PinMap p = PICO;
-    if (chip.radio) p.status_led = STATUS_LED_BUILTIN;  // the Pico W's LED is on the radio chip
-    v.push_back({"proptroller", PROPTROLLER_NAME, p, true});
+  switch (chip.mcu) {
+    case Mcu::Esp32DevKit:
+      v.push_back({"proptroller", PROPTROLLER_NAME, ESP32_DEVKIT, true});
+      v.push_back({"relay4-button", "Four relays and a button (example)", RELAY4_BUTTON, false});
+      break;
+    case Mcu::Pico: {
+      PinMap p = PICO;
+      if (chip.radio) p.status_led = STATUS_LED_BUILTIN;  // the Pico W's LED is on the radio chip
+      v.push_back({"proptroller", PROPTROLLER_NAME, p, true});
+      break;
+    }
+    // no Proptroller board takes an S3 or a C3: their devkit is the default
+    case Mcu::Esp32S3:
+    case Mcu::Esp32C3:
+      v.push_back(*bareDevkit(chip.mcu));
+      break;
   }
   if (image_default && image_default->map.mcu == chip.mcu) {
     for (size_t i = 0; i < v.size(); i++)
@@ -103,6 +140,27 @@ static const uint8_t PICO_RADIO[] = {23, 24, 25, 29};
 static const uint8_t PICO_BOARD_USE[] = {23, 24, 29};  // the plain Pico: power-supply mode, VBUS sense, VSYS sense
 static const uint8_t PICO_LED = 25;                    // the plain Pico's LED
 static const uint8_t PICO_ADC[] = {26, 27, 28};
+// ESP32-S3 (ESP32-S3-WROOM-1 / -2 modules, as on the DevKitC-1). GPIO 22-25 do not exist; 26-32 are the module's
+// flash and PSRAM; 33-37 are its octal flash / PSRAM on the N8R8, N16R8 ... modules (the common devkits: refused on
+// every S3, as the image cannot tell); 19 / 20 the USB port; 43 / 44 the USB serial port (UART0); 45 sets the
+// flash voltage at power-on; 0, 3, 45, 46 are read at power-on.
+static const uint8_t S3_LAST_GPIO = 48;
+static const uint8_t S3_ABSENT[] = {22, 23, 24, 25};
+static const uint8_t S3_FLASH[] = {26, 27, 28, 29, 30, 31, 32};
+static const uint8_t S3_OCTAL[] = {33, 34, 35, 36, 37};
+static const uint8_t S3_USB[] = {19, 20};
+static const uint8_t S3_USB_SERIAL[] = {43, 44};
+static const uint8_t S3_FLASH_VOLTAGE = 45;
+static const uint8_t S3_STRAPPING[] = {0, 3, 45, 46};
+static const uint8_t S3_ADC1[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+// ESP32-C3 (the SuperMini and other C3 boards). GPIO 0-21; 12-17 are the flash; 18 / 19 the USB port; 2, 8, 9 are
+// read at power-on (9 is the BOOT button); 20 / 21 are UART0, where the chip prints its boot messages.
+static const uint8_t C3_LAST_GPIO = 21;
+static const uint8_t C3_FLASH[] = {12, 13, 14, 15, 16, 17};
+static const uint8_t C3_USB[] = {18, 19};
+static const uint8_t C3_STRAPPING[] = {2, 8, 9};
+static const uint8_t C3_BOOT_UART[] = {20, 21};
+static const uint8_t C3_ADC1[] = {0, 1, 2, 3, 4};
 
 template <size_t N>
 static bool in(const uint8_t (&set)[N], uint8_t p) {
@@ -117,6 +175,28 @@ static bool pinOk(const PinUse& u, const ChipRules& c, std::vector<std::string>&
   const uint8_t p = u.pin;
   const std::string g = gpio(c, p), who = std::string(u.name) + ": ";
   if (u.use == Use::Led && p == STATUS_LED_BUILTIN) return true;
+  const std::string power_on = std::string(u.name) + ": " + g + " is read at power-on (a boot-strapping pin): what is wired to it must not pull it the wrong way while the board starts";
+  if (c.mcu == Mcu::Esp32S3) {
+    if (p > S3_LAST_GPIO || in(S3_ABSENT, p)) { why = who + "the ESP32-S3 has no " + g; return false; }
+    if (in(S3_FLASH, p)) { why = who + g + " is wired to the module's flash memory: use another GPIO"; return false; }
+    if (in(S3_OCTAL, p)) { why = who + g + " is used by the flash or PSRAM on most ESP32-S3 modules (octal PSRAM): use another GPIO"; return false; }
+    if (in(S3_USB, p)) { why = who + g + " is the USB port's data line: use another GPIO"; return false; }
+    if (in(S3_USB_SERIAL, p)) { why = who + g + " is the USB serial port: use another GPIO"; return false; }
+    if (p == S3_FLASH_VOLTAGE && drives(u.use)) { why = who + g + " sets the flash voltage at power-on: an output there can stop the board from starting"; return false; }
+    if (u.use == Use::Analog && !in(S3_ADC1, p)) { why = who + g + " cannot read analog while Wi-Fi runs: use GPIO 1-10"; return false; }
+    if (in(S3_STRAPPING, p)) warnings.push_back(power_on);
+    return true;
+  }
+  if (c.mcu == Mcu::Esp32C3) {
+    if (p > C3_LAST_GPIO) { why = who + "the ESP32-C3 has no " + g; return false; }
+    if (in(C3_FLASH, p)) { why = who + g + " is wired to the flash memory: use another GPIO"; return false; }
+    if (in(C3_USB, p)) { why = who + g + " is the USB port's data line: use another GPIO"; return false; }
+    if (u.use == Use::Analog && !in(C3_ADC1, p)) { why = who + g + " cannot read analog while Wi-Fi runs: use GPIO 0-4"; return false; }
+    if (in(C3_STRAPPING, p)) warnings.push_back(power_on);
+    if (in(C3_BOOT_UART, p) && drives(u.use))
+      warnings.push_back(std::string(u.name) + ": " + g + " carries the chip's boot messages while it starts: an output there flickers for a moment at power-on");
+    return true;
+  }
   if (c.mcu == Mcu::Esp32DevKit) {
     if (p > ESP32_LAST_GPIO || in(ESP32_ABSENT, p)) { why = who + "the ESP32 has no " + g; return false; }
     if (in(ESP32_FLASH, p)) { why = who + g + " is wired to the module's flash memory: use another GPIO"; return false; }
@@ -129,8 +209,7 @@ static bool pinOk(const PinUse& u, const ChipRules& c, std::vector<std::string>&
     }
     if (u.use == Use::Analog && !in(ESP32_ADC1, p)) { why = who + g + " cannot read analog while Wi-Fi runs: use GPIO 32-39"; return false; }
     if (p == ESP32_FLASH_VOLTAGE && drives(u.use)) { why = who + g + " sets the flash voltage at power-on: an output there can stop the board from starting"; return false; }
-    if (in(ESP32_STRAPPING, p))
-      warnings.push_back(std::string(u.name) + ": " + g + " is read at power-on (a boot-strapping pin): what is wired to it must not pull it the wrong way while the board starts");
+    if (in(ESP32_STRAPPING, p)) warnings.push_back(power_on);
     return true;
   }
   if (p > PICO_LAST_GPIO) { why = who + "the Pico has no " + g; return false; }
@@ -143,6 +222,10 @@ static bool pinOk(const PinUse& u, const ChipRules& c, std::vector<std::string>&
 
 bool checkPinMap(const PinMap& m, const ChipRules& chip, std::vector<std::string>& warnings, std::string& why) {
   if (m.mcu != chip.mcu) { why = std::string("this pin map is for the ") + mcuFamily(m.mcu) + " socket; this board has the " + mcuFamily(chip.mcu); return false; }
+  if (!c3UartsOk(m)) {
+    why = "expansion S4: the ESP32-C3 has one serial port for the sound player and the DMX port on S4: leave out one of them";
+    return false;
+  }
   std::vector<PinUse> u = uses(m);
   for (size_t i = 0; i < u.size(); i++) {
     if (u[i].pin == NO_PIN) continue;
@@ -284,8 +367,10 @@ bool checkBoardPackage(JsonVariantConst pkg, const ChipRules& chip, const std::v
                            "analog", "expansion", "status_led", "defaults"}))
     return done(false);
   const std::string mcu = o["mcu"] | "";
-  if (mcu != "esp32-devkit" && mcu != "pico") return done(rd.fail("\"mcu\" must be \"esp32-devkit\" or \"pico\" (the board's chip socket)"));
-  if (mcu != mcuFamily(chip.mcu))
+  Mcu parsed = Mcu::Esp32DevKit;
+  if (!mcuFromFamily(mcu, parsed))
+    return done(rd.fail("\"mcu\" must be \"esp32-devkit\", \"pico\", \"esp32-s3\" or \"esp32-c3\" (the board's chip)"));
+  if (parsed != chip.mcu)
     return done(rd.fail("this board package is for the " + mcu + " socket; this board has the " + mcuFamily(chip.mcu)));
   c.map = noPins(chip.mcu);
   // terminals

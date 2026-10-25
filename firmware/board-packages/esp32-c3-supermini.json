@@ -1,0 +1,49 @@
+{
+  "board_package": 1,
+  "id": "esp32-c3-supermini",
+  "name": "ESP32-C3 SuperMini",
+  "mcu": "esp32-c3",
+  "terminals": {
+    "OUT1": {
+      "pin": 5
+    },
+    "OUT2": {
+      "pin": 6
+    },
+    "OUT3": {
+      "pin": 7
+    },
+    "OUT4": {
+      "pin": 10
+    },
+    "TRIG1": {
+      "pin": 3,
+      "active": "low",
+      "pull": "chip"
+    },
+    "TRIG2": {
+      "pin": 4,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER1": {
+      "pin": 9,
+      "active": "low",
+      "pull": "chip"
+    },
+    "USER2": {
+      "pin": 2,
+      "active": "low",
+      "pull": "chip"
+    }
+  },
+  "pixel": {
+    "pin": 1,
+    "inverted": false
+  },
+  "sound": {
+    "tx": 21,
+    "rx": 20
+  },
+  "analog": 0
+}

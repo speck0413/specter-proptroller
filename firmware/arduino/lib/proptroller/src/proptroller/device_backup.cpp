@@ -52,7 +52,7 @@ void Controller::backupJson(JsonObject o) const {
   for (auto& d : Settings::params()) {
     if (!backedUp(d)) continue;
     Value v;
-    if (!settings_.get(d.key, v)) continue;
+    if (!storedValue(d.key, v)) continue;  // another board's change is not backed up, as it is not saved
     JsonObject x = st.add<JsonObject>();
     x["key"] = d.key;
     v.toJson(x, "value");
@@ -238,6 +238,7 @@ std::string Controller::restore(Request& r, bool keep_name, std::vector<std::str
   // everything passed: apply
   bool df_changed = next.df_ack != settings_.df_ack || next.df_checksum != settings_.df_checksum;
   settings_ = next;
+  link_kept_.clear();  // a restored backup is what the board keeps
   std::vector<uint16_t> old;
   for (size_t i = 0; i < engine_.showCount(); i++) {
     uint16_t id = engine_.showAt(i).id;

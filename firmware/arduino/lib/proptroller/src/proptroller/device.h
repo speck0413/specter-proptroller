@@ -122,8 +122,10 @@ class Controller : public Firmware {
   }
   // Answer one request (already parsed).
   Response handle(Request& r);
-  // Change settings atomically (all checked first).
-  Response setParams(const Request& r, const std::vector<ParamValue>& values);
+  // Change settings atomically (all checked first). save = false (another board's tell): applied now, never
+  // written to flash, refused for the settings a board does not take from another (scriptTellRefused, secrets,
+  // settings that need a restart).
+  Response setParams(const Request& r, const std::vector<ParamValue>& values, bool save = true);
   void saveNow();
   void saveIfDirty() { if (dirty_) saveNow(); }
   // The flash writes the step decided on (the settings when their save is due, a script record to write again),
@@ -185,6 +187,25 @@ class Controller : public Firmware {
   std::vector<MqttMsg> mqttPoll() override;
   std::string mqttPrefix() const;
   std::string mqttPrefixNow() const;
+  // The board link (device_link.cpp, SHOW-SCRIPT.md §11, PROTOCOL.md "Board link"): this board's tell lines go out
+  // (linkTake: peer to peer; MQTT through mqttPoll), other boards' tells come in (linkIn, MQTT control/ and
+  // config/now/), their answers to ours (linkAnswer).
+  uint32_t linkEpoch() override { return link_epoch_.load(std::memory_order_relaxed); }
+  bool linkWork() override { return link_work_.load(std::memory_order_relaxed); }
+  bool linkConfig(LinkConfig& c) override;
+  std::vector<LinkOut> linkTake() override;
+  LinkReply linkIn(const LinkIn& in) override;
+  void linkAnswer(uint32_t seq, const std::string& from, bool ok, const std::string& text) override;
+  // Settings another board changed: in use now, not saved (key -> the value kept in flash). A change made here, a
+  // backup restored or a restart ends them.
+  const std::vector<std::pair<std::string, Value>>& linkKept() const { return link_kept_; }
+  // How this board's tells go out now: off, MQTT or Wi-Fi peer to peer (board_link; auto: MQTT with a broker)
+  enum class LinkVia : uint8_t { Off, Mqtt, Wifi };
+  LinkVia linkVia() const;
+  static const Millis LINK_ANSWER_MS = 2000;  // a told board that has not answered by then: "no answer"
+  static const uint8_t LINK_MAX_PER_S = 20;   // tells sent in a second at most (more are dropped and logged)
+  static const uint8_t LINK_PENDING_MAX = 16; // tells waiting for answers
+  static const uint8_t LINK_NAMES_MAX = 16;   // boards known over MQTT for tell all
 
   // The board's lock around the controller (the step takes it every 10 ms): a request gives it back while it does
   // long work on its own data (parsing a body, checking a script), so the step keeps running. `release` gives up
@@ -478,6 +499,37 @@ class Controller : public Firmware {
   Millis pin_wait_ms_ = 0, pin_wait_until_ = 0;  // the page password's throttle
   size_t (*heap_probe_)() = nullptr;
   size_t (*block_probe_)() = nullptr;
+  // shared by MQTT (control/, config/set/, config/now/) and the board link: false and why (as <p>/error says it)
+  bool remoteControl(const std::string& name, bool from_board, std::string& why);
+  bool remoteSetting(const std::string& name, const std::string& value, bool save, std::string& why);
+  // the value of a setting as the flash keeps it (another board's change left out)
+  bool storedValue(const std::string& key, Value& out) const;
+  void mqttLinkOut(const LinkOut& o);
+  struct LinkPending {
+    uint32_t seq = 0;
+    bool all = false;
+    std::string to, line;  // line: "tell porch blackout", for the log
+    Millis until = 0;
+    std::vector<std::string> answered;
+  };
+  std::vector<LinkPending> link_pending_;  // oldest first (at most LINK_PENDING_MAX)
+  // tells for mqttPoll, with when they were told: one older than LINK_ANSWER_MS is dropped (a broker that was away
+  // must not start effects late), at most LINK_PENDING_MAX, none carried into a new session
+  std::vector<std::pair<Millis, MqttMsg>> link_mqtt_out_;
+  std::vector<std::string> mqtt_names_;  // boards online on the broker (<root>/+/online, for MQTT tell all)
+  uint32_t link_seq_ = 0;
+  Millis link_window_at_ = 0;
+  uint8_t link_window_n_ = 0;
+  uint32_t link_dropped_ = 0;
+  std::vector<std::pair<std::string, Value>> link_kept_;
+  int linkKeptAt(const std::string& key) const {
+    for (size_t i = 0; i < link_kept_.size(); i++)
+      if (link_kept_[i].first == key) return (int)i;
+    return -1;
+  }
+  std::atomic<uint32_t> link_epoch_{1};
+  std::atomic<bool> link_work_{false};
+  std::string remote_by_;  // the board whose tell starts an effect (for the log)
   int (*lock_release_)(void*) = nullptr;
   void (*lock_retake_)(void*, int) = nullptr;
   void* lock_user_ = nullptr;
@@ -545,7 +597,10 @@ class Controller : public Firmware {
     uint16_t port = 0;
     uint32_t epoch = 0;
     Millis status_at = 0, time_left_at = 0;
+    bool names = false;    // subscribed to <root>/+/online (a script that tells all over MQTT)
+    bool answers = false;  // subscribed to <p>/link/answer (the board link goes over MQTT)
   } mqtt_;
+  bool mqttWantsNames() const { return linkVia() == LinkVia::Mqtt && script_prog_ && script_prog_->tell_all; }
   // every setting as MQTT messages, built from a copy without the lock
   std::vector<MqttMsg> configMsgsUnlocked(const std::string& prefix, const std::vector<ParamValue>& status);
   // the effect's status values go out when they change, at most every MQTT_STATUS_MIN_MS (a short gap between two

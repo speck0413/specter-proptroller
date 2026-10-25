@@ -6,6 +6,7 @@
 #pragma once
 #if !defined(ARDUINO) && (defined(__unix__) || defined(__APPLE__) || defined(_WIN32))
 #include "http.h"
+#include "../link.h"
 #include <atomic>
 #include <memory>
 #include <thread>
@@ -23,13 +24,21 @@ class PosixNet {
   void poll(Millis now);
   uint16_t httpPort() const { return http_port_; }
   HttpServer& http() { return http_; }
+  // The board link's peer-to-peer frames (link.h) go to these addresses (host, UDP port) instead of a broadcast:
+  // simulated boards on one computer each have their own port (main_sim --link-peers).
+  void setLinkPeers(const std::vector<std::pair<std::string, uint16_t>>& peers);
+  const LinkPeer& link() const { return *link_; }
 
  private:
+  struct Radio;
+  friend struct Radio;
   NetApp& app_;
   HttpServer http_;
   std::unique_ptr<PosixMqtt> mqtt_;
   int listen_fd_ = -1, udp_fd_ = -1;
-  uint16_t http_port_ = 0;
+  uint16_t http_port_ = 0, udp_port_ = 0;
+  std::unique_ptr<LinkPeer> link_;
+  std::unique_ptr<Radio> radio_;
 };
 
 }  // namespace pt

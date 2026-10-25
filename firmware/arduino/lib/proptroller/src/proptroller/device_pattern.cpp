@@ -26,7 +26,7 @@ namespace pt {
 #if PT_PATTERNS
 
 namespace {
-const char* const NO_PLAYER = "this board has no pattern player: the Pico W and the Pico have no room for it (an ESP32 or a Pico 2 W has one)";
+const char* const NO_PLAYER = "this board has no pattern player (an ESP32, an ESP32-S3 or a Pico 2 W has one; the Pico W, the Pico and the ESP32-C3 do not)";
 // The deadline of one frame (or one button press), as Studio's preview's. The step budget (PATTERN_FRAME_STEPS)
 // stops a loop that never ends, the same way everywhere; this catches only what steps do not count (a long sort)
 // and is far above a real frame (a heavy pattern on 600 lights: about 33 ms in QEMU, arduino/QEMU.md), so a flash
@@ -569,7 +569,7 @@ bool Controller::patternsWipe() { return true; }
 int Controller::patternRender(const PixelRequest& f, Millis now) { (void)f; (void)now; return -1; }
 std::string Controller::patternReport() { return ""; }
 Response Controller::patternOp(Request& r) {
-  return Response::err(r, ErrorCode::Unsupported, "this board has no pattern player: the Pico W and the Pico have no room for it (an ESP32 or a Pico 2 W has one)");
+  return Response::err(r, ErrorCode::Unsupported, "this board has no pattern player (an ESP32, an ESP32-S3 or a Pico 2 W has one; the Pico W, the Pico and the ESP32-C3 do not)");
 }
 
 #endif

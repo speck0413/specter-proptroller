@@ -39,6 +39,8 @@ proptroller/front-door/config/stop_button [r] true
 proptroller/front-door/config/start_buttons [r] click
 proptroller/front-door/config/mqtt_broker [r] 
 proptroller/front-door/config/mqtt_port [r] 1883
+proptroller/front-door/config/board_link [r] auto
+proptroller/front-door/config/link_group [r] 
 proptroller/front-door/config/rly1_role [r] shows
 proptroller/front-door/config/rly2_role [r] shows
 proptroller/front-door/config/cc1_role [r] trigger_repeat
