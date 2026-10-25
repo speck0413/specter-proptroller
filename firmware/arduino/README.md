@@ -236,10 +236,13 @@ longest and average 10 ms step and how many took over 1 ms or 10 ms, the 1 ms sa
 250 us), the longest gap between two wakes of the step, on the ESP32 how long after its hardware-timer latch a
 sample was handled (and any lost from the 64-entry ring), and the longest wait of the step for the controller
 lock. A build with `PLATFORMIO_BUILD_FLAGS=-DPROPTROLLER_STEP_PROFILE pio run -e esp32dev` adds the tick's
-time per part (inputs, triggers, script, engine, pins, sound, pixels, the rest). ESP32 DevKit at DIO 40 MHz,
-2026-10-25, a script animating 600 LEDs: step max 337-476 us (average 160-180), 0 of 1162 over 1 ms, no sample
-lost; the lock waits (up to 8 ms, while loop() builds the serial or WebSocket state) delay handling, not
-sampling. A QIO 80 MHz flash build runs the step about 3 times faster still (not adopted: the owner's call).
+time per part (inputs, triggers, script, engine, pins, sound, pixels, the rest) and the longest copy of the state
+made by a reader. ESP32 DevKit, QIO 80 MHz (the esp32dev env since 2026-10-25), a script animating 600 or 16
+LEDs: step max 117-219 us (average 80-110), 0 over 1 ms, no sample lost; the step's longest wait for the lock
+55-60 us with the serial state stream, about 200-280 us while requests come in. A flash write (a settings or
+script save, which waits for a quiet moment) stalls both cores whatever the lock does: samples are then handled
+up to about 25 ms late. A board updated over the air keeps its DIO 40 MHz bootloader and still boots the QIO
+image (bench: average 112-133 us, max 230-321 us).
 
 Bench plan. First `tools/hw_check.py --port <port> --env <env>` per image (flash, boot time, `mem`, a smoke test
 with nothing connected). Then `bench/hw_bench` with `tools/hw_bench.py http://<board>/`:

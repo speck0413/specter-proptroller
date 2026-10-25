@@ -283,6 +283,31 @@ PT_STEP_CODE void Controller::sampleTriggersWith(Millis now, const bool raw[INPU
   }
 }
 
+// the state's copies for the network (stateJson): every 50 ms while asked for, at most 0.1 s old when used
+static const uint8_t STATE_COPY_TICKS = 5;
+static const Millis STATE_COPY_MAX_AGE_MS = 100;
+static const Millis STATE_WANT_MS = 3000;
+
+PT_STEP_CODE void Controller::publishState(Millis now) {
+  uint32_t until = snap_wanted_until_.load(std::memory_order_relaxed);
+  if (!until || (int32_t)(until - (uint32_t)now) <= 0) return;
+  if (++snap_tick_ < STATE_COPY_TICKS) return;
+  snap_tick_ = 0;
+  captureState(snap_buf_[snap_back_]);
+  uint8_t old = snap_mid_.exchange((uint8_t)(snap_back_ | 0x80), std::memory_order_acq_rel);
+  snap_back_ = old & 0x7F;
+}
+
+const Controller::StateSnap* Controller::takeState(Millis now) {
+  snap_wanted_until_.store((uint32_t)(now + STATE_WANT_MS), std::memory_order_relaxed);
+  if (snap_mid_.load(std::memory_order_acquire) & 0x80) {
+    uint8_t old = snap_mid_.exchange(snap_front_, std::memory_order_acq_rel);
+    snap_front_ = old & 0x7F;
+  }
+  const StateSnap& f = snap_buf_[snap_front_];
+  return f.valid && now >= f.now && now - f.now <= STATE_COPY_MAX_AGE_MS ? &f : nullptr;
+}
+
 PT_STEP_CODE void Controller::tick(Millis now) {
   StepScope in_step(this);
   profMark(-1);
@@ -416,6 +441,7 @@ PT_STEP_CODE void Controller::tick(Millis now) {
   if (dirty_ && now >= save_not_before_ &&
       (now >= dirty_at_ + (quiet ? SAVE_DELAY_MS : SAVE_MAX_DELAY_MS) || now >= dirty_since_ + SAVE_MAX_DELAY_MS))
     save_due_ = true;
+  publishState(now);
   profMark(7);
   prof_n_++;
 }
@@ -448,6 +474,8 @@ std::string Controller::profileReport() {
     prof_max_[k] = 0;
   }
   prof_n_ = 0;
+  o += "; state copy max " + std::to_string(prof_capture_max_) + " us";
+  prof_capture_max_ = 0;
   return o;
 }
 
@@ -643,14 +671,18 @@ void Controller::saveNow() {
   }
   dirty_ = false;
   if (!store_) return;
-  std::string rec = storedJson();
-  uint32_t crc = crc32((const uint8_t*)rec.data(), rec.size());
-  if (stored_crc_known_ && crc == stored_crc_) return;  // flash wear: already stored
-  bool ok = false;
+  bool ok = false, same = false;
+  uint32_t crc = 0;
   {
-    Unlocked u(*this);  // the record is this call's own copy: written without holding up the step
-    ok = store_->save(rec);
+    // the record (the settings and the shows, only requests change them) built and written without holding up
+    // the step: only it runs meanwhile
+    Unlocked u(*this);
+    std::string rec = storedJson();
+    crc = crc32((const uint8_t*)rec.data(), rec.size());
+    same = stored_crc_known_ && crc == stored_crc_;
+    if (!same) ok = store_->save(rec);
   }
+  if (same) return;  // flash wear: already stored
   if (!ok) {
     // kept in RAM and tried again later, 2 s doubling to 60 s
     store_errors++;
@@ -804,71 +836,85 @@ std::vector<Terminal> Controller::terminals() const {
   return v;
 }
 
-void Controller::outputState(int i, const BoardReport& snap, JsonObject o) const {
-  Channel c = ALL_CHANNELS[i];
-  Level ml = 0;
-  bool manual = engine_.manual(c, ml);
-  OutputRole role = settings_.role(c);
-  o["channel"] = name(c);
-  o["level"] = snap.levels[i];
-  o["manual"] = manual;
-  o["requested"] = engine_.requested()[i];
-  o["ramping"] = engine_.ramping(c);
-  if (manual) o["driver"] = "manual";
-  else if (role != OutputRole::Shows) o["driver"] = roleLabel(role);
-  else {
-    const Driver& d = engine_.drivers()[i];
-    if (d.kind == Driver::Kind::ByShow) {
-      const Show* s = engine_.show(d.show);
-      if (s) o["driver"] = s->name;
-      else { char b[16]; (void)snprintf(b, sizeof b, "show %u", d.show); o["driver"] = b; }
-    } else if (d.kind == Driver::Kind::Manual) o["driver"] = "manual";
-    else if (d.kind == Driver::Kind::Script) o["driver"] = "script";
+// The state in two halves: captureState copies what the step changes (levels, triggers, show timers, the effect,
+// the script's lines, the sound player) into a StateSnap, fast and under the lock; renderState writes the JSON from
+// it and from what only requests change (names, aliases, settings), which needs no lock against the step. So a
+// page or the serial port asking for the state holds the lock only for the copy (stateJson renders in a window).
+PT_STEP_CODE void Controller::captureState(StateSnap& s) const {
+  s.valid = true;
+  s.now = now_;
+  s.board = board_.report();
+  s.store_errors = store_errors;
+  for (int i = 0; i < CHANNEL_COUNT; i++) {
+    Channel c = ALL_CHANNELS[i];
+    StateSnap::Out& o = s.out[i];
+    Level ml = 0;
+    o.manual = engine_.manual(c, ml);
+    o.requested = engine_.requested()[i];
+    o.ramping = engine_.ramping(c);
+    o.driver = engine_.drivers()[i];
+    o.owned = effectOwns(c);
+    o.blocked = engine_.blocked(i);
   }
-  if (effectOwns(c)) o["driver"] = "effect";
-  switch (engine_.blocked(i)) {
-    case Block::Interlock: o["blocked"] = "interlock"; break;
-    case Block::Watchdog: o["blocked"] = "watchdog"; break;
-    case Block::Paused: o["blocked"] = "paused"; break;
-    case Block::None:
-    default:
-      if (role == OutputRole::None) o["blocked"] = "not used";
-  }
-  for (auto& a : settings_.profile.aliases)
-    if (a.kind == AliasEntry::Kind::Terminal && a.target == name(c)) o["alias"] = a.alias;
-}
-
-void Controller::soundState(JsonObject o) const {
-  o["playing"] = df_.isPlaying();
-  SoundCommand cur;
-  if (df_.current(cur)) {
-    char b[32];
-    switch (cur.kind) {
-      case SoundCommand::Kind::PlayMp3: (void)snprintf(b, sizeof b, "/mp3/%04u", cur.a); break;
-      case SoundCommand::Kind::LoopMp3: (void)snprintf(b, sizeof b, "/mp3/%04u (loop)", cur.a); break;
-      case SoundCommand::Kind::PlayFolder: (void)snprintf(b, sizeof b, "/%02u/%03u", cur.a, cur.b); break;
-      case SoundCommand::Kind::LoopFolder: (void)snprintf(b, sizeof b, "/%02u/ (loop)", cur.a); break;
-      case SoundCommand::Kind::PlayIndex: case SoundCommand::Kind::LoopIndex: (void)snprintf(b, sizeof b, "card file #%u", cur.a); break;
-      case SoundCommand::Kind::Next: case SoundCommand::Kind::Pause: case SoundCommand::Kind::Reset: case SoundCommand::Kind::Resume: case SoundCommand::Kind::SelectSd: case SoundCommand::Kind::Stop: case SoundCommand::Kind::Volume:
-      default: b[0] = 0;
+  for (int i = 0; i < INPUT_COUNT; i++) {
+    StateSnap::In& x = s.in[i];
+    if (i < 2) {
+      x.active = trig_[i].isActive();
+      x.waiting = trig_[i].waitingForRelease() && trig_[i].isActive();
+    } else {
+      x.active = buttons_[i - 2].isPressed();
+      x.waiting = false;
     }
-    o["track"] = b;
+    if (i == 0 && fx_) x.waiting = fx_->raw_closed && !fx_->released;  // the effect decides TRIG1
+    x.test = testHeld(i);
+    x.test_starts = testStarts();
+    x.armed = i < 2 && (i == 0 && fx_ ? fx_->released : trig_[i].isReady());
   }
-  switch (sound_.playing().kind) {
-    case Playing::Kind::Ambient: o["source"] = "ambient"; break;
-    case Playing::Kind::Trigger: o["source"] = "trigger"; break;
-    case Playing::Kind::Show: o["source"] = "show"; break;
-    case Playing::Kind::Loop: o["source"] = "loop"; break;
-    case Playing::Kind::Idle:
-    default: break;
+  s.shows.resize(engine_.showCount());
+  for (size_t k = 0; k < engine_.showCount(); k++) {
+    StateSnap::ShowSnap& x = s.shows[k];
+    x.id = engine_.showAt(k).id;
+    x.status = ShowStatus();
+    engine_.status(x.id, s.now, x.status);
+    x.left = x.window = 0;
+    x.has_runs = engine_.runsLeft(x.id, s.now, x.left, x.window);
   }
-  o["online"] = df_.isOnline();
-  o["ambient_missing"] = sound_.ambientMissing();
+  s.paused = engine_.isPaused();
+  s.runs_since = runs_.sincePowerOn();
+  s.runs_lifetime = runs_.lifetime();
+  s.has_run = runs_.hasRun();
+  s.last_run = runs_.hasRun() ? runs_.lastRunAt() : 0;
+  s.sound_playing = df_.isPlaying();
+  s.sound_online = df_.isOnline();
+  s.has_track = df_.current(s.track);
+  s.playing = sound_.playing().kind;
+  s.ambient_missing = sound_.ambientMissing();
+  s.pattern = pattern();
+  statusNums(s.status);
+  s.has_pixel = pixel_published_ && pixel_req_.count && pixel_req_.has;
+  if (s.has_pixel) s.pixel = pixel_req_.effect;
+  s.has_fx = fx_ != nullptr;
+  if (fx_) {
+    s.fx_state = fx_->stateName(s.now);
+    s.fx_cooldown_left = fx_->cooldownRemaining(s.now);
+  }
+  s.script_effects = 0;
+  if (script_prog_ && script_run_) {
+    s.script_effects = script_prog_->effects;
+    for (int e = 0; e < script_prog_->effects && e < SCRIPT_MAX_EFFECTS; e++) {
+      s.script_running[e] = script_run_->running(e);
+      s.script_line[e] = script_run_->line(e);
+    }
+  }
+  s.upd_active = upd_.active;
+  s.upd_restarting = upd_.restart_at_set;
+  s.upd_done = upd_.done;
+  s.upd_total = upd_.total;
 }
 
-void Controller::stateToJson(JsonObject o) const {
-  BoardReport snap = board_.report();
-  Millis now = now_;
+void Controller::renderState(const StateSnap& s, JsonObject o) const {
+  const BoardReport& snap = s.board;
+  Millis now = s.now;
   o["v"] = PROTOCOL_VERSION;
   o["uptime_ms"] = (unsigned long long)now;
   // the flash: only when something is wrong
@@ -878,60 +924,82 @@ void Controller::stateToJson(JsonObject o) const {
   else if (script_newer_ || script_unreadable_)
     o["store"] = std::string("the stored show script ") + (script_newer_ ? "is from a newer firmware" : "could not be read") +
                  " and is kept: the script cannot be changed (a factory reset starts over)";
-  if (store_errors) o["store_errors"] = store_errors;
+  if (s.store_errors) o["store_errors"] = s.store_errors;
   // the stored board package could not be used: no pins are driven (BOARD-PACKAGES.md)
   if (board_boot_.source == BoardSource::None && !board_boot_.problem.empty()) o["board_problem"] = board_boot_.problem;
   JsonArray outs = o["outputs"].to<JsonArray>();
-  for (int i = 0; i < CHANNEL_COUNT; i++) outputState(i, snap, outs.add<JsonObject>());
+  for (int i = 0; i < CHANNEL_COUNT; i++) {
+    const StateSnap::Out& so = s.out[i];
+    JsonObject x = outs.add<JsonObject>();
+    Channel c = ALL_CHANNELS[i];
+    OutputRole role = settings_.role(c);
+    x["channel"] = name(c);
+    x["level"] = snap.levels[i];
+    x["manual"] = so.manual;
+    x["requested"] = so.requested;
+    x["ramping"] = so.ramping;
+    if (so.manual) x["driver"] = "manual";
+    else if (role != OutputRole::Shows) x["driver"] = roleLabel(role);
+    else {
+      const Driver& d = so.driver;
+      if (d.kind == Driver::Kind::ByShow) {
+        const Show* sh = engine_.show(d.show);
+        if (sh) x["driver"] = sh->name;
+        else { char b[16]; (void)snprintf(b, sizeof b, "show %u", d.show); x["driver"] = b; }
+      } else if (d.kind == Driver::Kind::Manual) x["driver"] = "manual";
+      else if (d.kind == Driver::Kind::Script) x["driver"] = "script";
+    }
+    if (so.owned) x["driver"] = "effect";
+    switch (so.blocked) {
+      case Block::Interlock: x["blocked"] = "interlock"; break;
+      case Block::Watchdog: x["blocked"] = "watchdog"; break;
+      case Block::Paused: x["blocked"] = "paused"; break;
+      case Block::None:
+      default:
+        if (role == OutputRole::None) x["blocked"] = "not used";
+    }
+    for (auto& a : settings_.profile.aliases)
+      if (a.kind == AliasEntry::Kind::Terminal && a.target == name(c)) x["alias"] = a.alias;
+  }
   JsonArray ins = o["inputs"].to<JsonArray>();
   for (int i = 0; i < INPUT_COUNT; i++) {
+    const StateSnap::In& si = s.in[i];
     JsonObject x = ins.add<JsonObject>();
     x["input"] = name(ALL_INPUTS[i]);
-    if (i < 2) {
-      x["active"] = trig_[i].isActive();
-      x["waiting"] = trig_[i].waitingForRelease() && trig_[i].isActive();
-    } else {
-      x["active"] = buttons_[i - 2].isPressed();
-      x["waiting"] = false;
-    }
-    if (i == 0 && fx_) {
-      // the effect decides TRIG1: armed = a release seen since the last run
-      x["waiting"] = fx_->raw_closed && !fx_->released;
-    }
+    x["active"] = si.active;
+    x["waiting"] = si.waiting;
     x["raw"] = snap.inputs[i];
     // a test press held now (test_input), and whether it starts things (remote start on) or only shows
-    if (testHeld(i)) { x["test"] = true; x["test_starts"] = testStarts(); }
-    if (i < 2) x["armed"] = i == 0 && fx_ ? fx_->released : trig_[i].isReady();
+    if (si.test) { x["test"] = true; x["test_starts"] = si.test_starts; }
+    if (i < 2) x["armed"] = si.armed;
     x["held"] = false;
     for (auto& a : settings_.profile.aliases)
       if (a.kind == AliasEntry::Kind::Terminal && a.target == name(ALL_INPUTS[i])) x["alias"] = a.alias;
   }
   JsonArray shows = o["shows"].to<JsonArray>();
-  for (size_t k = 0; k < engine_.showCount(); k++) {
-    const Show& s = engine_.showAt(k);
+  for (size_t k = 0; k < s.shows.size() && k < engine_.showCount(); k++) {
+    const Show& sh = engine_.showAt(k);
+    const StateSnap::ShowSnap& ss = s.shows[k];
     JsonObject x = shows.add<JsonObject>();
-    x["id"] = s.id;
-    x["name"] = s.name;
-    ShowStatus st;
-    engine_.status(s.id, now, st);
-    showStatusToJson(st, x);
-    uint32_t left = 0, win = 0;
-    if (engine_.runsLeft(s.id, now, left, win)) {
-      x["runs_left"] = left;
-      x["window_ms"] = win;
+    x["id"] = sh.id;
+    x["name"] = sh.name;
+    showStatusToJson(ss.status, x);
+    if (ss.has_runs) {
+      x["runs_left"] = ss.left;
+      x["window_ms"] = ss.window;
     }
   }
-  o["paused"] = engine_.isPaused();
+  o["paused"] = s.paused;
   // the run counters (runs.h): the time since the last run is uptime_ms - last_run_uptime_ms
-  o["runs_since_power_on"] = runs_.sincePowerOn();
-  o["runs_lifetime"] = (unsigned long long)runs_.lifetime();
-  if (runs_.hasRun()) o["last_run_uptime_ms"] = (unsigned long long)runs_.lastRunAt();
-  o["sound_playing"] = df_.isPlaying();
-  o["sound_online"] = df_.isOnline();
-  patternToJson(pattern(), o, "pattern");
+  o["runs_since_power_on"] = s.runs_since;
+  o["runs_lifetime"] = (unsigned long long)s.runs_lifetime;
+  if (s.has_run) o["last_run_uptime_ms"] = (unsigned long long)s.last_run;
+  o["sound_playing"] = s.sound_playing;
+  o["sound_online"] = s.sound_online;
+  patternToJson(s.pattern, o, "pattern");
   JsonArray status = o["status"].to<JsonArray>();
   std::vector<ParamValue> lines;
-  effectStatus(lines);
+  statusLines(s.status, lines, true);
   for (auto& pv : lines) {
     JsonObject x = status.add<JsonObject>();
     x["key"] = pv.key;
@@ -947,40 +1015,115 @@ void Controller::stateToJson(JsonObject o) const {
     for (auto& a : settings_.profile.aliases)
       if (a.kind == AliasEntry::Kind::Status && a.target == k && !a.label.empty()) o["run_labels"][k] = a.label;
   net_.toJson(o["net"].to<JsonObject>());
-  soundState(o["sound"].to<JsonObject>());
-  if (pixel_published_ && pixel_req_.count && pixel_req_.has) o["pixel"] = pixel_req_.effect.describe();
-  if (fx_) {
+  JsonObject so = o["sound"].to<JsonObject>();
+  so["playing"] = s.sound_playing;
+  if (s.has_track) {
+    const SoundCommand& cur = s.track;
+    char b[32];
+    switch (cur.kind) {
+      case SoundCommand::Kind::PlayMp3: (void)snprintf(b, sizeof b, "/mp3/%04u", cur.a); break;
+      case SoundCommand::Kind::LoopMp3: (void)snprintf(b, sizeof b, "/mp3/%04u (loop)", cur.a); break;
+      case SoundCommand::Kind::PlayFolder: (void)snprintf(b, sizeof b, "/%02u/%03u", cur.a, cur.b); break;
+      case SoundCommand::Kind::LoopFolder: (void)snprintf(b, sizeof b, "/%02u/ (loop)", cur.a); break;
+      case SoundCommand::Kind::PlayIndex: case SoundCommand::Kind::LoopIndex: (void)snprintf(b, sizeof b, "card file #%u", cur.a); break;
+      case SoundCommand::Kind::Next: case SoundCommand::Kind::Pause: case SoundCommand::Kind::Reset: case SoundCommand::Kind::Resume: case SoundCommand::Kind::SelectSd: case SoundCommand::Kind::Stop: case SoundCommand::Kind::Volume:
+      default: b[0] = 0;
+    }
+    so["track"] = b;
+  }
+  switch (s.playing) {
+    case Playing::Kind::Ambient: so["source"] = "ambient"; break;
+    case Playing::Kind::Trigger: so["source"] = "trigger"; break;
+    case Playing::Kind::Show: so["source"] = "show"; break;
+    case Playing::Kind::Loop: so["source"] = "loop"; break;
+    case Playing::Kind::Idle:
+    default: break;
+  }
+  so["online"] = s.sound_online;
+  so["ambient_missing"] = s.ambient_missing;
+  if (s.has_pixel) o["pixel"] = s.pixel.describe();
+  if (s.has_fx) {
     // the state panel: the effect's state machine and its cooldown timer
     JsonObject m = o["machine"].to<JsonObject>();
-    m["state"] = fx_->stateName(now);
+    m["state"] = s.fx_state;
     JsonArray st = m["states"].to<JsonArray>();
     for (auto n : EFFECT_STATES) st.add(n);
     JsonArray tm = m["timers"].to<JsonArray>();
-    uint32_t left = fx_->cooldownRemaining(now);
-    if (left > 0) {
+    if (s.fx_cooldown_left > 0) {
       JsonObject t = tm.add<JsonObject>();
       t["label"] = "cooldown";
-      t["ms"] = left;
+      t["ms"] = s.fx_cooldown_left;
       t["total_ms"] = settings_.fx.cooldown_ms;
     }
   }
-  scriptState(o);  // the script, then a firmware update in progress
-  updateStateJson(o);
+  // the script, then a firmware update in progress
+  if (!script_text_.empty()) {
+    JsonObject sc = o["script"].to<JsonObject>();
+    JsonArray fx = sc["effects"].to<JsonArray>();
+    if (script_prog_)
+      for (int e = 0; e < s.script_effects && e < script_prog_->effects; e++) {
+        JsonObject x = fx.add<JsonObject>();
+        x["name"] = std::string(script_prog_->fx[e].name);
+        x["running"] = s.script_running[e];
+        x["line"] = s.script_line[e];
+      }
+    if (!script_error_.empty()) sc["error"] = script_error_;
+  }
+  if (s.upd_active) {
+    JsonObject u = o["update"].to<JsonObject>();
+    u["phase"] = "writing";
+    u["done"] = s.upd_done;
+    u["total"] = s.upd_total;
+  } else if (s.upd_restarting) {
+    JsonObject u = o["update"].to<JsonObject>();
+    u["phase"] = "restarting";
+    u["done"] = 0;
+    u["total"] = 0;
+  }
+}
+
+void Controller::stateToJson(JsonObject o) const {
+  std::unique_ptr<StateSnap> s(new StateSnap());  // on the heap: the boards' loop stacks are small
+  captureState(*s);
+  renderState(*s, o);
 }
 
 std::string Controller::infoJson() {
+  std::string s;
+  Unlocked u(*this);  // only what requests change: written without holding up the step
   JsonDocument d;
   info().toJson(d.to<JsonObject>());
-  std::string s;
   serializeJson(d, s);
   return s;
 }
 
+// The state for a page, the serial port or MQTT: on a board the step's latest copy (stateJson holds the lock only
+// to take it), else (the first time, or the host's controller without a lock) a copy made here.
+const Controller::StateSnap* Controller::stateSnapshot() {
+  const StateSnap* snap = lock_release_ && !in_tick_ ? takeState(now_) : nullptr;
+  if (snap) return snap;
+  if (!state_snap_) state_snap_.reset(new StateSnap());
+#if defined(PROPTROLLER_STEP_PROFILE)
+  uint32_t t0 = us_clock_ ? us_clock_() : 0;
+#endif
+  captureState(*state_snap_);  // under the lock
+#if defined(PROPTROLLER_STEP_PROFILE)
+  if (us_clock_) { uint32_t d = us_clock_() - t0; if (d > prof_capture_max_) prof_capture_max_ = d; }
+#endif
+  return state_snap_.get();
+}
+
 std::string Controller::stateJson() {
-  JsonDocument d;
-  stateToJson(d.to<JsonObject>());
+  const StateSnap* snap = stateSnapshot();
   std::string s;
-  serializeJson(d, s);
+  {
+    // the JSON in a window: the step runs meanwhile, every other task waits; renderState reads the snapshot and
+    // what only requests change
+    Unlocked u(*this);
+    JsonDocument d;
+    renderState(*snap, d.to<JsonObject>());
+    serializeJson(d, s);
+  }
   return s;
 }
 
@@ -1025,23 +1168,43 @@ std::string Controller::call(const char* body, size_t len) {
     delete err;
     return s;
   }
-  Response resp = handle(r);
+  // what reads only what requests change (the shows, the profile, the settings, the script's text, a script to
+  // check): answered in a window, so only the step runs meanwhile and nothing it changes is read
+  static const char* const READ_ONLY[] = {"list_shows", "get_show", "get_profile", "get_script", "info", "check_script", "get_backup", "get_params"};
+  bool read_only = false;
+  for (auto op : READ_ONLY) read_only |= r.op == op;
+  auto answerIt = [&]() -> Response {
+    if (!read_only) return handle(r);
+    Unlocked u(*this);
+    return handle(r);
+  };
+  Response resp = answerIt();
   // the answer is this request's own document (a get_params or get_backup answer is 10-20 KB of text): written
-  // out without holding up the step
-  Unlocked u(*this);
-  // an answer the heap cannot hold (a script check with many messages: hardware 2026-10-23, a 15 KB answer
-  // restarted an ESP32) is refused in plain words instead of running out of memory while it is written
-  size_t out = resp.jsonSize();
-  if (out > ANSWER_CHECK_BYTES) {
+  // out, and the request's and the answer's documents freed, without holding up the step
+  std::string answer;
+  {
+    Unlocked u(*this);
+    // an answer the heap cannot hold (a script check with many messages: hardware 2026-10-23, a 15 KB answer
+    // restarted an ESP32) is refused in plain words instead of running out of memory while it is written
+    size_t out = resp.jsonSize();
     std::string short_of;
-    if (heap_probe_ && heap_probe_() < out + ANSWER_HEAP_SPARE)
-      short_of = std::to_string(heap_probe_() / 1024) + " KB free, about " + std::to_string((out + ANSWER_HEAP_SPARE) / 1024) + " KB needed";
-    else if (block_probe_ && block_probe_() < out + ANSWER_BLOCK_SPARE)
-      short_of = "the largest free block is " + std::to_string(block_probe_() / 1024) + " KB, about " + std::to_string((out + ANSWER_BLOCK_SPARE) / 1024) + " KB needed in one piece";
-    if (!short_of.empty())
-      return Response::err(r, ErrorCode::Refused, "the answer is too big for the memory left (" + short_of + "): restart the board and try again").json();
+    if (out > ANSWER_CHECK_BYTES) {
+      if (heap_probe_ && heap_probe_() < out + ANSWER_HEAP_SPARE)
+        short_of = std::to_string(heap_probe_() / 1024) + " KB free, about " + std::to_string((out + ANSWER_HEAP_SPARE) / 1024) + " KB needed";
+      else if (block_probe_ && block_probe_() < out + ANSWER_BLOCK_SPARE)
+        short_of = "the largest free block is " + std::to_string(block_probe_() / 1024) + " KB, about " + std::to_string((out + ANSWER_BLOCK_SPARE) / 1024) + " KB needed in one piece";
+    }
+    if (!short_of.empty()) {
+      resp.drop();  // first: the refusal needs the memory
+      answer = Response::err(r, ErrorCode::Refused, "the answer is too big for the memory left (" + short_of + "): restart the board and try again").json();
+    } else {
+      answer = resp.json();
+      resp.drop();
+    }
+    r.doc.clear();
+    r.doc.shrinkToFit();
   }
-  return resp.json();
+  return answer;
 }
 
 NetConfig Controller::netConfig() {
@@ -1125,12 +1288,16 @@ Response Controller::handle(Request& r) {
   if (op == "custom") return Response::err(r, ErrorCode::NotFound, std::string("no code on this board answers \"") + (r["name"] | "") + "\"");
   if (op == "info") {
     Response resp = Response::ok(r, "info");
+    // only what requests change (names, settings, the script, the update slot): written in a window
+    Unlocked u(*this);
     info().toJson(resp.result());
     return resp;
   }
   if (op == "state") {
     Response resp = Response::ok(r, "state");
-    stateToJson(resp.result());
+    const StateSnap* snap = stateSnapshot();
+    Unlocked u(*this);  // the JSON from the copy, as stateJson
+    renderState(*snap, resp.result());
     return resp;
   }
   if (op == "list_shows") {

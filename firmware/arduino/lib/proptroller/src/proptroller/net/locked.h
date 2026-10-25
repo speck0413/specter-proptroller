@@ -18,6 +18,7 @@ class LockedApp : public NetApp {
   std::string infoJson() override { G g(l_); return a_.infoJson(); }
   std::string stateJson() override { G g(l_); return a_.stateJson(); }
   uint32_t eventsSince(uint32_t s, std::vector<std::string>& o) override { G g(l_); return a_.eventsSince(s, o); }
+  uint32_t eventsSeq() override { G g(l_); return a_.eventsSeq(); }
   const WebAsset* asset(const char* p) override { return a_.asset(p); }
   std::string announceJson(uint16_t port) override { G g(l_); return a_.announceJson(port); }
   std::vector<std::pair<std::string, std::string>> txt() override { G g(l_); return a_.txt(); }

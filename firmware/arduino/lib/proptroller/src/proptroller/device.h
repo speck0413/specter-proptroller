@@ -162,6 +162,7 @@ class Controller : public Firmware {
   std::string infoJson() override;
   std::string stateJson() override;
   uint32_t eventsSince(uint32_t seq, std::vector<std::string>& out) override { return events_.since(seq, out); }
+  uint32_t eventsSeq() override { return events_.seq(); }
   std::string announceJson(uint16_t port) override { return info().announce(port); }
   std::vector<std::pair<std::string, std::string>> txt() override { return info().txt(); }
   void netChanged(const NetState& n) override { net_ = n; }
@@ -289,11 +290,21 @@ class Controller : public Firmware {
   std::string doRecover();
   std::string refusedText(EffectRefused why) const;
   void effectStatus(std::vector<ParamValue>& out, bool aliased = true) const;
+  // the status values as numbers (the effect's, else the script's), then as key / value lines (the keys with the
+  // profile's aliases): the state copies the numbers under the lock and writes the lines without it
+  struct StatusNums {
+    bool any = false, fx = false, has_limit = false;
+    uint32_t run_count = 0, runs_left = 0, cooldown_ms = 0;
+    bool pulsing = false, recovering = false, ready = false, remote = false, queued = false;
+    std::string by;
+  };
+  void statusNums(StatusNums& n) const;
+  void statusLines(const StatusNums& n, std::vector<ParamValue>& out, bool aliased) const;
   // a show script with an effect that says "or remote" / "or remote recover": its controls and status
   int scriptEffect(const std::string& name) const;
   uint8_t scriptFreeEffects() const;
   Response scriptStart(const Request& r, int effect);
-  void scriptStatus(std::vector<ParamValue>& out, bool aliased) const;
+
   void scriptValues();  // the settings a script line may name, to the runner
   // the run counters as status values (runs_since_power_on, runs_lifetime, last_run_uptime_ms when there was one)
   void runStatus(std::vector<ParamValue>& out, bool aliased = true) const;
@@ -327,8 +338,62 @@ class Controller : public Firmware {
   // the settings record's size (storedJson's), without the string
   size_t storedSize(const Show* replace = nullptr) const;
   void storedDoc(JsonDocument& d, const Show* replace) const;
-  void outputState(int i, const BoardReport& snap, JsonObject o) const;
-  void soundState(JsonObject o) const;
+  // the state's parts the step changes, copied under the lock (stateJson renders the JSON from it in a window)
+  struct StateSnap {
+    bool valid = false;
+    Millis now = 0;
+    BoardReport board{};
+    uint32_t store_errors = 0;
+    struct Out {
+      bool manual = false, ramping = false, owned = false;
+      Level requested = 0;
+      Driver driver;
+      Block blocked = Block::None;
+    } out[CHANNEL_COUNT];
+    struct In {
+      bool active = false, waiting = false, test = false, test_starts = false, armed = false;
+    } in[INPUT_COUNT];
+    struct ShowSnap {
+      uint16_t id = 0;
+      ShowStatus status;
+      bool has_runs = false;
+      uint32_t left = 0, window = 0;
+    };
+    std::vector<ShowSnap> shows;
+    bool paused = false;
+    uint32_t runs_since = 0;
+    uint64_t runs_lifetime = 0;
+    bool has_run = false;
+    Millis last_run = 0;
+    bool sound_playing = false, sound_online = false, has_track = false, ambient_missing = false;
+    SoundCommand track;
+    Playing::Kind playing = Playing::Kind::Idle;
+    Pattern pattern;
+    StatusNums status;
+    bool has_pixel = false;
+    Effect pixel;
+    bool has_fx = false;
+    const char* fx_state = "";
+    uint32_t fx_cooldown_left = 0;
+    int script_effects = 0;
+    bool script_running[SCRIPT_MAX_EFFECTS] = {false};
+    uint16_t script_line[SCRIPT_MAX_EFFECTS] = {0};
+    bool upd_active = false, upd_restarting = false;
+    uint32_t upd_done = 0, upd_total = 0;
+  };
+  void captureState(StateSnap& s) const;
+  std::unique_ptr<StateSnap> state_snap_;  // a copy made by the reader itself (no fresh one from the step)
+  // The step's copies of the state, for the network and the serial port (a triple buffer, so neither side ever
+  // waits): while someone asked within STATE_WANT_MS, the step copies the state every STATE_COPY_TICKS into
+  // snap_back_ and hands it over as snap_mid_ (the index, | 0x80 while unread); the reader takes it as its front.
+  StateSnap snap_buf_[3];
+  uint8_t snap_back_ = 0, snap_front_ = 2, snap_tick_ = 0;
+  std::atomic<uint8_t> snap_mid_{1};
+  std::atomic<uint32_t> snap_wanted_until_{0};  // Millis, low 32 bits
+  void publishState(Millis now);
+  const StateSnap* takeState(Millis now);
+  const StateSnap* stateSnapshot();  // the step's latest copy, or null when there is none recent enough
+  void renderState(const StateSnap& s, JsonObject o) const;
 
   Board board_;
   ByteStream& uart_;
@@ -455,6 +520,7 @@ class Controller : public Firmware {
   uint32_t (*us_clock_)() = nullptr;
   static const int PROFILE_PARTS = 8;
   uint32_t prof_sum_[PROFILE_PARTS] = {0}, prof_max_[PROFILE_PARTS] = {0}, prof_n_ = 0, prof_at_ = 0;
+  uint32_t prof_capture_max_ = 0;  // the state's copy under the lock
   void profMark(int part);
   void* request_hook_user_ = nullptr;
   struct MqttTrack {
@@ -494,7 +560,6 @@ class Controller : public Firmware {
   // the show is the factory example exactly as earlier firmware stored it on a fresh board (FACTORY_EXAMPLE_SHOW)
   static bool isFactoryExample(const Show& s);
   Response scriptOp(Request& r);
-  void scriptState(JsonObject o) const;
   SoundConfig soundConfig() const;
   // the script's record: written (or removed when empty); false and the reason when it could not be stored
   // (the old script is loaded back from its store)
@@ -544,7 +609,6 @@ class Controller : public Firmware {
   void updateTick(Millis now);
   bool self_check_due_ = false;  // the step says: the self-check's time has come (background() marks the image)
   void selfCheckVerdict();
-  void updateStateJson(JsonObject o) const;
   Response backupOp(Request& r);
   Response boardOp(Request& r);
   // get_defaults / apply_defaults: the running board's defaults (its board package's, else the image's own)

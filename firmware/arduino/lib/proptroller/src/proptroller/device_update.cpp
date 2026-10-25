@@ -145,20 +145,6 @@ void Controller::updateEvent(const char* phase, uint32_t done, uint32_t total, c
   events_.push("update", s);
 }
 
-void Controller::updateStateJson(JsonObject o) const {
-  if (upd_.active) {
-    JsonObject u = o["update"].to<JsonObject>();
-    u["phase"] = "writing";
-    u["done"] = upd_.done;
-    u["total"] = upd_.total;
-  } else if (upd_.restart_at_set) {
-    JsonObject u = o["update"].to<JsonObject>();
-    u["phase"] = "restarting";
-    u["done"] = 0;
-    u["total"] = 0;
-  }
-}
-
 void Controller::updateTick(Millis now) {
   if (upd_.restart_at_set && now >= upd_.restart_at) {
     upd_.restart_at_set = false;

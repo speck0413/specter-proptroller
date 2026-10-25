@@ -773,7 +773,22 @@ void the_mqtt_hello_is_built_without_the_lock() {
   std::vector<MqttMsg> hello = sim.ctl().mqttOnConnect();
   sim.ctl().setLockHooks(nullptr, nullptr, nullptr);
   TEST_ASSERT_TRUE(hello.size() > 50);
-  TEST_ASSERT_EQUAL(1, g_hello_releases);
+  TEST_ASSERT_EQUAL(2, g_hello_releases);  // the settings, then the state's JSON, each in a window
+}
+
+// the state's JSON (a page, the serial port, MQTT) is written in a window: only the copy of what the step changes
+// is made with the lock
+static int g_state_releases = 0;
+void the_state_is_written_without_the_lock() {
+  Sim sim("t");
+  sim.addExample();
+  sim.step(2500);
+  std::string before = sim.ctl().stateJson();
+  sim.ctl().setLockHooks([](void*) { g_state_releases++; return 1; }, [](void*, int) {}, nullptr);
+  std::string st = sim.ctl().stateJson();
+  sim.ctl().setLockHooks(nullptr, nullptr, nullptr);
+  TEST_ASSERT_EQUAL(1, g_state_releases);
+  TEST_ASSERT_EQUAL_STRING(before.c_str(), st.c_str());
 }
 
 // set_script and put_backup write the script record with the lock given back: the step (and the 1 ms samples)
@@ -884,6 +899,39 @@ void the_step_never_marks_the_new_image() {
   }
 }
 
+// On a board the step itself copies the state every 50 ms while a page or the serial port asks for it (a triple
+// buffer: neither side waits), and stateJson only takes that copy: the same JSON as one made on the spot
+static int g_snap_releases = 0;
+void the_state_comes_from_the_steps_copy() {
+  Sim sim("t");
+  sim.addExample();
+  sim.step(2500);
+  sim.ctl().setLockHooks([](void*) { g_snap_releases++; return 1; }, [](void*, int) {}, nullptr);
+  (void)sim.ctl().stateJson();  // asks: the step starts copying
+  sim.press(Input::Trig1, 150);
+  sim.step(200);
+  for (int i = 0; i < 4; i++) sim.tick();  // the copy is made on the 5th tick after the last one
+  std::string from_step = sim.ctl().stateJson();
+  sim.ctl().setLockHooks(nullptr, nullptr, nullptr);
+  std::string here = sim.ctl().stateJson();  // no lock: made on the spot, at the same step
+  JsonDocument a, b;
+  deserializeJson(a, from_step);
+  deserializeJson(b, here);
+  TEST_ASSERT_TRUE(a["uptime_ms"].as<uint64_t>() <= b["uptime_ms"].as<uint64_t>());
+  TEST_ASSERT_TRUE(b["uptime_ms"].as<uint64_t>() - a["uptime_ms"].as<uint64_t>() <= 100);
+  TEST_ASSERT_EQUAL_STRING(b["outputs"][0]["driver"] | "", a["outputs"][0]["driver"] | "");
+  TEST_ASSERT_EQUAL(b["outputs"][0]["level"].as<int>(), a["outputs"][0]["level"].as<int>());
+  TEST_ASSERT_TRUE(a["shows"].size() == b["shows"].size());
+  // asked for no more (3 s): the step stops copying, and an old copy is never used
+  sim.step(3500);
+  sim.ctl().setLockHooks([](void*) { g_snap_releases++; return 1; }, [](void*, int) {}, nullptr);
+  std::string late = sim.ctl().stateJson();
+  sim.ctl().setLockHooks(nullptr, nullptr, nullptr);
+  JsonDocument c;
+  deserializeJson(c, late);
+  TEST_ASSERT_EQUAL(sim.ctl().now(), c["uptime_ms"].as<uint64_t>());  // made on the spot
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(role_pulses_keep_the_relay_interlock);
@@ -920,6 +968,8 @@ int main() {
   RUN_TEST(finishing_an_update_does_not_hold_the_lock);
   RUN_TEST(the_step_never_writes_the_flash);
   RUN_TEST(the_mqtt_hello_is_built_without_the_lock);
+  RUN_TEST(the_state_is_written_without_the_lock);
+  RUN_TEST(the_state_comes_from_the_steps_copy);
   RUN_TEST(the_step_never_waits_on_a_script_write);
   RUN_TEST(the_step_never_marks_the_new_image);
   return UNITY_END();

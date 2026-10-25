@@ -48,6 +48,8 @@ class NetApp {
   virtual std::string stateJson() = 0;
   // Serialized events newer than seq; returns the newest sequence number.
   virtual uint32_t eventsSince(uint32_t seq, std::vector<std::string>& out) = 0;
+  // The newest event's number, without copying any (a new page or serial client starts from here)
+  virtual uint32_t eventsSeq() { std::vector<std::string> skip; return eventsSince(0, skip); }
   // A static file by path ("/index.html"); default: the embedded phone UI.
   virtual const WebAsset* asset(const char* path);
   virtual std::string announceJson(uint16_t port) = 0;

@@ -147,6 +147,7 @@ class Sim : public NetApp {
   std::string infoJson() override { return ctl_->infoJson(); }
   std::string stateJson() override;
   uint32_t eventsSince(uint32_t seq, std::vector<std::string>& out) override { return ctl_->eventsSince(seq, out); }
+  uint32_t eventsSeq() override { return ctl_->eventsSeq(); }
   std::string announceJson(uint16_t port) override { return ctl_->announceJson(port); }
   std::vector<std::pair<std::string, std::string>> txt() override { return ctl_->txt(); }
   void netChanged(const NetState& n) override { ctl_->netChanged(n); }

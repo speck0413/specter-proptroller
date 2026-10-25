@@ -95,7 +95,8 @@ static volatile uint64_t g_sample_us_sum = 0;
 // longest, and how many came over 1.5 ms late (a sample held up)
 static const uint32_t WAKE_LATE_US = 1500;
 static volatile uint32_t g_wake_gap_max = 0, g_wake_late = 0, g_wake_at = 0;
-static volatile uint32_t g_lock_wait_max = 0, g_lock_waits = 0;  // the step waiting for another task's lock
+static volatile uint32_t g_lock_wait_max = 0, g_lock_waits = 0;
+ // the step waiting for another task's lock
 static void stepTimed(uint32_t us) {
   if (us > g_step_us_max) g_step_us_max = us;
   if (us > STEP_BUDGET_US) g_step_over_budget = g_step_over_budget + 1;
@@ -152,6 +153,7 @@ class PropApp : public NetApp {
   std::string infoJson() override { return c_->infoJson(); }
   std::string stateJson() override { return c_->stateJson(); }
   uint32_t eventsSince(uint32_t s, std::vector<std::string>& o) override { return c_->eventsSince(s, o); }
+  uint32_t eventsSeq() override { return c_->eventsSeq(); }
   std::string announceJson(uint16_t port) override { return c_->announceJson(port); }
   std::vector<std::pair<std::string, std::string>> txt() override { return c_->txt(); }
   void netChanged(const NetState& n) override { c_->netChanged(n); }
@@ -918,9 +920,8 @@ void Proptroller::serialByte(uint8_t c) {
       Serial.println(resp.c_str());
       if (!plat_->serial_client) {
         plat_->serial_client = true;
-        std::vector<std::string> ignore;
         Guard g(plat_->lk);
-        plat_->serial_seq = plat_->app->eventsSince(0, ignore);
+        plat_->serial_seq = plat_->app->eventsSeq();
       }
     } else if (line.equals("mem")) {
       line.done();

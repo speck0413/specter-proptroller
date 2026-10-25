@@ -202,11 +202,11 @@ void Controller::scriptRewrite() {
   if (update_target_ && update_target_->state() == BootState::Pending) return;
   script_rewrite_ = false;
   if (script_text_.empty()) return;
-  std::string rec = scriptRecord(script_text_, script_sounds_, script_prog_.get());
-  bool ok = !rec.empty() && rec.size() <= script_store_->capacity();
-  if (ok) {
-    Unlocked u(*this);  // written from this call's own copy, without holding up the step
-    ok = script_store_->save(rec);
+  bool ok = false;
+  {
+    Unlocked u(*this);  // built from what only requests change and written without holding up the step
+    std::string rec = scriptRecord(script_text_, script_sounds_, script_prog_.get());
+    ok = !rec.empty() && rec.size() <= script_store_->capacity() && script_store_->save(rec);
   }
   if (!ok) {
     store_errors++;
@@ -414,20 +414,6 @@ Response Controller::scriptOp(Request& r) {
   if (!store_error.empty()) return Response::err(r, ErrorCode::Internal, store_error);
   scriptReplyJson(c, script_prog_ ? script_prog_->effects : 0, resp.result());
   return resp;
-}
-
-void Controller::scriptState(JsonObject o) const {
-  if (script_text_.empty()) return;
-  JsonObject s = o["script"].to<JsonObject>();
-  JsonArray fx = s["effects"].to<JsonArray>();
-  if (script_prog_ && script_run_)
-    for (int e = 0; e < script_prog_->effects; e++) {
-      JsonObject x = fx.add<JsonObject>();
-      x["name"] = std::string(script_prog_->fx[e].name);
-      x["running"] = script_run_->running(e);
-      x["line"] = script_run_->line(e);
-    }
-  if (!script_error_.empty()) s["error"] = script_error_;
 }
 
 }  // namespace pt

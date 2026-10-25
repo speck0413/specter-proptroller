@@ -172,20 +172,59 @@ std::string Controller::doRecover() {
   return "";
 }
 
-void Controller::effectStatus(std::vector<ParamValue>& out, bool aliased) const {
-  if (!fx_) { scriptStatus(out, aliased); return; }
+void Controller::statusNums(StatusNums& n) const {
   Millis now = now_;
-  const EffectMachine& m = *fx_;
+  n = StatusNums();
+  n.remote = settings_.fx.remote_trigger_enable;
+  if (n.remote) n.by = fx_by_;
+  if (fx_) {
+    const EffectMachine& m = *fx_;
+    n.any = n.fx = true;
+    n.run_count = m.run_count;
+    n.runs_left = m.runsLeft(now);
+    n.cooldown_ms = m.cooldownRemaining(now);
+    n.pulsing = m.pulsing();
+    n.recovering = m.recovering();
+    n.ready = m.ready(now);
+    n.queued = m.queued_remote;
+    return;
+  }
+  if (!script_run_ || !script_prog_ || !script_prog_->effects) return;
+  n.any = true;
+  n.run_count = script_run_->totalRuns();
+  n.has_limit = script_run_->hasLimit(0);
+  if (n.has_limit) {
+    n.runs_left = script_run_->runsLeft(0, now);
+    n.cooldown_ms = script_run_->cooldownRemaining(0, now);
+  }
+  bool pulsing = board_.levels()[index(Channel::Out1)] > 0;
+  for (int e = 0; e < script_prog_->effects; e++) pulsing |= script_run_->beforeRecovery(e);
+  n.pulsing = pulsing;
+  n.recovering = board_.levels()[index(Channel::Out2)] > 0;
+  n.ready = script_run_->ready(0, now);
+  n.queued = script_run_->anyQueued();
+}
+
+void Controller::statusLines(const StatusNums& n, std::vector<ParamValue>& out, bool aliased) const {
+  if (!n.any) return;
   auto add = [&](const char* k, const Value& v) { out.push_back(ParamValue{aliased ? aliasFor(AliasEntry::Kind::Status, k) : std::string(k), v}); };
-  add("run_count", Value::integer(m.run_count));
-  add("runs_left", Value::integer(m.runsLeft(now)));
-  add("cooldown_remaining_ms", Value::integer(m.cooldownRemaining(now)));
-  add("pulsing", Value::boolean(m.pulsing()));
-  add("recovering", Value::boolean(m.recovering()));
-  add("ready", Value::boolean(m.ready(now)));
-  add("remote_trigger_enable", Value::boolean(settings_.fx.remote_trigger_enable));
-  add("remote_trigger_by", Value::text(settings_.fx.remote_trigger_enable ? fx_by_ : ""));
-  add("queued", Value::boolean(m.queued_remote));
+  add("run_count", Value::integer(n.run_count));
+  if (n.fx || n.has_limit) {
+    add("runs_left", Value::integer(n.runs_left));
+    add("cooldown_remaining_ms", Value::integer(n.cooldown_ms));
+  }
+  add("pulsing", Value::boolean(n.pulsing));
+  add("recovering", Value::boolean(n.recovering));
+  add("ready", Value::boolean(n.ready));
+  add("remote_trigger_enable", Value::boolean(n.remote));
+  add("remote_trigger_by", Value::text(n.by));
+  add("queued", Value::boolean(n.queued));
+}
+
+void Controller::effectStatus(std::vector<ParamValue>& out, bool aliased) const {
+  StatusNums n;
+  statusNums(n);
+  statusLines(n, out, aliased);
 }
 
 std::string Controller::callFrom(uint32_t session, const char* body, size_t len) {
@@ -272,25 +311,6 @@ Response Controller::scriptStart(const Request& r, int e) {
 // pulsing: OUT1 on, or a run that turns OUT2 on (its recovery) has not reached that line yet (a recover cycle's
 // OUT1 interval counts, as the pulse-and-recover effect's firmware once reported it); recovering: OUT2 on (SM-F6);
 // queued: a remote start waits (SS-R10).
-void Controller::scriptStatus(std::vector<ParamValue>& out, bool aliased) const {
-  if (!script_run_ || !script_prog_ || !script_prog_->effects) return;
-  Millis now = now_;
-  auto add = [&](const char* k, const Value& v) { out.push_back(ParamValue{aliased ? aliasFor(AliasEntry::Kind::Status, k) : std::string(k), v}); };
-  add("run_count", Value::integer(script_run_->totalRuns()));
-  if (script_run_->hasLimit(0)) {
-    add("runs_left", Value::integer(script_run_->runsLeft(0, now)));
-    add("cooldown_remaining_ms", Value::integer(script_run_->cooldownRemaining(0, now)));
-  }
-  bool pulsing = board_.levels()[index(Channel::Out1)] > 0;
-  for (int e = 0; e < script_prog_->effects; e++) pulsing |= script_run_->beforeRecovery(e);
-  add("pulsing", Value::boolean(pulsing));
-  add("recovering", Value::boolean(board_.levels()[index(Channel::Out2)] > 0));
-  add("ready", Value::boolean(script_run_->ready(0, now)));
-  add("remote_trigger_enable", Value::boolean(settings_.fx.remote_trigger_enable));
-  add("remote_trigger_by", Value::text(settings_.fx.remote_trigger_enable ? fx_by_ : ""));
-  add("queued", Value::boolean(script_run_->anyQueued()));
-}
-
 // ---------------------------------------------------------------- aliases
 
 std::string Controller::aliasFor(AliasEntry::Kind k, const std::string& target) const {

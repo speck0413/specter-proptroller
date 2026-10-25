@@ -451,8 +451,7 @@ void HttpServer::serveHttp(Client& c, Millis now) {
         c.session = next_session_++;
         if (next_session_ == 0) next_session_ = 1;
         c.last_ping = now;
-        std::vector<std::string> ignore;
-        c.seq = app_.eventsSince(0, ignore);
+        c.seq = app_.eventsSeq();  // from now on: the events before it are not copied
         c.last_state_at = 0;
         c.sent_state = false;
       }

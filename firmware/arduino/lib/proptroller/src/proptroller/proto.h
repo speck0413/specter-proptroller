@@ -176,6 +176,9 @@ class Response {
   bool isOk() const { return doc_["ok"].as<bool>(); }
   std::string errorMessage() const { return doc_["error"]["message"].as<std::string>(); }
   std::string json() const;
+  // Gives the document's memory back (a 10-20 KB answer is hundreds of blocks): before the controller lock is
+  // taken again
+  void drop() { doc_.clear(); doc_.shrinkToFit(); }
   size_t jsonSize() const;  // the length of json(), without writing it
   JsonDocument& doc() { return doc_; }
 
