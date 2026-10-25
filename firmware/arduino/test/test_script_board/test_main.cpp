@@ -270,6 +270,14 @@ void pixels_lines_drive_the_strip_and_take_turns() {
   TEST_ASSERT_TRUE(sim.request(R"({"op":"set_params","values":[{"key":"pixel_brightness","value":50}]})").isOk());
   sim.step(50);
   TEST_ASSERT_TRUE(all(sim, Rgb(0, 0, 255).scale(127)));
+  // an animation goes out every 20 ms (50 frames a second), not every tick
+  TEST_ASSERT_TRUE(setScript(sim, "effect s:\n  pixels = rainbow\n  wait for trig1\n  out1 = on\n  wait 1\n  out1 = off\n").doc()["result"]["ok"].as<bool>());
+  sim.step(100);
+  uint32_t f0 = sim.world().pixel_frames;
+  sim.step(1000);
+  TEST_ASSERT_INT_WITHIN(2, 50, sim.world().pixel_frames - f0);
+  TEST_ASSERT_TRUE(setScript(sim, "effect idle:\n  pixels = blue\n  wait for trig1\n  pixels = red\n  wait 1\n").doc()["result"]["ok"].as<bool>());
+  sim.step(100);
   // a manual pixel test wins while it is on
   TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel","action":{"do":"fill","color":"#ffffff"}})").isOk());
   sim.step(50);

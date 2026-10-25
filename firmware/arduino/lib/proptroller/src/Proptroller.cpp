@@ -84,11 +84,13 @@ static volatile uint64_t g_step_at = 0;  // the end of the latest step or input 
 static const uint32_t STEP_BUDGET_US = 1000;
 static const uint32_t STEP_TICK_US = 10000;
 static volatile uint32_t g_step_us_max = 0, g_step_over_budget = 0, g_step_over_tick = 0, g_steps = 0;
+static volatile uint64_t g_step_us_sum = 0;
 static void stepTimed(uint32_t us) {
   if (us > g_step_us_max) g_step_us_max = us;
   if (us > STEP_BUDGET_US) g_step_over_budget = g_step_over_budget + 1;
   if (us > STEP_TICK_US) g_step_over_tick = g_step_over_tick + 1;
   g_steps = g_steps + 1;
+  g_step_us_sum = g_step_us_sum + us;
 }
 // RP2040: one hardware watchdog (8 s) for both cores, fed only while the step is alive (stepAlive), from either
 // core: a hung core 1 restarts the board, a stalled network on core 0 does not.
@@ -605,12 +607,13 @@ std::string Proptroller::memoryReport() {
   {
     // the step's timing since the last report (then cleared)
     size_t k = strlen(b);
-    snprintf(b + k, sizeof b - k, "; step max %u us, %u of %u steps over 1 ms, %u over 10 ms", (unsigned)g_step_us_max,
-             (unsigned)g_step_over_budget, (unsigned)g_steps, (unsigned)g_step_over_tick);
+    snprintf(b + k, sizeof b - k, "; step max %u us (average %u), %u of %u steps over 1 ms, %u over 10 ms", (unsigned)g_step_us_max,
+             (unsigned)(g_steps ? g_step_us_sum / g_steps : 0), (unsigned)g_step_over_budget, (unsigned)g_steps, (unsigned)g_step_over_tick);
     g_step_us_max = 0;
     g_step_over_budget = 0;
     g_step_over_tick = 0;
     g_steps = 0;
+    g_step_us_sum = 0;
   }
 #endif
   return b;
