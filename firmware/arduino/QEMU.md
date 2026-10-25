@@ -11,11 +11,15 @@ What runs where before a board is on the bench, and what that does and does not 
 
 VS Code: Terminal > Run Task > "ESP32 in QEMU". The first run downloads Espressif's QEMU release (sha256 pinned in
 the script) into `$HOME/.cache/proptroller-qemu`; nothing fetched goes into the repo. Serial logs:
-`.pio/build/esp32dev/qemu-serial.log` (stage 1) and `.pio/build/esp32dev_qemu/qemu-serial.log` (stage 2).
+`.pio/build/esp32dev_qemu_wifi/qemu-serial.log` (stage 1) and `.pio/build/esp32dev_qemu/qemu-serial.log` (stage 2).
 
-- **Stage 1, the board's own image (env `esp32dev`).** The 4 MB image a first USB flash writes (FLASH-MAP.md:
-  bootloader 0x1000, partition table 0x8000, `boot_app0` otadata 0xE000 as `pio run -t upload` writes it, app
-  0x10000, the rest erased; the 0x1000 and 0x8000 regions match FLASH-MAP's sha256), booted
+- **Stage 1, the board's firmware with Wi-Fi (env `esp32dev_qemu_wifi`).** The `esp32dev` firmware built for
+  DIO 40 MHz flash instead of the board's QIO 80 MHz: QEMU's flash model cannot run a QIO app (the app's flash
+  init asserts in `do_core_init`, whatever the merged header says), so the release image itself is checked on the
+  bench, not here. The 4 MB image a first USB flash writes (FLASH-MAP.md: bootloader 0x1000, partition table
+  0x8000, `boot_app0` otadata 0xE000 as `pio run -t upload` writes it, app 0x10000, the rest erased), merged with
+  the bootloader's header kept as `release.py` does; the partition table matches FLASH-MAP's sha256, the DIO
+  bootloader is not the one listed there. Booted
   with `qemu-system-xtensa -machine esp32 -icount shift=2`. It must reach the banner (bootloader, app, LittleFS
   format and mount, settings, controller, step task). It then stops at the Wi-Fi start: QEMU has no radio, and the
   closed PHY code (`register_chipv7_phy`) faults on a register block QEMU does not map. The check passes only when
@@ -36,7 +40,8 @@ TG1WDT during the first-boot format, TG0WDT in the bootloader): artifacts, gone 
 mean:
 
 - Guest milliseconds of CPU work are instruction counts times 4 ns. A real LX6 executing from flash through the
-  cache at 40 MHz DIO does less than one instruction per cycle, so **CPU-bound work takes longer on the board**
+  cache (QIO 80 MHz on the board) does less than one instruction per cycle, so **CPU-bound work takes longer on
+  the board**
   (the bench gives the factor: time the same request there; `--icount 3`, 8 ns, is a pessimistic bracket).
   Waits (`delay()`, timers, task delays) are exact in virtual time.
 - No cache and no flash wait states; flash erase and program times are whatever QEMU's flash model does, not
@@ -51,14 +56,20 @@ mean:
 
 ## What it proves
 
-- The real ELF boots from the real flash image: the bootloader built with rollback accepts the merged image,
+- The real firmware boots from a first-flash image (stage 1 at DIO 40 MHz, above): the bootloader built with
+  rollback accepts the merged image,
   the partition table matches the app, the app starts, LittleFS is formatted on a blank board and mounted,
   settings load (defaults on a new board, stored values after a reboot), the controller and its 10 ms step task
   start, all before Wi-Fi.
 - Without Wi-Fi: every protocol request above answers correctly over the UART, a stored setting, show and script
   survive `reboot` (the A/B stores read back), no watchdog, stack guard or heap check fires in several minutes of
   shows running and requests looping, and the heap does not leak.
-- The pixel driver failing (QEMU's RMT) is reported ("pixel driver not available") and the firmware carries on.
+- The pixel driver failing (QEMU's RMT) is reported ("pixel driver not available") and the firmware carries on
+  with its heap intact (both stages check that the failed install ran; stage 2 checks that the ready line after
+  it, which walks the heap, comes without a fault). The RMT driver is installed on a short task of its own on core 0
+  with a 4 KB stack (`hal.cpp` `BoardPixels::begin`), not through `esp_ipc_call_blocking`: the IPC task's stack is
+  1 KB, the driver's failure message overflows it into the heap, and the next heap walk (`ESP.getMaxAllocHeap` in
+  the ready line's `memoryReport`) faults with LoadStorePIFAddrError. A failed install on a board does the same.
 
 ## What it cannot prove (bench items)
 

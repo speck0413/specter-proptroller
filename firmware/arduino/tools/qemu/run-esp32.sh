@@ -10,7 +10,8 @@
 #   tools/qemu/run-esp32.sh --s3         the bare ESP32-S3 image without Wi-Fi (env esp32s3_qemu) on QEMU's esp32s3
 #                                        machine: the serial smoke test (BARE-DEVKIT.md; the C3 has no QEMU here)
 #
-# Stage 1 boots the board's own image (env esp32dev) up to the Wi-Fi start, where QEMU's missing radio ends it.
+# Stage 1 boots the board's firmware with Wi-Fi (env esp32dev_qemu_wifi: esp32dev at DIO 40 MHz, because QEMU's flash
+# model cannot run the board's QIO 80 MHz build) up to the Wi-Fi start, where QEMU's missing radio ends it.
 # Stage 2 boots the same firmware without Wi-Fi (env esp32dev_qemu) and runs the serial smoke test.
 # Espressif's QEMU release is downloaded once into $HOME/.cache/proptroller-qemu (never into the repo).
 set -euo pipefail
@@ -39,10 +40,11 @@ if [ ! -x "$QEMU" ]; then
 fi
 
 # the image a first USB flash writes: bootloader 0x1000, partition table 0x8000, otadata (boot_app0) 0xE000,
-# the app 0x10000; the rest erased (0xFF), as on a new board
+# the app 0x10000; the rest erased (0xFF), as on a new board. The bootloader's header as the build made it (keep),
+# as release.py merges the first-flash image; the QEMU envs are built for DIO 40 MHz.
 merge() {
   local b=".pio/build/$1"
-  "$PY" "$ESPTOOL" --chip esp32 merge_bin --fill-flash-size 4MB --flash_mode dio --flash_freq 40m --flash_size 4MB \
+  "$PY" "$ESPTOOL" --chip esp32 merge_bin --fill-flash-size 4MB --flash_mode keep --flash_freq keep --flash_size 4MB \
     -o "$b/qemu-flash.bin" 0x1000 "$b/bootloader.bin" 0x8000 "$b/partitions.bin" 0xe000 "$BOOT_APP0" \
     0x10000 "$b/firmware.bin" >/dev/null
 }
@@ -74,14 +76,14 @@ if [ "${1:-}" = "--net" ] || [ "${1:-}" = "--serve" ]; then
     --boot-timeout 90 --log "$E/qemu-serial.log" "$@"
 fi
 
-"$PIO" run -e esp32dev -e esp32dev_qemu
-merge esp32dev
+"$PIO" run -e esp32dev_qemu_wifi -e esp32dev_qemu
+merge esp32dev_qemu_wifi
 merge esp32dev_qemu
 
 rc=0
-echo "== stage 1: the board's own image (esp32dev)"
-"${DRIVE[@]}" full --flash .pio/build/esp32dev/qemu-flash.bin --elf .pio/build/esp32dev/firmware.elf \
-  --log .pio/build/esp32dev/qemu-serial.log || rc=1
+echo "== stage 1: the board's firmware with Wi-Fi, at DIO 40 MHz (esp32dev_qemu_wifi)"
+"${DRIVE[@]}" full --flash .pio/build/esp32dev_qemu_wifi/qemu-flash.bin --elf .pio/build/esp32dev_qemu_wifi/firmware.elf \
+  --log .pio/build/esp32dev_qemu_wifi/qemu-serial.log || rc=1
 echo "== stage 2: the same firmware without Wi-Fi (esp32dev_qemu)"
 "${DRIVE[@]}" smoke --flash .pio/build/esp32dev_qemu/qemu-flash.bin --elf .pio/build/esp32dev_qemu/firmware.elf \
   --log .pio/build/esp32dev_qemu/qemu-serial.log "$@" || rc=1
