@@ -78,6 +78,18 @@ static Proptroller* g_prop = nullptr;  // for proptrollerMemoryReport()
 #if PT_BOARD
 static uint64_t g_ready_ms = 0;        // millis at the end of begin()
 static volatile uint64_t g_step_at = 0;  // the end of the latest step or input sample (any core)
+// How long the 10 ms step takes (the controller's tick and the sketch's tasks, without the wait for the lock),
+// reported and cleared by `mem`: the longest, and how many took longer than the 1 ms input sampling period
+// (the samples they held up) or than a whole tick.
+static const uint32_t STEP_BUDGET_US = 1000;
+static const uint32_t STEP_TICK_US = 10000;
+static volatile uint32_t g_step_us_max = 0, g_step_over_budget = 0, g_step_over_tick = 0, g_steps = 0;
+static void stepTimed(uint32_t us) {
+  if (us > g_step_us_max) g_step_us_max = us;
+  if (us > STEP_BUDGET_US) g_step_over_budget = g_step_over_budget + 1;
+  if (us > STEP_TICK_US) g_step_over_tick = g_step_over_tick + 1;
+  g_steps = g_steps + 1;
+}
 // RP2040: one hardware watchdog (8 s) for both cores, fed only while the step is alive (stepAlive), from either
 // core: a hung core 1 restarts the board, a stalled network on core 0 does not.
 static const uint32_t RP2040_WATCHDOG_MS = 8000;
@@ -566,7 +578,7 @@ void Proptroller::start(FirmwareMaker make) {
 // Free heap and stack high-water marks, for the bench: "free heap 182344 B (min 179020, largest block 110580);
 // stack free: loop 5412 B, step 6120 B; ready after 812 ms".
 std::string Proptroller::memoryReport() {
-  char b[200];
+  char b[320];
 #if PT_BOARD && defined(ESP32)
   unsigned loop_free = (unsigned)uxTaskGetStackHighWaterMark(xTaskGetHandle("loopTask"));
   unsigned step_free = g_tick_task ? (unsigned)uxTaskGetStackHighWaterMark(g_tick_task) : 0;
@@ -588,6 +600,18 @@ std::string Proptroller::memoryReport() {
            (unsigned)rp2040.getTotalHeap(), (unsigned)rp2040.getUsedHeap(), (unsigned long)g_ready_ms);
 #else
   (void)snprintf(b, sizeof b, "memory report: on the boards only");
+#endif
+#if PT_BOARD
+  {
+    // the step's timing since the last report (then cleared)
+    size_t k = strlen(b);
+    snprintf(b + k, sizeof b - k, "; step max %u us, %u of %u steps over 1 ms, %u over 10 ms", (unsigned)g_step_us_max,
+             (unsigned)g_step_over_budget, (unsigned)g_steps, (unsigned)g_step_over_tick);
+    g_step_us_max = 0;
+    g_step_over_budget = 0;
+    g_step_over_tick = 0;
+    g_steps = 0;
+  }
 #endif
   return b;
 }
@@ -657,8 +681,10 @@ void Proptroller::tick(uint64_t now) {
   bool reboot;
   {
     Controller::StepScope in_step(ctl_);  // the sketch's tasks run in the step too: never a window there
+    uint32_t t0 = micros();
     fw_->tick(now);
     runTasks(now);
+    stepTimed(micros() - t0);
     reboot = fw_->rebootRequested();
   }
   g_step_at = millis64();
