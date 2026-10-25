@@ -6,9 +6,7 @@
 
 #if defined(ESP32)
 #include <driver/rmt.h>
-#if SOC_CPU_CORES_NUM > 1
-#include <esp_ipc.h>
-#endif
+#include <atomic>
 #include <soc/gpio_reg.h>
 #include <soc/soc.h>
 #include <driver/uart.h>
@@ -234,16 +232,41 @@ static void rmtInstall(void* arg) {
          rmt_translator_init(PIX_CH, a.inverted ? toRmt : toRmtPlain) == ESP_OK;
 }
 
+#if SOC_CPU_CORES_NUM > 1
+// The install runs on a short task of its own, pinned to core 0, not through esp_ipc_call_blocking: the IPC task's
+// stack is 1 KB (CONFIG_ESP_IPC_TASK_STACK_SIZE), and the driver's error message on a failed install (ESP_LOGE, a
+// printf) overflows it into the heap. Seen in QEMU, whose RMT makes rmt_translator_init fail: the next heap walk
+// (ESP.getMaxAllocHeap in the ready line) faulted on the overwritten block. On a board any failed install did the
+// same. Begin() runs before the step starts; it polls for the task's end with a deadline.
+static const uint32_t RMT_INSTALL_STACK = 4096;
+static const UBaseType_t RMT_INSTALL_PRIORITY = 2;  // above loop() (1), so it runs at once
+static const uint32_t RMT_INSTALL_WAIT_MS = 500;    // a generous limit for a register setup and two allocations
+// static, not on begin()'s stack: an install that ends after the wait gave up writes here, never into a dead frame
+static RmtInstall g_rmt_install;
+static std::atomic<bool> g_rmt_install_done{false};
+static void rmtInstallTask(void*) {
+  rmtInstall(&g_rmt_install);
+  g_rmt_install_done.store(true, std::memory_order_release);
+  vTaskDelete(nullptr);
+}
+#endif
+
 bool BoardPixels::begin() {
   if (pin_ == NO_PIN) return false;  // the board profile has no pixel port
 #if defined(PROPTROLLER_QEMU_NO_LEDC)
-  // QEMU's esp32s3 machine has no RMT either: the driver's failure message would overflow the IPC task's stack
+  // QEMU's esp32s3 machine has no RMT either: no driver, the pixel port reports "not available"
   return false;
 #endif
-  RmtInstall a{(gpio_num_t)pin_, inverted_, false};
 #if SOC_CPU_CORES_NUM > 1
-  ok_ = esp_ipc_call_blocking(0, rmtInstall, &a) == ESP_OK && a.ok;
+  g_rmt_install = RmtInstall{(gpio_num_t)pin_, inverted_, false};
+  g_rmt_install_done.store(false, std::memory_order_relaxed);
+  if (xTaskCreatePinnedToCore(rmtInstallTask, "rmt_install", RMT_INSTALL_STACK, nullptr, RMT_INSTALL_PRIORITY, nullptr, 0) != pdPASS)
+    return ok_ = false;
+  const uint32_t started = millis();
+  while (!g_rmt_install_done.load(std::memory_order_acquire) && millis() - started < RMT_INSTALL_WAIT_MS) vTaskDelay(1);
+  ok_ = g_rmt_install_done.load(std::memory_order_acquire) && g_rmt_install.ok;
 #else
+  RmtInstall a{(gpio_num_t)pin_, inverted_, false};
   rmtInstall(&a);  // one core: installed here
   ok_ = a.ok;
 #endif
