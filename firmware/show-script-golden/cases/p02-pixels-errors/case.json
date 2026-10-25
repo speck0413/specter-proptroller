@@ -1,0 +1,57 @@
+{
+  "spec": [
+    "SS-X"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 3,
+        "message": "line 3: say what the pixel strip shows, for example \"pixels = rainbow\" or \"pixels = chase red\"."
+      },
+      {
+        "line": 4,
+        "message": "line 4: \"glow\" is not a pixel effect. The effects are off, fill, chase, rainbow, flash, fade, flicker, comet, sparkle, breathe and fire, then a colour: \"pixels = chase red\"."
+      },
+      {
+        "line": 5,
+        "message": "line 5: \"reddish\" is not a colour. Use red, orange, yellow, green, cyan, blue, purple, pink, white or warm white, or 0xRRGGBB for an exact colour (0xff8000)."
+      },
+      {
+        "line": 6,
+        "message": "line 6: rainbow takes no colour: write \"pixels = rainbow\"."
+      },
+      {
+        "line": 7,
+        "message": "line 7: \"#ff0000\" starts a comment, so the colour is lost: write it as 0xff0000."
+      },
+      {
+        "line": 8,
+        "message": "line 8: \"#00ff00\" starts a comment, so the colour is lost: write it as 0x00ff00."
+      },
+      {
+        "line": 9,
+        "message": "line 9: to light the pixel strip, write \"pixels = blue\"."
+      },
+      {
+        "line": 10,
+        "message": "line 10: write it as \"pixels = red\"."
+      },
+      {
+        "line": 11,
+        "message": "line 11: the pixel strip has its own line: \"pixels = <effect> <colour>\", for example \"pixels = chase red\"."
+      },
+      {
+        "line": 12,
+        "message": "line 12: off takes no colour: write \"pixels = off\"."
+      },
+      {
+        "line": 13,
+        "message": "line 13: \"0xff00\" is not a colour. Use red, orange, yellow, green, cyan, blue, purple, pink, white or warm white, or 0xRRGGBB for an exact colour (0xff8000)."
+      }
+    ],
+    "warnings": []
+  }
+}

@@ -61,8 +61,9 @@ Two effects, each with its own trigger. They run at the same time and never wait
 | `audio_loop = <N>` | Plays sound N over and over in the background (SS-R7); `audio_loop = off` (or `false`, or `""`) turns it off. |
 | `audio_volume = <level>` | How loud the script's sounds play from this line on: `audio_volume = 60%` (0% to 100%, or `off`). |
 | `audio_stop` | Stops the sound. |
+| `pixels = <effect> <colour>` | Lights the pixel strip until another `pixels` line: `pixels = chase red`, `pixels = rainbow`, `pixels = warm white` (§10). |
 
-That is the whole beginner language: ten kinds of line.
+That is the whole beginner language: eleven kinds of line.
 
 **SS-N Names you gave the terminals** (owner approved 2026-10-22). Where a line takes an output or an
 input, it also takes the name the board knows that terminal by: the wiring name (setting `out1_name` …
@@ -83,7 +84,8 @@ way (a settings reset) is kept but does not run until the name is back or the sc
 - **SS-R1 Each effect is its own loop.** At power-on, every effect sits at its top: its sound lines (if it starts
   with any), then its first `wait for`. When it starts it runs its lines top to bottom, and after the last line it
   goes back to the top. Sound lines before the first `wait for` (`audio_loop`, `audio_single`, `audio_volume`, `audio_stop`) run
-  at power-on and every time the effect comes back to its top; any other line before it is an error.
+  at power-on and every time the effect comes back to its top, and so does a `pixels` line there (the strip's
+  look while the prop waits); any other line before it is an error.
 - **SS-R2 Busy until the last line finishes.** While an effect is running it never starts again; a press of its
   trigger is ignored (with `trig1_wait` / `trig2_wait` = `return`: remembered, and it starts the next run when
   this one ends only if the input is still held then, SS-R4). A `wait` at the end of an effect therefore works
@@ -295,3 +297,37 @@ Written like the built-in effect (the example above, with `trig2_wait = return` 
 refill`), a script gives the effect's output edges to within one tick (`test_script_gates`), but for one thing:
 the effect runs a recover pressed while it could not run even when TRIG2 was let go since, where a script runs a
 remembered press only if its input is still held then (SS-R8).
+
+## 10. The pixel strip (SS-X)
+
+```
+effect graveyard:
+  pixels = breathe purple       # while it waits (SS-R1)
+  wait for trig1
+  pixels = fire
+  out1 = on
+  wait 10
+  out1 = off
+  pixels = comet 0xff2000       # an exact colour: 0x and six hex digits
+  wait 3
+```
+
+- **SS-X1 One line:** `pixels = <effect> <colour>`, or `pixels = <colour>` to fill the strip with one colour. The
+  strip shows it until another `pixels` line runs (any effect's), also after its effect goes back to its top, like
+  `audio_loop`. `pixels = off` turns it dark.
+- **SS-X2 Effects:** `off`, `fill`, `chase` (a few lit pixels running along), `rainbow`, `flash` (on and off),
+  `fade` (in from dark, then stays), `flicker` (like a failing bulb), `comet` (a head with a fading tail),
+  `sparkle` (random pixels flash and fade), `breathe` (slowly up and down), `fire` (red, orange and yellow
+  flames). `rainbow` and `fire` have their own colours; the others are white when no colour is given.
+- **SS-X3 Colours:** `red`, `orange`, `yellow`, `green`, `cyan`, `blue`, `purple`, `pink`, `white`, `warm white`,
+  or an exact colour as `0xRRGGBB` (`0xff8000` is orange). `#ff8000` does not work: `#` starts a comment, and the
+  checker says so.
+- **SS-X4 Speed and brightness are settings:** `pixel_speed` (100 % is each effect's own speed, 200 % twice as
+  fast, 10 % to 400 %) and `pixel_brightness` (a cap on every colour). How many pixels the strip has is
+  `pixel_count`. A change applies at once.
+- **SS-X5 Turn-taking:** the strip is an output: effects with a `pixels` line take turns like effects that share
+  an output (SS-R8). A paused board (the stop button) turns the strip dark; after the pause every effect starts
+  over at its top, so the lines before its first `wait for` set the strip again. A pixel test from the phone page
+  wins while it is on.
+- **SS-X6 Never waits:** the strip's frames go out in the background (50 a second at most), so a long strip never
+  holds up the inputs or the outputs.

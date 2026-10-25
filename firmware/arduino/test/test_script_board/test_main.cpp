@@ -4,6 +4,7 @@
 #include <string>
 #include "proptroller/script_record.h"
 #include "proptroller/sim/sim.h"
+#include "proptroller/pixels.h"
 
 using namespace pt;
 void setUp() {}
@@ -222,6 +223,85 @@ void a_stored_script_whose_name_is_gone_does_not_run() {
   TEST_ASSERT_EQUAL(1000, sim.level(Channel::Out1));
 }
 
+static bool all(Sim& sim, Rgb c) {
+  if (sim.world().pixels.empty()) return false;
+  for (auto& p : sim.world().pixels)
+    if (p != c) return false;
+  return true;
+}
+
+// pixels = <effect> <colour> (SHOW-SCRIPT.md §10): the strip shows it until another pixels line, a line before the
+// first wait for runs at power-on and back at the top, effects with pixels lines take turns, a pause turns the strip
+// off and the script's effect comes back after it.
+void pixels_lines_drive_the_strip_and_take_turns() {
+  Sim sim("t");
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"set_params","values":[{"key":"pixel_count","value":10}]})").isOk());
+  Response r = setScript(sim,
+                         "effect idle:\n  pixels = blue\n  wait for trig1\n  pixels = red\n  wait 1\n"
+                         "effect other:\n  wait for trig2\n  pixels = green\n  wait 1\n");
+  TEST_ASSERT_TRUE_MESSAGE(r.doc()["result"]["ok"].as<bool>(), r.json().c_str());
+  sim.step(100);
+  TEST_ASSERT_TRUE_MESSAGE(all(sim, Rgb(0, 0, 255)), "the line before the first wait for: at power-on");
+  sim.step(2500);
+  sim.setInput(Input::Trig1, true);
+  sim.step(150);
+  sim.setInput(Input::Trig1, false);
+  sim.step(50);
+  TEST_ASSERT_TRUE(all(sim, Rgb(255, 0, 0)));
+  // other shares the strip: pressed (and held) during idle's run it waits, then starts when idle is back at its top
+  sim.setInput(Input::Trig2, true);
+  sim.step(300);
+  TEST_ASSERT_TRUE(all(sim, Rgb(255, 0, 0)));
+  sim.step(800);
+  sim.setInput(Input::Trig2, false);
+  sim.step(50);
+  TEST_ASSERT_TRUE_MESSAGE(all(sim, Rgb(0, 255, 0)), "idle's top line ran, then other started");
+  sim.step(2000);
+  TEST_ASSERT_TRUE_MESSAGE(all(sim, Rgb(0, 255, 0)), "the effect stays after its run ends");
+  // a pause: the strip goes off; after it every effect starts over at its top, so the lines before the first
+  // wait for set the strip again
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pause","on":true})").isOk());
+  sim.step(50);
+  TEST_ASSERT_TRUE(all(sim, Rgb()));
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pause","on":false})").isOk());
+  sim.step(50);
+  TEST_ASSERT_TRUE(all(sim, Rgb(0, 0, 255)));
+  // pixel_brightness scales it
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"set_params","values":[{"key":"pixel_brightness","value":50}]})").isOk());
+  sim.step(50);
+  TEST_ASSERT_TRUE(all(sim, Rgb(0, 0, 255).scale(127)));
+  // a manual pixel test wins while it is on
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel","action":{"do":"fill","color":"#ffffff"}})").isOk());
+  sim.step(50);
+  TEST_ASSERT_TRUE(all(sim, Rgb(255, 255, 255).scale(127)));
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel"})").isOk());
+  sim.step(50);
+  TEST_ASSERT_TRUE(all(sim, Rgb(0, 0, 255).scale(127)));
+}
+
+// pixel_speed: an effect at 200 % shows at t what it shows at 2t at 100 %; every new effect renders.
+void pixel_speed_and_the_new_effects() {
+  for (auto k : {Effect::Kind::Chase, Effect::Kind::Comet, Effect::Kind::Sparkle, Effect::Kind::Breathe, Effect::Kind::Fire, Effect::Kind::Rainbow}) {
+    Effect a = pixelEffect(k, Rgb(255, 0, 0), 100), b = pixelEffect(k, Rgb(255, 0, 0), 200);
+    Rgb x[30], y[30];
+    for (uint64_t t : {0ull, 130ull, 1777ull, 9000ull}) {
+      render(a, 2 * t, x, 30);
+      render(b, t, y, 30);
+      for (int i = 0; i < 30; i++) TEST_ASSERT_TRUE(x[i] == y[i]);
+    }
+    TEST_ASSERT_FALSE(a == b);
+    // it moves: two moments look different
+    Rgb z[30];
+    render(a, 1000, z, 30);
+    render(a, 1050, x, 30);
+    bool differs = false;
+    for (int i = 0; i < 30; i++) differs |= x[i] != z[i];
+    TEST_ASSERT_TRUE_MESSAGE(differs, a.describe().c_str());
+  }
+  TEST_ASSERT_EQUAL_STRING("comet #ff0000", pixelEffect(Effect::Kind::Comet, Rgb(255, 0, 0), 100).describe().c_str());
+  TEST_ASSERT_EQUAL_STRING("fire", pixelEffect(Effect::Kind::Fire, Rgb(), 100).describe().c_str());
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(set_get_and_survive_a_power_cycle);
@@ -233,5 +313,7 @@ int main() {
   RUN_TEST(scripts_over_mqtt);
   RUN_TEST(names_in_a_stored_script);
   RUN_TEST(a_stored_script_whose_name_is_gone_does_not_run);
+  RUN_TEST(pixels_lines_drive_the_strip_and_take_turns);
+  RUN_TEST(pixel_speed_and_the_new_effects);
   return UNITY_END();
 }

@@ -21,7 +21,7 @@
       },
       {
         "line": 7,
-        "message": "line 7: the pixel strip is not in scripts yet: make a show for it on the Shows tab, or use a sketch."
+        "message": "line 7: to light the pixel strip, write \"pixels = red\"."
       }
     ],
     "warnings": []

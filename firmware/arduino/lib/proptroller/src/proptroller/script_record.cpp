@@ -92,7 +92,7 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
     st.line = get16(p + 8);
     uint8_t op = p[10];
     st.setting = p[11];
-    if (op > (uint8_t)ScriptStep::Op::Volume || st.setting > SCRIPT_SETTING_COUNT) { out.reset(); return false; }
+    if (op > (uint8_t)ScriptStep::Op::Pixels || st.setting > SCRIPT_SETTING_COUNT) { out.reset(); return false; }
     st.op = (ScriptStep::Op)op;
     bool ok = true;
     switch (st.op) {
@@ -107,9 +107,11 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
       case ScriptStep::Op::Stop:
       case ScriptStep::Op::LoopOff: break;
       case ScriptStep::Op::Volume: ok = st.value <= 30; break;
+      case ScriptStep::Op::Pixels: ok = st.target < SCRIPT_PIXEL_EFFECT_COUNT && st.ms <= 0xFFFFFF; break;
     }
     if (!ok || st.ms > SCRIPT_MAX_TIME_MS) { out.reset(); return false; }
   }
+  for (int k = 0; k < steps; k++) out.pixels |= out.step[k].op == ScriptStep::Op::Pixels;  // not stored: from the steps
   out.effects = effects;
   out.steps = steps;
   return true;

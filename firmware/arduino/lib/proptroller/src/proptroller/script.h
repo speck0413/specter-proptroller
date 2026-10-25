@@ -38,6 +38,24 @@ static const uint8_t SCRIPT_SETTING_COUNT = 8;
 extern const char* const SCRIPT_SETTINGS[SCRIPT_SETTING_COUNT];
 static const uint8_t SCRIPT_SETTING_RUNS = 7;  // runs_per_cooldown: the one count; the others are times in ms
 
+// The pixel strip's line (`pixels = chase red`, SHOW-SCRIPT.md): its effects (in Effect::Kind's order) and the
+// colour names; an exact colour is 0xRRGGBB (# starts a comment).
+static const uint8_t SCRIPT_PIXEL_EFFECT_COUNT = 11;
+extern const char* const SCRIPT_PIXEL_EFFECTS[SCRIPT_PIXEL_EFFECT_COUNT];
+struct ScriptColour {
+  const char* name;
+  uint32_t rgb;
+};
+static const uint8_t SCRIPT_COLOUR_COUNT = 10;
+extern const ScriptColour SCRIPT_COLOURS[SCRIPT_COLOUR_COUNT];
+static const uint32_t SCRIPT_PIXEL_DEFAULT_RGB = 0xFFFFFF;  // an effect written without a colour: white
+// Does the effect take a colour (rainbow and fire have their own, off none)?
+bool scriptPixelColoured(uint8_t effect);
+// The words of the language for an editor (firmware/web/words.js mirrors them; test_script checks): outputs,
+// inputs, the settings a line may name.
+extern const char* const SCRIPT_OUTPUT_WORDS[CHANNEL_COUNT];
+extern const char* const SCRIPT_INPUT_WORDS[INPUT_COUNT];
+
 // A target: 0-7 the board's outputs (OUT1 ... CC2), SCRIPT_DMX + k the DMX channel k + 1.
 static const uint16_t SCRIPT_DMX = 8;
 inline bool scriptIsDmx(uint16_t target) { return target >= SCRIPT_DMX; }
@@ -45,7 +63,9 @@ inline bool scriptIsDmx(uint16_t target) { return target >= SCRIPT_DMX; }
 static const uint8_t SCRIPT_NAMED = CHANNEL_COUNT + INPUT_COUNT;
 
 struct ScriptStep {
-  enum class Op : uint8_t { Wait, Set, Sleep, Fade, Flicker, Single, Loop, Stop, Pulse, LoopOff, Volume };
+  // Pixels (a `pixels = <effect> <colour>` line): target the effect (SCRIPT_PIXEL_EFFECTS, Effect::Kind's order),
+  // ms the colour 0xRRGGBB.
+  enum class Op : uint8_t { Wait, Set, Sleep, Fade, Flicker, Single, Loop, Stop, Pulse, LoopOff, Volume, Pixels };
   uint32_t ms = 0;      // wait / fade / flicker / pulse time
   uint16_t target = 0;  // input index (Wait) or target
   uint16_t value = 0;   // level: permille for an output, 0-255 for DMX; the sound number; the volume 0-30
@@ -72,6 +92,7 @@ struct ScriptProgram {
   uint8_t channels = 0;  // bit per Channel the script sets
   uint8_t inputs = 0;    // bit per Input the script waits for
   bool dmx = false;      // a dmx line: the port sends frames
+  bool pixels = false;   // a pixels line
   void reset() {
     effects = 0;
     for (auto& e : fx) e = ScriptEffect();
@@ -80,6 +101,7 @@ struct ScriptProgram {
     channels = 0;
     inputs = 0;
     dmx = false;
+    pixels = false;
   }
 };
 
@@ -205,6 +227,14 @@ class ScriptRunner {
   Level level(int channel) const { return level_[channel]; }
   const uint8_t* dmx() const { return dmx_; }
   bool running(int effect) const { return st_[effect].running; }
+  // The strip's effect the script set last (its pixels line) and when that line ran; false while no line has set
+  // one. It stays until another pixels line (SHOW-SCRIPT.md: like audio_loop).
+  bool pixels(const ScriptStep*& step, Millis& since) const {
+    if (!p_ || pixel_step_ < 0) return false;
+    step = &p_->step[pixel_step_];
+    since = pixel_since_;
+    return true;
+  }
   uint16_t line(int effect) const;  // the line the effect is on
   uint32_t runs(int effect) const { return st_[effect].runs; }
   // A run of an effect that turns OUT2 on (its recovery) is before that line: the status value `pulsing` (SS-R13)
@@ -258,6 +288,8 @@ class ScriptRunner {
   Millis pulse_until_[CHANNEL_COUNT] = {0};         // a pulse turns its output off then (0: none)
   uint32_t values_[SCRIPT_SETTING_COUNT] = {0};
   bool paused_ = false;
+  int16_t pixel_step_ = -1;   // the last pixels line that ran (a step index), -1 none
+  Millis pixel_since_ = 0;
   bool remote_enabled_ = false;
   uint8_t remote_free_ = 0;
   std::vector<SoundCommand> pending_sound_;         // sound lines since the last tick

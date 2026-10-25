@@ -118,6 +118,7 @@ static const ParamRow BOARD_ROWS[] = {
   {P_INT("trig_release_ms", "Trigger re-arm after release", "Inputs", TRIG_RELEASE_MIN_MS, TRIG_RELEASE_MAX_MS, "ms"), "", false},
   {P_INT("pixel_count", "Pixels", "Pixels", 0, PIXEL_COUNT_MAX, ""), "", false},
   {P_INT("pixel_brightness", "Pixel brightness", "Pixels", 0, PIXEL_BRIGHTNESS_MAX, "%"), "A cap on every colour (100 = full); the firmware does not measure pixel current", false},
+  {P_INT("pixel_speed", "Pixel speed", "Pixels", PIXEL_SPEED_MIN, PIXEL_SPEED_MAX, "%"), "How fast a show script's pixel effects run: 100 = normal, 200 = twice as fast, 50 = half as fast", false},
   {P_CHOICE("dmx_port", "DMX port", "Expansion", "off|s4"), "s4 sends DMX to a MAX485 module on expansion S4 (SHOW-SCRIPT.md \xc2\xa7" "7.4)", false},
   {P_BOOL("ambient", "Ambient sound while idle", "Sound"), "Loops the ambient sound; skipped when the card has no such file", false},
   {P_INT("ambient_track", "Ambient sound", "Sound", 1, SOUND_MAX_TRACK, ""), "Sound 1 is the one file in the card's folder 01 (01/001-<name>.mp3), sound 2 the one in folder 02, \xe2\x80\xa6", false},
@@ -299,6 +300,7 @@ bool Settings::get(const std::string& key, Value& out) const {
   else if (key == "dmx_port") out = Value::text(dmx_s4 ? "s4" : "off");
   else if (key == "pixel_count") out = Value::integer(pixel_count);
   else if (key == "pixel_brightness") out = Value::integer(pixel_brightness);
+  else if (key == "pixel_speed") out = Value::integer(pixel_speed);
   else if (key == "ambient") out = Value::boolean(ambient);
   else if (key == "ambient_track") out = Value::integer(ambient_track);
   else if (key == "ambient_volume") out = Value::integer(ambient_volume);
@@ -418,7 +420,7 @@ const char* Settings::set(const std::string& key, const Value& v) {
   if (key == "dmx_port") { if (!isText) return "wrong type"; dmx_s4 = v.s == "s4"; return nullptr; }
   if (key == "start_buttons") { if (!isText) return "wrong type"; start_hold = v.s == "hold"; return nullptr; }
   static const char* const INT_KEYS[] = {"trig_debounce_ms", "trig_release_ms", "pixel_count",
-                                         "pixel_brightness", "ambient_track", "ambient_volume", "trigger_track",
+                                         "pixel_brightness", "pixel_speed", "ambient_track", "ambient_volume", "trigger_track",
                                          "trigger_volume", "role_pulse_ms", "mqtt_port"};
   bool known = false;
   for (auto k : INT_KEYS) known |= key == k;
@@ -429,6 +431,7 @@ const char* Settings::set(const std::string& key, const Value& v) {
   else if (key == "trig_release_ms") trig_release_ms = (uint32_t)x;
   else if (key == "pixel_count") pixel_count = (uint16_t)x;
   else if (key == "pixel_brightness") pixel_brightness = (uint8_t)x;
+  else if (key == "pixel_speed") pixel_speed = (uint16_t)x;
   else if (key == "ambient_track") ambient_track = (uint16_t)x;
   else if (key == "ambient_volume") ambient_volume = (uint8_t)x;
   else if (key == "trigger_track") trigger_track = (uint16_t)x;
@@ -474,6 +477,7 @@ void Settings::toJson(JsonObject o) const {
   o["dmx_port"] = dmx_s4 ? "s4" : "off";
   o["pixel_count"] = pixel_count;
   o["pixel_brightness"] = pixel_brightness;
+  o["pixel_speed"] = pixel_speed;
   o["ambient"] = ambient;
   o["ambient_track"] = ambient_track;
   o["ambient_volume"] = ambient_volume;
@@ -538,6 +542,7 @@ void Settings::fromJson(JsonVariantConst v) {
   if (v["dmx_port"].is<const char*>()) dmx_s4 = !strcmp(v["dmx_port"], "s4");
   u("pixel_count", pixel_count);
   u("pixel_brightness", pixel_brightness);
+  u("pixel_speed", pixel_speed);
   if (pixel_brightness > PIXEL_BRIGHTNESS_MAX) pixel_brightness = PIXEL_BRIGHTNESS_MAX;
   b("ambient", ambient);
   u("ambient_track", ambient_track);
@@ -564,7 +569,7 @@ void Settings::fromJson(JsonVariantConst v) {
   }
   // a stored number out of its range (a damaged or hand-made record) is replaced by the default, as set() would
   // refuse it
-  static const char* const RANGED[] = {"trig_debounce_ms", "trig_release_ms", "pixel_count", "role_pulse_ms", "mqtt_port"};
+  static const char* const RANGED[] = {"trig_debounce_ms", "trig_release_ms", "pixel_count", "pixel_speed", "role_pulse_ms", "mqtt_port"};
   std::unique_ptr<Settings> defaults;  // on the heap (about 1 KB), only when needed
   for (const char* k : RANGED) {
     const ParamDesc* d = find(k);

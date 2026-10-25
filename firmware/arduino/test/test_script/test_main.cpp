@@ -351,8 +351,11 @@ void every_example_script_checks_and_runs() {
     ScriptProgram* p = new ScriptProgram();
     ScriptCheck c = scriptCompile(text, {}, b, *p);
     TEST_ASSERT_TRUE_MESSAGE(c.ok(), (n + ": " + (c.ok() ? std::string() : c.errors[0].text)).c_str());
-    const ScriptStep& first = p->step[p->fx[0].first];
-    TEST_ASSERT_EQUAL_MESSAGE(ScriptStep::Op::Wait, first.op, (n + ": first line").c_str());
+    // the first wait for (sound and pixels lines may come before it)
+    uint16_t w = p->fx[0].first;
+    while (w < p->fx[0].first + p->fx[0].count && p->step[w].op != ScriptStep::Op::Wait) w++;
+    const ScriptStep& first = p->step[w];
+    TEST_ASSERT_EQUAL_MESSAGE(ScriptStep::Op::Wait, first.op, (n + ": first wait for").c_str());
     ScriptRunner run;
     run.load(p, 0);
     ScriptInputs in;
@@ -372,7 +375,7 @@ void every_example_script_checks_and_runs() {
     TEST_ASSERT_TRUE_MESSAGE(changed, (n + ": a press does nothing").c_str());
     delete p;
   }
-  TEST_ASSERT_EQUAL_MESSAGE(9, (int)names.size(), "the seven public examples and the workspace's two");
+  TEST_ASSERT_EQUAL_MESSAGE(10, (int)names.size(), "the eight public examples and the workspace's two");
 }
 
 // Every limit at once: 8 effects, 224 lines, just under SCRIPT_MAX_BYTES (blank lines would only add text).

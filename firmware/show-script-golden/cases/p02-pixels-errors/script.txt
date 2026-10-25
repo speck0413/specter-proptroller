@@ -1,0 +1,14 @@
+effect a:
+  wait for trig1
+  pixels =
+  pixels = glow red
+  pixels = chase reddish
+  pixels = rainbow red
+  pixels = chase #ff0000
+  pixels = #00ff00
+  pixel = blue
+  pixels red
+  fade pixels to 50% over 2
+  pixels = off blue
+  pixels = chase 0xff00
+  wait 1

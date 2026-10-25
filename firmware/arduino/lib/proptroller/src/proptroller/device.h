@@ -264,6 +264,7 @@ class Controller : public Firmware {
   void accepted(Millis now, const std::vector<uint16_t>& started);
   void pulseRole(Millis now, OutputRole role, uint32_t ms = 0);
   void ownedLevels(Millis now);
+  void scriptPixels(Frame& f) const;
   void readInputs(bool raw[INPUT_COUNT]);
   bool sensor_high_[2] = {false, false};  // the input types the triggers were armed with
   void stopOwned(Millis now);

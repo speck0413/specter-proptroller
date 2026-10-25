@@ -165,7 +165,7 @@ void the_table_as_bytes_and_back() {
   TEST_ASSERT_TRUE(refused(x));
   size_t step0 = 6 + p->effects * (SCRIPT_MAX_NAME + 15);
   x = bytes;
-  x[step0 + 10] = 11;  // an op beyond the last
+  x[step0 + 10] = (char)((int)ScriptStep::Op::Pixels + 1);  // an op beyond the last
   TEST_ASSERT_TRUE(refused(x));
   x = bytes;
   x[step0 + 4] = (char)INPUT_COUNT;  // step 0 is the first effect's wait for trig1

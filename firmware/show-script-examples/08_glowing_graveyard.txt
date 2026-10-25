@@ -1,0 +1,23 @@
+# 08 Glowing graveyard: a pixel strip breathes purple while it waits; a visitor sets off a fire, a lightning lamp
+# and a scream, then a comet runs along the fence and the glow comes back.
+#
+# Wiring:
+#   motion sensor                 -> TRIG1 jack
+#   WS2812 pixel strip (5 V)      -> PIXEL terminal; set pixel_count to the number of pixels
+#   12 V lamp or LED bulb         -> OUT1 + and -
+#   a speaker on the board's SPK terminals; the SD card has a scream as sound 1 (01/001-scream.mp3)
+#
+#        [motion sensor]--TRIG1        PIXEL--[pixel strip]        OUT1--[12 V lamp]
+#
+# Settings: pixel_speed makes every effect faster or slower, pixel_brightness dims the whole strip.
+
+effect graveyard:
+  pixels = breathe purple       # while it waits
+  wait for trig1
+  pixels = fire
+  audio_single = 1
+  flicker out1 for 2
+  wait 4
+  pixels = comet 0x40ff80       # an exact colour: 0x and six hex digits
+  wait 3
+  wait 10                       # rest before the next visitor

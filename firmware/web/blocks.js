@@ -41,6 +41,8 @@ export const KINDS = {
   ps_audio_stop: { words: ['stop the sound'], fields: {}, colour: '#a65b80', tip: 'Stops the sound.' },
   ps_audio_volume: { words: ['sound volume', 'VOLUME'], fields: { VOLUME: '60%' }, slider: { VOLUME: [0, 100, '%'] }, colour: '#a65b80',
     tip: 'How loud the script\'s sounds play from here on: 0% (silent) to 100%.' },
+  ps_pixels: { words: ['light the pixels:', 'LOOK'], fields: { LOOK: 'rainbow' }, colour: '#a6a05b',
+    tip: 'Lights the pixel strip until another pixels line: an effect (off, fill, chase, rainbow, flash, fade, flicker, comet, sparkle, breathe, fire) and a colour (red … warm white, or 0xRRGGBB), for example chase red.' },
   ps_comment: { words: ['#', 'TEXT'], fields: { TEXT: '' }, colour: '#6d6d6d', tip: 'A comment or a blank line: the board skips it.' },
   ps_raw: { words: ['line', 'TEXT'], fields: { TEXT: '' }, colour: '#a65b5b', tip: 'A line the blocks do not know: Check says what is wrong with it.' },
 };
@@ -49,7 +51,8 @@ export const ADDABLE = [
   ['ps_wait', 'wait for an input'], ['ps_set', 'set an output'], ['ps_sleep', 'wait a time'], ['ps_fade', 'fade'],
   ['ps_flicker', 'flicker'], ['ps_pulse', 'pulse an output'], ['ps_limit', 'limit the runs'],
   ['ps_audio_single', 'play a sound once'], ['ps_audio_loop', 'play a sound over and over'],
-  ['ps_audio_stop', 'stop the sound'], ['ps_audio_volume', 'set the sound volume'], ['ps_comment', 'a comment'],
+  ['ps_audio_stop', 'stop the sound'], ['ps_audio_volume', 'set the sound volume'], ['ps_pixels', 'light the pixel strip'],
+  ['ps_comment', 'a comment'],
 ];
 
 // ---------------------------------------------------------------- one line → kind and fields
@@ -115,6 +118,10 @@ export function parse(raw) {
     const v = r.trim();
     if (v === '' || v[0] === '=' || v[0] === ':') return { type: 'ps_audio_volume', f: { VOLUME: v.slice(1).trim() } };
   }
+  if ((r = kw(low, 'pixels')) !== null) {
+    const v = r.trim();
+    if (v === '' || v[0] === '=' || v[0] === ':') return { type: 'ps_pixels', f: { LOOK: v.slice(1).trim() } };
+  }
   if ((r = kw(low, 'sleep')) !== null) return { type: 'ps_sleep', f: { TIME: r.trim() } };
   if ((r = kw(low, 'fade')) !== null) {
     const m = r.match(/^\s*([A-Za-z_]+\d*)\s*[Tt][Oo]\s*(.*?)\s*[Oo][Vv][Ee][Rr]\s*(.*)$/);
@@ -154,6 +161,7 @@ export function lineOf(type, f) {
     case 'ps_audio_loop': return `audio_loop = ${f.SOUND}`;
     case 'ps_audio_stop': return 'audio_stop';
     case 'ps_audio_volume': return `audio_volume = ${f.VOLUME}`;
+    case 'ps_pixels': return `pixels = ${f.LOOK}`;
     case 'ps_comment': return f.TEXT ? `# ${f.TEXT}` : '';
     default: return f.TEXT || '';
   }

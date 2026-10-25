@@ -67,7 +67,8 @@ exactly (byte for byte).
 | `limit <N> run(s) per <time>` | SS-G3: N is 1-20 or a count setting; the time is a time or a time setting, at most 60 min; no step (an effect field) |
 | `pulse <target> for <time>` | SS-G5: targets `out1`-`out4`, `rly1`, `rly2`, `cc1`, `cc2`; the time a time or a time setting |
 | `audio_loop = off` / `false` / `""` | SS-R7: the background loop off (the step `audio_loop_off`); a bare `audio_loop =` is still M-nosound |
-| sound lines before the first `wait for` | SS-R1: `audio_single`, `audio_loop`, `audio_volume`, `audio_stop` may come first; M-first applies to the first other line |
+| `pixels = <effect> [<colour>]` / `pixels = <colour>` | SS-X: `=` or `:`. Effects `off`, `fill`, `chase`, `rainbow`, `flash`, `fade`, `flicker`, `comet`, `sparkle`, `breathe`, `fire`; colours `red` (#ff0000), `orange` (#ff6000), `yellow` (#ffc000), `green` (#00ff00), `cyan` (#00ffff), `blue` (#0000ff), `purple` (#8000ff), `pink` (#ff40a0), `white` (#ffffff), `warm white` (#ffa040), or `0x` and six hex digits. Words compared lower case with runs of spaces made one. A colour alone is `fill` in that colour; an effect that takes a colour and has none is white; `off`, `rainbow` and `fire` take none. The step `{ "line", "op": "pixels", "effect", "color" }` (`"color"` as `"#rrggbb"`, only for an effect that takes one). A pixels line may come before the first `wait for`, as a sound line may |
+| sound lines before the first `wait for` | SS-R1: `audio_single`, `audio_loop`, `audio_volume`, `audio_stop` (and `pixels`) may come first; M-first applies to the first other line |
 
 - **Settings as times and counts** (SS-G6): where `wait`, `sleep`, `pulse` or `limit` take a time, a word that is not a time
   may be one of `out1_on_ms`, `out2_on_ms`, `out3_on_ms`, `recover_time_ms`, `cooldown_ms`, `trigger_out_pulse_ms`,
@@ -99,14 +100,14 @@ exactly (byte for byte).
 | M-longname | `line {n}: the effect name is longer than 32 characters.` |
 | M-dupname | `line {n}: there is already an effect called "{name}" (line {m}). Give each effect its own name.` |
 | M-unknown | `line {n}: I do not understand "{text}". A line is effect, wait for, an output = on/off/N%, wait, fade, flicker, audio_single, audio_loop, audio_volume or audio_stop.` |
-| M-unknown, hints | instead of the above for the commonest mistakes: a line starting `turn ` gets `line {n}: write it as three lines: "out1 = on", "wait 2", "out1 = off".`; `play {v}` gets `line {n}: to play a sound, write "audio_single = {v}" (a sound is its number: the card's 01/001-<name>.mp3 is 1).` (a leading `sound ` is dropped from `{v}`: `play sound 1` gets `"audio_single = 1"`; a `{v}` that is not a whole number becomes `1`); `delay {v}` or `pause {v}` gets `line {n}: to wait a time, write "wait {v}".`; an output name, a space and more (`out1 on`) gets `line {n}: write it as "{x} = {rest}".` |
+| M-unknown, hints | instead of the above for the commonest mistakes: a line starting `turn ` gets `line {n}: write it as three lines: "out1 = on", "wait 2", "out1 = off".`; `play {v}` gets `line {n}: to play a sound, write "audio_single = {v}" (a sound is its number: the card's 01/001-<name>.mp3 is 1).` (a leading `sound ` is dropped from `{v}`: `play sound 1` gets `"audio_single = 1"`; a `{v}` that is not a whole number becomes `1`); `delay {v}` or `pause {v}` gets `line {n}: to wait a time, write "wait {v}".`; an output name, a space and more (`out1 on`) gets `line {n}: write it as "{x} = {rest}".`; `pixels` or `pixel`, a space and more gets `line {n}: write it as "pixels = {rest}".` |
 | M-waitform | `line {n}: write it as "wait for trig1".` (`wait`, `wait for`, or `wait` and an input without the `for`) |
 | M-fadeform | `line {n}: write a fade as "fade out1 to 50% over 2".` |
 | M-flickerform | `line {n}: write a flicker as "flicker out1 for 3".` |
 | M-nosound | `line {n}: say which sound by its number, for example "audio_single = 1" (the card's 01/001-<name>.mp3).` |
 | M-input | `line {n}: there is no {x} on this board. The inputs are trig1, trig2 and user1 to user3.` |
 | M-learn | `line {n}: {x} is a learn-mode button (buttons = learn). Set buttons to triggers to use it in a script.` |
-| M-output | `line {n}: there is no {x} on this board. The outputs are out1 to out4, rly1, rly2, cc1 and cc2.`; for `pixel` (or `pixels`): `line {n}: the pixel strip is not in scripts yet: make a show for it on the Shows tab, or use a sketch.` |
+| M-output | `line {n}: there is no {x} on this board. The outputs are out1 to out4, rly1, rly2, cc1 and cc2.`; for `pixel` (or `pixels`) where an output goes (`fade`, `flicker`, `pulse`): M-pixline |
 | M-dmxch | `line {n}: there is no DMX channel {k}. DMX channels are 1 to 512.` |
 | M-level | `line {n}: "{v}" is not a level. Use on, off or a percentage from 0% to 100%.` |
 | M-onoff | `line {n}: {x} can only be on or off, not {v}. Dimming works on out1 to out4.` |
@@ -117,6 +118,13 @@ exactly (byte for byte).
 | M-sound | `line {n}: "{v}" is not a sound number. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3).` |
 | M-soundrange | `line {n}: sound {k} is out of range. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3).` |
 | M-volume | `line {n}: "{v}" is not a volume. Use a percentage from 0% to 100%, or off.` |
+| M-pixel | `line {n}: to light the pixel strip, write "pixels = {v}".` (a `pixel = {v}` line; `{v}` lower case with runs of spaces made one, `rainbow` when empty) |
+| M-pixempty | `line {n}: say what the pixel strip shows, for example "pixels = rainbow" or "pixels = chase red".` |
+| M-pixeffect | `line {n}: "{w}" is not a pixel effect. The effects are off, fill, chase, rainbow, flash, fade, flicker, comet, sparkle, breathe and fire, then a colour: "pixels = chase red".` (`{w}` the value's first word as written) |
+| M-pixcolor | `line {n}: "{c}" is not a colour. Use red, orange, yellow, green, cyan, blue, purple, pink, white or warm white, or 0xRRGGBB for an exact colour (0xff8000).` (`{c}` what follows the effect, as written) |
+| M-pixnocolor | `line {n}: {e} takes no colour: write "pixels = {e}".` (`off`, `rainbow` or `fire` with more words) |
+| M-pixhash | `line {n}: "#{h}" starts a comment, so the colour is lost: write it as 0x{h}.` (no colour, or no value, and the comment starts with six hex digits `{h}`, lower case) |
+| M-pixline | `line {n}: the pixel strip has its own line: "pixels = <effect> <colour>", for example "pixels = chase red".` |
 | M-dmxoff | `line {n}: {x} needs the DMX add-on, and it is not turned on. Turn it on with the setting dmx_port = s4.` |
 | M-role | `line {n}: {x} is set to {role} ({x}_role). Set {x}_role to shows to use it in a script.` with `{role}` = `pulse on every trigger` (trigger_repeat), `pulse when a sound starts` (sound_trigger) or `not used` (none) |
 | M-owned | `line {n}: {x} belongs to the built-in pulse-and-recover effect. Turn the effect off (setting effect = none) or use another terminal.` |
@@ -160,7 +168,8 @@ An empty script (no lines, or only blank and comment lines) is valid and removes
 
 ### Cases that changed on purpose
 
-- `e41-more-hints`: `wait 3` and `wait 0.5` wait a time (SS-L), so those lines get no hint.
+- `e41-more-hints`: `wait 3` and `wait 0.5` wait a time (SS-L), so those lines get no hint. `pixel = red` gets
+  M-pixel (scripts drive the strip with `pixels = ...`), no longer "the pixel strip is not in scripts yet".
 - `e26-shared`, `e35-shared-dmx`: two effects may set the same output (SS-R8, they take turns): no M-shared error.
 - `t07-release-counted-after-the-return`: `trig1_wait = ready` is the default (SS-R4): the press during the run,
   held past its end, starts the next run when the effect can (2250); the earlier answer (2700) is `t29` with
@@ -179,7 +188,7 @@ spaces made one. Where a target or an input is read and the word is not a termin
 the names of the outputs (for a target) or of the inputs (for `wait for`) are looked up. A name is usable when
 it is one word, `[a-z][a-z0-9_]*`, not a terminal's own name, and not `effect…`, `wait…`, `sleep` /
 `sleep<digit>…`, `fade`, `flicker`, `pulse`, `limit`, `takes`, `audio_single`, `audio_loop`, `audio_stop`, `on`,
-`off`, `to`, `over`, `for`, `turn` or `play`. The step table always holds the terminal. `{x}` in M-learn, M-onoff,
+`off`, `to`, `over`, `for`, `turn`, `play`, `pixel` or `pixels`. The step table always holds the terminal. `{x}` in M-learn, M-onoff,
 M-nofade, M-noflicker, M-nopulse, M-pulseshort, M-dmxoff, M-role, M-owned, M-lamp, M-relayfast and
 W-stillon becomes `{name} ({terminal})`
 when the line (for M-relayfast and W-stillon: the effect's first line that used one) gave a name; `{x}_role`
@@ -214,7 +223,7 @@ Keys in this order; targets `OUT1`-`OUT4`, `RLY1`, `RLY2`, `CC1`, `CC2`, `DMX1`-
 
 The added lines add, only where an effect has them: after `"line"`,
 `"limit": {"runs": N or "<setting>", "ms": T or "<setting>"}`; the step `{ "line", "op": "audio_loop_off" }`; the step `{ "line", "op": "pulse", "target", "ms" }`; and
-the step `{ "line", "op": "audio_volume", "volume" }`; and
+the step `{ "line", "op": "audio_volume", "volume" }`; the step `{ "line", "op": "pixels", "effect", "color" }`; and
 on a `sleep` or a `pulse` whose time is a setting, `"setting": "<name>"` instead of `"ms"`.
 
 ## Running (what the traces check)
@@ -248,6 +257,10 @@ choices within their tolerances):
   script loads; one generator shared by every flicker. At each change `level = base × (100 + r % 901) / 1000`
   (`base` = the level before the flicker), the next change `30 + r % 91` ms later.
 - Outputs keep their level until a step changes it (SS-R6). Everything is off at power-on.
+- **Pixels** (SS-X): a `pixels` step sets the strip's effect from that sample until another `pixels` step (any
+  effect's); it takes no time and the strip keeps it after the run ends. Effects with a `pixels` line share the
+  strip as an output (SS-R8). A pause and a script load start the strip dark until a `pixels` step runs again.
+  The traces do not record the strip.
 - **Sound** (SS-C4, SS-R7): sound N is the one file in the card's folder `NN`, its track 1 (`05/001-scream.mp3` is
   sound 5; the player reads the folder's two digits and the file's three). `audio_single` sends DFPlayer command
   `0x0F` with parameter `(N << 8) | 1`; `audio_loop` sends `0x17` with parameter `N` (the player loops that folder,

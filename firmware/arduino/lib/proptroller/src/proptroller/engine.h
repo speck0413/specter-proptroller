@@ -117,6 +117,7 @@ class Engine {
       if (has_manual_[i] && manual_[i] > 0) return true;
     return has_manual_pixel_;
   }
+  bool manualPixel() const { return has_manual_pixel_; }  // a pixel test from a page or the protocol is on
   // Notices waiting for the next tick: how many, and drop those after the first n (a firmware update's stop,
   // which nobody is told about).
   size_t pendingNotices() const { return notices_.size(); }

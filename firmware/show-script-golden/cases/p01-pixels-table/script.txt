@@ -1,0 +1,24 @@
+effect lights:
+  pixels = breathe purple      # before the first wait for: at power-on and back at the top
+  wait for trig1
+  pixels = chase red
+  wait 2
+  pixels = comet 0x00ff80
+  wait 2
+  pixels = fire
+  wait 2
+  pixels = warm white          # a colour alone fills the strip
+  wait 1
+  PIXELS : Sparkle   Warm White
+  wait 1
+  pixels = rainbow
+  wait 1
+  pixels = flash
+  wait 1
+  pixels = fade blue
+  wait 1
+  pixels = flicker orange
+  wait 1
+  pixels = fill
+  wait 1
+  pixels = off

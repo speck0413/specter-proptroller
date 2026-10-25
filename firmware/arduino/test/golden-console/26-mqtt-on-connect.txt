@@ -25,6 +25,7 @@ proptroller/front-door/config/trig_debounce_ms [r] 100
 proptroller/front-door/config/trig_release_ms [r] 100
 proptroller/front-door/config/pixel_count [r] 8
 proptroller/front-door/config/pixel_brightness [r] 100
+proptroller/front-door/config/pixel_speed [r] 100
 proptroller/front-door/config/dmx_port [r] off
 proptroller/front-door/config/ambient [r] true
 proptroller/front-door/config/ambient_track [r] 2

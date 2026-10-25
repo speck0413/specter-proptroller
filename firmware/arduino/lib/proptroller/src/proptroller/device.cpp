@@ -366,6 +366,7 @@ void Controller::tick(Millis now) {
     if (manual_until_[i] && now >= manual_until_[i]) { engine_.setManual(ALL_CHANNELS[i], false, 0); manual_until_[i] = 0; }
   ownedLevels(now);
   Frame frame = engine_.tick(now);
+  scriptPixels(frame);
   board_.apply(now, frame.levels);
   bool show_sound_started = false;
   for (auto& c : frame.sound) {
@@ -472,6 +473,17 @@ void Controller::runStatus(std::vector<ParamValue>& out, bool aliased) const {
   add("runs_since_power_on", Value::integer(runs_.sincePowerOn()));
   add("runs_lifetime", Value::integer((int64_t)runs_.lifetime()));
   add("last_run_uptime_ms", Value::integer(runs_.hasRun() ? (int64_t)runs_.lastRunAt() : -1));
+}
+
+// A show script's pixels line: the strip's effect over the shows' until another pixels line (a pause's off and a
+// manual pixel test still win, as they do for the outputs). Its speed is pixel_speed now.
+void Controller::scriptPixels(Frame& f) const {
+  const ScriptStep* st = nullptr;
+  Millis since = 0;
+  if (engine_.isPaused() || engine_.manualPixel() || !script_run_ || !script_prog_ || !script_run_->pixels(st, since)) return;
+  f.has_pixel = true;
+  f.pixel = pixelEffect((Effect::Kind)st->target, Rgb((uint8_t)(st->ms >> 16), (uint8_t)(st->ms >> 8), (uint8_t)st->ms), settings_.pixel_speed);
+  f.pixel_start = since;
 }
 
 void Controller::renderPixels(Millis now, const Frame& f) {

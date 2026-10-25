@@ -1,0 +1,146 @@
+{
+  "spec": [
+    "SS-X"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "lights",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "pixels",
+              "effect": "breathe",
+              "color": "#8000ff"
+            },
+            {
+              "line": 3,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 4,
+              "op": "pixels",
+              "effect": "chase",
+              "color": "#ff0000"
+            },
+            {
+              "line": 5,
+              "op": "sleep",
+              "ms": 2000
+            },
+            {
+              "line": 6,
+              "op": "pixels",
+              "effect": "comet",
+              "color": "#00ff80"
+            },
+            {
+              "line": 7,
+              "op": "sleep",
+              "ms": 2000
+            },
+            {
+              "line": 8,
+              "op": "pixels",
+              "effect": "fire"
+            },
+            {
+              "line": 9,
+              "op": "sleep",
+              "ms": 2000
+            },
+            {
+              "line": 10,
+              "op": "pixels",
+              "effect": "fill",
+              "color": "#ffa040"
+            },
+            {
+              "line": 11,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 12,
+              "op": "pixels",
+              "effect": "sparkle",
+              "color": "#ffa040"
+            },
+            {
+              "line": 13,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 14,
+              "op": "pixels",
+              "effect": "rainbow"
+            },
+            {
+              "line": 15,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 16,
+              "op": "pixels",
+              "effect": "flash",
+              "color": "#ffffff"
+            },
+            {
+              "line": 17,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 18,
+              "op": "pixels",
+              "effect": "fade",
+              "color": "#0000ff"
+            },
+            {
+              "line": 19,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 20,
+              "op": "pixels",
+              "effect": "flicker",
+              "color": "#ff6000"
+            },
+            {
+              "line": 21,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 22,
+              "op": "pixels",
+              "effect": "fill",
+              "color": "#ffffff"
+            },
+            {
+              "line": 23,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 24,
+              "op": "pixels",
+              "effect": "off"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

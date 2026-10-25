@@ -62,6 +62,8 @@ extern const char* const RUN_STATUS[3];       // runs_since_power_on, runs_lifet
 [[nodiscard]] bool parseProfile(JsonVariantConst v, Profile& out, std::string& why);
 
 static const uint8_t PIXEL_BRIGHTNESS_MAX = 100;  // %
+// pixel_speed: how fast a show script's pixel effects run, % of their built-in speed (pixels.h)
+static const uint16_t PIXEL_SPEED_MIN = 10, PIXEL_SPEED_MAX = 400, PIXEL_SPEED_DEFAULT = 100;
 
 struct Settings {
   std::string name = "Proptroller";
@@ -90,6 +92,7 @@ struct Settings {
   uint32_t trig_release_ms = TRIGGER_DEBOUNCE_MS;
   uint16_t pixel_count = 16;
   uint8_t pixel_brightness = PIXEL_BRIGHTNESS_MAX;  // %, a plain scale of every channel
+  uint16_t pixel_speed = PIXEL_SPEED_DEFAULT;       // %, a show script's pixel effects (100 = their own speed)
   bool dmx_s4 = false;  // dmx_port = s4: show-script DMX frames on expansion S4 (SHOW-SCRIPT.md 7.4)
   bool ambient = true;
   uint16_t ambient_track = 2;  // sound 1 is the trigger sound: a one-sound card plays it on a trigger

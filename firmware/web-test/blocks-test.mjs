@@ -116,3 +116,15 @@ test('sound blocks default to numbers, and no block names a file except the card
     for (const m of all.match(/\S*\.mp3/g) || []) assert.match(m, /^\(?([0-9N]{2}\/)?001-…\.mp3\)?\.?$/, `${t}: ${m}`);
   }
 });
+
+test('a pixels line is a pixels block, written back as "pixels = <look>"', () => {
+  for (const [l, v] of [['pixels = chase red', 'chase red'], ['PIXELS : Warm White', 'Warm White'], ['pixels=rainbow', 'rainbow'], ['pixels =', '']]) {
+    const x = parse(l);
+    assert.equal(x.type, 'ps_pixels', l);
+    assert.equal(x.f.LOOK, v, l);
+  }
+  const m = textToBlocks('effect a:\n  pixels = breathe purple   # waiting\n  wait for trig1\n  pixels = fire\n');
+  all(m).find((b) => b.type === 'ps_pixels').f.LOOK = 'comet 0x40ff80';
+  assert.equal(blocksToText(m), 'effect a:\n  pixels = comet 0x40ff80   # waiting\n  wait for trig1\n  pixels = fire\n');
+  assert.equal(blocksToText({ eol: '\n', blocks: [newBlock('ps_pixels')] }), 'pixels = rainbow\n');
+});

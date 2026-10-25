@@ -396,7 +396,7 @@ trigger switch beside the buttons, also found under a profile's alias of `remote
 `sensor_high`: a powered sensor whose signal goes high, fed from the jack's ring; it must drive its signal low when
 idle, and an unplugged cable counts as a trigger in this mode, so use `switch` for anything safety-related; a
 change re-arms the trigger: it must be seen released first), `trig_debounce_ms`,
-`trig_release_ms`, `pixel_count`, `pixel_brightness` (%),
+`trig_release_ms`, `pixel_count`, `pixel_brightness` (%), `pixel_speed` (%: how fast a show script's pixel effects run),
 `volume`, `df_ack`, `df_checksum`, `status_led`, and the pulse-and-recover effect's keys (`effect`,
 `out1_on_ms` …, README "The pulse-and-recover effect"). Other firmwares publish their own keys the same way.
 

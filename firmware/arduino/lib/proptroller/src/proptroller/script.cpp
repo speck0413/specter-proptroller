@@ -2,6 +2,7 @@
 // test_script_golden runs its cases.
 #include "script.h"
 #include "sound.h"
+#include "pixels.h"
 #include <string.h>
 #include <algorithm>
 
@@ -9,13 +10,26 @@ namespace pt {
 
 // ------------------------------------------------------------------ names
 
-static const char* const OUT_NAMES[CHANNEL_COUNT] = {"out1", "out2", "out3", "out4", "rly1", "rly2", "cc1", "cc2"};
+const char* const SCRIPT_OUTPUT_WORDS[CHANNEL_COUNT] = {"out1", "out2", "out3", "out4", "rly1", "rly2", "cc1", "cc2"};
+const char* const SCRIPT_INPUT_WORDS[INPUT_COUNT] = {"trig1", "trig2", "user1", "user2", "user3"};
+static const char* const (&OUT_NAMES)[CHANNEL_COUNT] = SCRIPT_OUTPUT_WORDS;
 static const char* const OUT_UPPER[CHANNEL_COUNT] = {"OUT1", "OUT2", "OUT3", "OUT4", "RLY1", "RLY2", "CC1", "CC2"};
-static const char* const IN_NAMES[INPUT_COUNT] = {"trig1", "trig2", "user1", "user2", "user3"};
+static const char* const (&IN_NAMES)[INPUT_COUNT] = SCRIPT_INPUT_WORDS;
 static const char* const IN_UPPER[INPUT_COUNT] = {"TRIG1", "TRIG2", "USER1", "USER2", "USER3"};
 static const char* const ROLE_WORDS[4] = {"shows", "pulse on every trigger", "pulse when a sound starts", "not used"};
 const char* const SCRIPT_SETTINGS[SCRIPT_SETTING_COUNT] = {"out1_on_ms", "out2_on_ms", "out3_on_ms", "recover_time_ms",
                                                           "cooldown_ms", "trigger_out_pulse_ms", "role_pulse_ms", "runs_per_cooldown"};
+
+const char* const SCRIPT_PIXEL_EFFECTS[SCRIPT_PIXEL_EFFECT_COUNT] = {"off", "fill", "chase", "rainbow", "flash", "fade",
+                                                                 "flicker", "comet", "sparkle", "breathe", "fire"};
+static_assert((int)Effect::Kind::Fire + 1 == SCRIPT_PIXEL_EFFECT_COUNT && (int)Effect::Kind::Comet == 7,
+              "SCRIPT_PIXEL_EFFECTS is in Effect::Kind's order");
+const ScriptColour SCRIPT_COLOURS[SCRIPT_COLOUR_COUNT] = {
+    {"red", 0xFF0000},  {"orange", 0xFF6000}, {"yellow", 0xFFC000}, {"green", 0x00FF00}, {"cyan", 0x00FFFF},
+    {"blue", 0x0000FF}, {"purple", 0x8000FF}, {"pink", 0xFF40A0},   {"white", 0xFFFFFF}, {"warm white", 0xFFA040}};
+bool scriptPixelColoured(uint8_t effect) {
+  return effect != (uint8_t)Effect::Kind::Off && effect != (uint8_t)Effect::Kind::Rainbow && effect != (uint8_t)Effect::Kind::Fire;
+}
 
 static std::string targetName(uint16_t t) {
   return scriptIsDmx(t) ? "dmx" + std::to_string(t - SCRIPT_DMX + 1) : std::string(OUT_NAMES[t]);
@@ -40,7 +54,8 @@ enum Msg : uint8_t {
   M_SOUNDRANGE, M_DMXOFF, M_ROLE, M_OWNED, M_SHARED, M_EMPTY, M_FIRST, M_EFFECTLINES, M_EFFECTS, M_LINES, M_BYTES,
   W_STILLON, W_TWOSOUND, M_RELAYFAST, M_HINTSET, M_HINTPLAY, M_HINTTURN, M_HINTSLEEP, M_PIXEL,
   M_TWONAMES, M_BADNAME, W_NAMEIS, W_WAITNAME,
-  M_LIMITFORM, M_LIMITRUNS, M_LIMITLONG, M_TWOLIMITS, M_NOTATIME, M_PULSEFORM, M_NOPULSE, M_PULSESHORT, M_LAMP, M_VOLUME
+  M_LIMITFORM, M_LIMITRUNS, M_LIMITLONG, M_TWOLIMITS, M_NOTATIME, M_PULSEFORM, M_NOPULSE, M_PULSESHORT, M_LAMP, M_VOLUME,
+  M_PIXEMPTY, M_PIXEFFECT, M_PIXCOLOR, M_PIXNOCOLOR, M_PIXHASH, M_PIXLINE
 };
 static const char* const MSG[] = {
     "this line is not inside an effect. Start one first with \"effect <name>:\".",
@@ -82,7 +97,7 @@ static const char* const MSG[] = {
     "to play a sound, write \"audio_single = {1}\" (a sound is its number: the card's 01/001-<name>.mp3 is 1).",
     "write it as three lines: \"out1 = on\", \"wait 2\", \"out1 = off\".",
     "to wait a time, write \"wait {1}\".",
-    "the pixel strip is not in scripts yet: make a show for it on the Shows tab, or use a sketch.",
+    "to light the pixel strip, write \"pixels = {1}\".",
     "\"{1}\" is the name of both {2} and {3}. Write {2} or {3}, or give them different names.",
     "\"{1}\" is the name of {2}, but a script cannot use it: {3}. Write {2}, or give it another name.",
     "{1} is also the name given to {2}. Here {1} means the terminal {1}.",
@@ -97,8 +112,14 @@ static const char* const MSG[] = {
     "{1} is a relay or a contact: pulse it for at least 0.1 s.",
     "{1} is the ready lamp (setting out4_ready_lamp). Turn it off to use {1} in a script.",
     "\"{1}\" is not a volume. Use a percentage from 0% to 100%, or off.",
+    "say what the pixel strip shows, for example \"pixels = rainbow\" or \"pixels = chase red\".",
+    "\"{1}\" is not a pixel effect. The effects are off, fill, chase, rainbow, flash, fade, flicker, comet, sparkle, breathe and fire, then a colour: \"pixels = chase red\".",
+    "\"{1}\" is not a colour. Use red, orange, yellow, green, cyan, blue, purple, pink, white or warm white, or 0xRRGGBB for an exact colour (0xff8000).",
+    "{1} takes no colour: write \"pixels = {1}\".",
+    "\"#{1}\" starts a comment, so the colour is lost: write it as 0x{1}.",
+    "the pixel strip has its own line: \"pixels = <effect> <colour>\", for example \"pixels = chase red\".",
 };
-static_assert(sizeof MSG / sizeof MSG[0] == M_VOLUME + 1, "one text per message");
+static_assert(sizeof MSG / sizeof MSG[0] == M_PIXLINE + 1, "one text per message");
 static_assert(SCRIPT_LIMIT_MAX_RUNS == 20 && SCRIPT_LIMIT_MAX_MS == 60UL * 60000UL && RELAY_MIN_DWELL_MS == 100,
               "the message texts quote these limits");
 
@@ -339,7 +360,7 @@ static bool takenFirst(const std::string& w) {
 // it can.
 static const char* nameProblem(const std::string& w) {
   static const char* const WORDS[] = {"effect", "audio_single", "audio_loop", "audio_stop", "on", "off", "to", "over", "for",
-                                      "turn", "play"};
+                                      "turn", "play", "pixel", "pixels"};
   if (w.find(' ') != std::string::npos) return "a name in a script is one word";
   bool ok = w[0] >= 'a' && w[0] <= 'z';
   for (char c : w) ok &= (c >= 'a' && c <= 'z') || isDigit(c) || c == '_';
@@ -443,6 +464,66 @@ static void readPulse(const std::string& l, const std::string& raw, const Script
   if (!o.tm.empty()) o.pt = parseTimeOrSetting(o.tm, board, o.ms, o.setting);
 }
 
+// A colour word (lower case): a name from SCRIPT_COLOURS or 0xRRGGBB.
+static bool pixelColour(const std::string& w, uint32_t& rgb) {
+  for (auto& c : SCRIPT_COLOURS)
+    if (w == c.name) { rgb = c.rgb; return true; }
+  if (w.size() != 8 || w[0] != '0' || w[1] != 'x') return false;
+  uint32_t v = 0;
+  for (size_t i = 2; i < 8; i++) {
+    char c = w[i];
+    int d = isDigit(c) ? c - '0' : (c >= 'a' && c <= 'f') ? c - 'a' + 10 : -1;
+    if (d < 0) return false;
+    v = v * 16 + (uint32_t)d;
+  }
+  rgb = v;
+  return true;
+}
+
+namespace {
+struct PixelLine {
+  int msg = -1;      // an error (Msg), or -1
+  std::string word;  // the word the error quotes
+  uint8_t effect = 0;
+  uint32_t rgb = 0;
+};
+}  // namespace
+
+// pixels = <effect> [<colour>] | <colour> (SHOW-SCRIPT.md): `v` lower case, `v_raw` as written, `comment` the text
+// after a # on the line (a #rrggbb colour there was cut off as a comment)
+#if defined(__GNUC__)
+__attribute__((noinline))
+#endif
+static void readPixels(const std::string& v_raw, const std::string& comment, PixelLine& o) {
+  std::string v = collapse(lower(v_raw));
+  std::string hex = lower(trim(comment)).substr(0, 6);
+  bool hex_comment = hex.size() == 6;
+  for (char c : hex) hex_comment &= isDigit(c) || (c >= 'a' && c <= 'f');
+  if (v.empty()) {
+    if (hex_comment) { o.msg = M_PIXHASH; o.word = hex; }
+    else o.msg = M_PIXEMPTY;
+    return;
+  }
+  if (pixelColour(v, o.rgb)) { o.effect = (uint8_t)Effect::Kind::Fill; return; }  // a colour alone fills the strip
+  size_t sp = v.find(' ');
+  std::string w = v.substr(0, sp), rest = sp == std::string::npos ? std::string() : v.substr(sp + 1);
+  int k = -1;
+  for (int i = 0; i < SCRIPT_PIXEL_EFFECT_COUNT; i++)
+    if (w == SCRIPT_PIXEL_EFFECTS[i]) k = i;
+  if (k < 0) { o.msg = M_PIXEFFECT; o.word = collapse(v_raw).substr(0, w.size()); return; }
+  o.effect = (uint8_t)k;
+  if (!scriptPixelColoured(o.effect)) {
+    if (!rest.empty()) { o.msg = M_PIXNOCOLOR; o.word = w; }
+    return;
+  }
+  if (rest.empty()) {
+    if (hex_comment) { o.msg = M_PIXHASH; o.word = hex; }
+    else o.rgb = SCRIPT_PIXEL_DEFAULT_RGB;
+    return;
+  }
+  if (!pixelColour(rest, o.rgb)) { o.msg = M_PIXCOLOR; o.word = trim(collapse(v_raw).substr(w.size())); }
+}
+
 ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, const ScriptBoard& board, ScriptProgram& out) {
   ScriptCheck r;
   (void)sounds;  // a stored sound list is kept with the script but not read: a sound is its number
@@ -488,7 +569,8 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
     uint16_t n = (uint16_t)(li + 1);
     std::string raw = clean.substr(lines[li].first, lines[li].second);
     size_t hash = raw.find('#');
-    if (hash != std::string::npos) raw = raw.substr(0, hash);
+    std::string comment;  // after the #: a pixels line looks there for a #rrggbb colour
+    if (hash != std::string::npos) { comment = raw.substr(hash + 1); raw = raw.substr(0, hash); }
     raw = trim(raw);
     if (!raw.empty() && raw.back() == '.') raw = trim(raw.substr(0, raw.size() - 1));
     if (raw.empty()) continue;
@@ -523,6 +605,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
     st.line = n;
     bool is_wait = false, good = false, declared = false;  // declared: a limit or turns line (no step)
     bool is_sound = false;  // an audio_single, audio_loop or audio_stop line (with or without an error)
+    bool is_pixels = false; // a pixels line (it may come before the first wait for, as a sound line may)
     std::string via;  // the name this line used for its terminal ("": the terminal's own name)
     // a word that is not a terminal's own name: 1 and the terminal (in [lo, hi)) it is the name of; 0 when it
     // is nobody's name; -1 with the message when two terminals have it or a script cannot use it
@@ -582,7 +665,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
       int found = byName(w, 0, CHANNEL_COUNT, k);
       if (found > 0) { t = (uint16_t)k; return true; }
       if (found == 0) {
-        if (w == "pixel" || w == "pixels") err(M_PIXEL);  // not in scripts yet, though the board has a strip
+        if (w == "pixel" || w == "pixels") err(M_PIXLINE);  // the strip is not an output: it has its own line
         else err(M_OUTPUT, w.c_str());
       }
       return false;
@@ -747,6 +830,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
           err(M_HINTPLAY, what.c_str());
         } else if ((w0 == "delay" || w0 == "pause") && !w1.empty()) err(M_HINTSLEEP, trim(raw.substr(raw.size() - w1.size())).c_str());
         else if (is_out && !w1.empty()) err(M_HINTSET, w0.c_str(), w1.c_str());
+        else if ((w0 == "pixels" || w0 == "pixel") && !w1.empty()) err(M_HINTSET, "pixels", w1.c_str());
         else err(M_UNKNOWN, raw.c_str());
       } else if (key == "audio_single" || key == "audio_loop") {
         is_sound = true;
@@ -781,6 +865,14 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         if (lv == "0") lv = "off";
         if (v_raw.empty() || !parseLevel(lv, false, pm)) err(M_VOLUME, v_raw.c_str());
         else { st.op = ScriptStep::Op::Volume; st.value = volumeOf(lv); good = true; }
+      } else if (key == "pixel") {
+        err(M_PIXEL, v_raw.empty() ? "rainbow" : collapse(lower(v_raw)).c_str());  // the strip's line is "pixels"
+      } else if (key == "pixels") {
+        is_pixels = true;
+        PixelLine px;
+        readPixels(v_raw, comment, px);
+        if (px.msg >= 0) err((Msg)px.msg, px.word.c_str());
+        else { st.op = ScriptStep::Op::Pixels; st.target = px.effect; st.ms = px.rgb; good = true; }
       } else {
         uint16_t t = 0, v = 0;
         if (target(key, t)) {
@@ -790,7 +882,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         }
       }
     }
-    if (f.head && !is_sound) {
+    if (f.head && !is_sound && !is_pixels) {
       f.first_is_wait = is_wait;
       f.head = false;
     }
@@ -866,6 +958,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
     for (auto& s : f.steps) {
       out.step[out.steps++] = s;
       if (s.op == ScriptStep::Op::Wait) out.inputs |= (uint8_t)(1u << s.target);
+      else if (s.op == ScriptStep::Op::Pixels) out.pixels = true;
       else if (s.op == ScriptStep::Op::Set || s.op == ScriptStep::Op::Fade || s.op == ScriptStep::Op::Flicker ||
                s.op == ScriptStep::Op::Pulse) {
         if (scriptIsDmx(s.target)) out.dmx = true;
@@ -878,11 +971,12 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
 
 // The step table as JSON, the one place it is written (README "The step table": keys in this order).
 void scriptTableJson(const ScriptProgram& p, JsonObject o) {
-  static const char* const OP[] = {"wait_for", "set", "sleep", "fade", "flicker", "audio_single", "audio_loop", "audio_stop", "pulse", "audio_loop_off", "audio_volume"};
-  // what each op writes after "op": T target, L level, M ms (or the setting), S sound, V volume, I input
-  static const char* const KEYS[] = {"I", "TL", "M", "TLM", "TM", "S", "S", "", "TM", "", "V"};
-  PT_ONE_PER(OP, ScriptStep::Op::Volume);
-  PT_ONE_PER(KEYS, ScriptStep::Op::Volume);
+  static const char* const OP[] = {"wait_for", "set", "sleep", "fade", "flicker", "audio_single", "audio_loop", "audio_stop", "pulse", "audio_loop_off", "audio_volume", "pixels"};
+  // what each op writes after "op": T target, L level, M ms (or the setting), S sound, V volume, I input,
+  // P the pixel effect and its colour ("#rrggbb", for an effect that takes one)
+  static const char* const KEYS[] = {"I", "TL", "M", "TLM", "TM", "S", "S", "", "TM", "", "V", "P"};
+  PT_ONE_PER(OP, ScriptStep::Op::Pixels);
+  PT_ONE_PER(KEYS, ScriptStep::Op::Pixels);
   JsonArray effects = o["effects"].to<JsonArray>();
   for (int e = 0; e < p.effects; e++) {
     const ScriptEffect& f = p.fx[e];
@@ -910,6 +1004,10 @@ void scriptTableJson(const ScriptProgram& p, JsonObject o) {
         else if (*k == 'M' && s.setting) so["setting"] = SCRIPT_SETTINGS[s.setting - 1];
         else if (*k == 'M') so["ms"] = s.ms;
         else if (*k == 'V') so["volume"] = s.value;
+        else if (*k == 'P') {
+          so["effect"] = SCRIPT_PIXEL_EFFECTS[s.target < SCRIPT_PIXEL_EFFECT_COUNT ? s.target : 0];
+          if (scriptPixelColoured((uint8_t)s.target)) so["color"] = colorText(Rgb((uint8_t)(s.ms >> 16), (uint8_t)(s.ms >> 8), (uint8_t)s.ms));
+        }
         else so["sound"] = s.value;
       }
     }
@@ -945,6 +1043,7 @@ void ScriptRunner::load(const ScriptProgram* p, Millis now) {
   for (auto& x : pulse_until_) x = 0;
   for (auto& x : press_armed_) x = false;  // armed after a release: held at load never starts
   pending_sound_.clear();
+  pixel_step_ = -1;  // the strip keeps no effect from an earlier script
   rng_ = FLICKER_SEED;
   if (!p_) return;
   for (int e = 0; e < p_->effects; e++) {
@@ -961,21 +1060,22 @@ void ScriptRunner::load(const ScriptProgram* p, Millis now) {
                                  p_->step[p_->fx[order_[j - 1]].first + head(order_[j - 1])].target; j--) {
       uint8_t t = order_[j]; order_[j] = order_[j - 1]; order_[j - 1] = t;
     }
-  // the outputs each effect uses (its lines that set, fade, flicker or pulse one): two effects that share one
-  // never run at the same time (SS-R8)
+  // the outputs each effect uses (its lines that set, fade, flicker or pulse one, and the pixel strip for a pixels
+  // line): two effects that share one never run at the same time (SS-R8)
+  auto uses = [](const ScriptStep& x) -> int32_t {  // the output a step uses, -1 none
+    if (x.op == ScriptStep::Op::Pixels) return 0x10000;  // past every target
+    bool out = x.op == ScriptStep::Op::Set || x.op == ScriptStep::Op::Fade || x.op == ScriptStep::Op::Flicker || x.op == ScriptStep::Op::Pulse;
+    return out ? (int32_t)x.target : -1;
+  };
   for (int e = 0; e < p_->effects; e++)
     for (int f = 0; f < p_->effects; f++) {
       if (e == f) continue;
       const ScriptEffect &a = p_->fx[e], &b = p_->fx[f];
       bool shared = false;
       for (int i = 0; i < a.count && !shared; i++) {
-        const ScriptStep& x = p_->step[a.first + i];
-        if (x.op != ScriptStep::Op::Set && x.op != ScriptStep::Op::Fade && x.op != ScriptStep::Op::Flicker && x.op != ScriptStep::Op::Pulse) continue;
-        for (int j = 0; j < b.count && !shared; j++) {
-          const ScriptStep& y = p_->step[b.first + j];
-          if (y.op != ScriptStep::Op::Set && y.op != ScriptStep::Op::Fade && y.op != ScriptStep::Op::Flicker && y.op != ScriptStep::Op::Pulse) continue;
-          shared = x.target == y.target;
-        }
+        int32_t x = uses(p_->step[a.first + i]);
+        if (x < 0) continue;
+        for (int j = 0; j < b.count && !shared; j++) shared = uses(p_->step[b.first + j]) == x;
       }
       if (shared) conflicts_[e] = (uint8_t)(conflicts_[e] | (1u << f));
     }
@@ -1119,7 +1219,7 @@ void ScriptRunner::enter(int e, Millis now) {
     case ScriptStep::Op::Fade: s.from = get(st.target); s.until = now + st.ms; break;
     case ScriptStep::Op::Flicker: s.before = get(st.target); s.until = now + st.ms; s.next_flicker = now; break;
     case ScriptStep::Op::Loop: case ScriptStep::Op::Set: case ScriptStep::Op::Single: case ScriptStep::Op::Stop:
-    case ScriptStep::Op::Pulse: case ScriptStep::Op::LoopOff: case ScriptStep::Op::Volume:
+    case ScriptStep::Op::Pulse: case ScriptStep::Op::LoopOff: case ScriptStep::Op::Volume: case ScriptStep::Op::Pixels:
     default: break;
   }
 }
@@ -1239,6 +1339,11 @@ bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& in_all, std::
     case ScriptStep::Op::LoopOff: sound.push_back(soundLoop(0)); break;
     case ScriptStep::Op::Volume: sound.push_back(SoundCommand::volume((uint8_t)st.value)); break;
     case ScriptStep::Op::Stop: sound.push_back(SoundCommand::simple(SoundCommand::Kind::Stop)); break;
+    case ScriptStep::Op::Pixels:
+      // the strip's effect from now until another pixels line (the controller renders it)
+      pixel_step_ = (int16_t)(p_->fx[e].first + s.pc);
+      pixel_since_ = now;
+      break;
   }
   bool back_to_top = s.pc + 1 >= p_->fx[e].count;
   advance(e, now);
