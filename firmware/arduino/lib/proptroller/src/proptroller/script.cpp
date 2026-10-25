@@ -17,7 +17,16 @@ static const char* const OUT_UPPER[CHANNEL_COUNT] = {"OUT1", "OUT2", "OUT3", "OU
 static const char* const (&IN_NAMES)[INPUT_COUNT] = SCRIPT_INPUT_WORDS;
 const char* const SCRIPT_KEYWORDS[SCRIPT_KEYWORD_COUNT] = {"effect", "wait",  "for",   "sleep",        "fade",       "to",
                                                           "over",   "flicker", "pulse", "limit",      "run",        "runs",
-                                                          "per",    "audio_single", "audio_loop", "audio_volume", "audio_stop", "pixels"};
+                                                          "per",    "audio_single", "audio_loop", "audio_volume", "audio_stop", "pixels",
+                                                          "tell"};
+const char* const SCRIPT_TELL_REFUSED[SCRIPT_TELL_REFUSED_COUNT] = {
+    "name", "page_lock", "pin", "wifi_ssid", "wifi_pass", "ap_pass", "mqtt_broker", "mqtt_port", "board_link",
+    "link_group", "link_key", "remote_trigger_enable", "remote_free_effects", "effect"};
+bool scriptTellRefused(const std::string& key) {
+  for (auto k : SCRIPT_TELL_REFUSED)
+    if (key == k) return true;
+  return false;
+}
 const char* const SCRIPT_LEVEL_WORDS[2] = {"on", "off"};
 // no unit: seconds
 const ScriptUnit SCRIPT_TIME_UNITS[SCRIPT_UNIT_COUNT] = {{"ms", 1},         {"s", 1000},       {"sec", 1000},  {"secs", 1000},
@@ -63,7 +72,8 @@ enum Msg : uint8_t {
   W_STILLON, W_TWOSOUND, M_RELAYFAST, M_HINTSET, M_HINTPLAY, M_HINTTURN, M_HINTSLEEP, M_PIXEL,
   M_TWONAMES, M_BADNAME, W_NAMEIS, W_WAITNAME,
   M_LIMITFORM, M_LIMITRUNS, M_LIMITLONG, M_TWOLIMITS, M_NOTATIME, M_PULSEFORM, M_NOPULSE, M_PULSESHORT, M_LAMP, M_VOLUME,
-  M_PIXEMPTY, M_PIXEFFECT, M_PIXCOLOR, M_PIXNOCOLOR, M_PIXHASH, M_PIXLINE
+  M_PIXEMPTY, M_PIXEFFECT, M_PIXCOLOR, M_PIXNOCOLOR, M_PIXHASH, M_PIXLINE,
+  M_TELLFORM, M_TELLBOARD, M_TELLNAME, M_TELLKEY, M_TELLREFUSED, M_TELLVALUE, M_TELLLONG, M_TELLSPACE
 };
 static const char* const MSG[] = {
     "this line is not inside an effect. Start one first with \"effect <name>:\".",
@@ -126,8 +136,17 @@ static const char* const MSG[] = {
     "{1} takes no colour: write \"pixels = {1}\".",
     "\"#{1}\" starts a comment, so the colour is lost: write it as 0x{1}.",
     "the pixel strip has its own line: \"pixels = <effect> <colour>\", for example \"pixels = chase red\".",
+    "write it as \"tell porch blackout\" (a board's name, then one of its effects) or \"tell porch pixel_speed = 150\" (a setting).",
+    "\"{1}\" is not a board's name. Use the name the board has on the network (letters, digits and -, as in porch.local), or all.",
+    "\"{1}\" cannot be sent as an effect's name: it has at most 32 characters, and no / or +.",
+    "\"{1}\" is not a setting's name. A setting is one word of letters, digits and _, for example pixel_speed.",
+    "{1} cannot be changed by another board: its name, passwords, Wi-Fi, MQTT, board link, page lock, remote trigger and built-in effect stay with the board.",
+    "say the value, for example \"tell porch pixel_speed = 150\".",
+    "the value is longer than 64 characters.",
+    "the tell lines hold more than 512 characters of board names, effects, settings and values in all.",
 };
-static_assert(sizeof MSG / sizeof MSG[0] == M_PIXLINE + 1, "one text per message");
+static_assert(sizeof MSG / sizeof MSG[0] == M_TELLSPACE + 1, "one text per message");
+static_assert(SCRIPT_TELL_BYTES == 512 && SCRIPT_TELL_VALUE_MAX == 64, "the message texts quote these limits");
 static_assert(SCRIPT_LIMIT_MAX_RUNS == 20 && SCRIPT_LIMIT_MAX_MS == 60UL * 60000UL && RELAY_MIN_DWELL_MS == 100,
               "the message texts quote these limits");
 
@@ -360,7 +379,7 @@ static bool isTerminalWord(const std::string& w) {
 // the old spelling of wait).
 static bool takenFirst(const std::string& w) {
   return startsWith(w, "wait") || (startsWith(w, "sleep") && (w.size() == 5 || isDigit(w[5]))) || w == "fade" ||
-         w == "flicker" || w == "pulse" || w == "limit" || w == "takes";
+         w == "flicker" || w == "pulse" || w == "limit" || w == "takes" || w == "tell";
 }
 
 // Why a given name (lower case, runs of spaces made one) cannot stand for its terminal in a script; null when
@@ -531,6 +550,70 @@ static void readPixels(const std::string& v_raw, const std::string& comment, Pix
   if (!pixelColour(rest, o.rgb)) { o.msg = M_PIXCOLOR; o.word = trim(collapse(v_raw).substr(w.size())); }
 }
 
+// tell <board> <effect> / tell <board> <setting> = <value>: msg -1 when it is right
+struct TellLine {
+  int msg = -1;
+  std::string word;  // for the message
+  bool set = false;
+  std::string board, what, value;
+};
+static bool boardName(const std::string& w) {
+  if (w.empty() || w.size() > SCRIPT_TELL_BOARD_MAX || w == "broadcast" || w.front() == '-' || w.back() == '-') return false;
+  for (char c : w)
+    if (!((c >= 'a' && c <= 'z') || isDigit(c) || c == '-')) return false;
+  return true;
+}
+static void readTell(const std::string& l, const std::string& raw, TellLine& o) {
+  // l is raw in lower case (the same length): the value keeps its case
+  size_t a = l.find_first_not_of(' ', 4);
+  if (a == std::string::npos) { o.msg = M_TELLFORM; return; }
+  size_t b = l.find(' ', a);
+  std::string board = l.substr(a, b == std::string::npos ? std::string::npos : b - a);
+  size_t eqb = board.find_first_of("=:");
+  if (eqb != std::string::npos) board = board.substr(0, eqb), b = a + eqb;  // tell porch=... : no setting
+  std::string rest = b == std::string::npos ? std::string() : trim(l.substr(b));
+  if (board.empty() || rest.empty() || (eqb != std::string::npos)) { o.msg = M_TELLFORM; return; }
+  if (!boardName(board)) { o.msg = M_TELLBOARD; o.word = trim(raw.substr(a, board.size())); return; }
+  o.board = board;
+  size_t eq = rest.find_first_of("=:");
+  if (eq == std::string::npos) {
+    // an effect, by its name as a remote start takes it: lower case, spaces as _
+    std::string name = collapse(rest);
+    for (auto& c : name) if (c == ' ') c = '_';
+    if (name.size() > SCRIPT_MAX_NAME || name.find_first_of("/+") != std::string::npos) { o.msg = M_TELLNAME; o.word = collapse(rest); return; }
+    o.what = name;
+    return;
+  }
+  o.set = true;
+  std::string key = trim(rest.substr(0, eq));
+  size_t vat = b + (l.substr(b).find_first_of("=:")) + 1;  // where the value starts in raw
+  std::string value = trim(raw.substr(vat));
+  bool ok = !key.empty() && key.size() <= SCRIPT_MAX_NAME && key[0] >= 'a' && key[0] <= 'z';
+  for (char c : key) ok &= (c >= 'a' && c <= 'z') || isDigit(c) || c == '_';
+  if (key.empty()) { o.msg = M_TELLFORM; return; }
+  if (!ok) { o.msg = M_TELLKEY; o.word = key; return; }
+  if (scriptTellRefused(key)) { o.msg = M_TELLREFUSED; o.word = key; return; }
+  if (value.size() >= 2 && (value[0] == '"' || value[0] == '\'') && value.back() == value[0]) value = value.substr(1, value.size() - 2);
+  if (value.empty()) { o.msg = M_TELLVALUE; return; }
+  if (value.size() > SCRIPT_TELL_VALUE_MAX) { o.msg = M_TELLLONG; return; }
+  o.what = key;
+  o.value = value;
+}
+
+bool scriptTellOf(const ScriptProgram& p, const ScriptStep& st, ScriptTell& out) {
+  if (st.op != ScriptStep::Op::Tell || (size_t)st.ms + st.value > p.tell_bytes || st.value == 0) return false;
+  const char* t = p.tell + st.ms;
+  std::string all(t, st.value);
+  size_t z1 = all.find('\0');
+  size_t z2 = z1 == std::string::npos ? z1 : all.find('\0', z1 + 1);
+  if (z2 == std::string::npos) return false;
+  out.set = st.target == 1;
+  out.board = all.substr(0, z1);
+  out.what = all.substr(z1 + 1, z2 - z1 - 1);
+  out.value = all.substr(z2 + 1);
+  return !out.board.empty() && !out.what.empty() && (out.set == !out.value.empty());
+}
+
 ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, const ScriptBoard& board, ScriptProgram& out) {
   ScriptCheck r;
   (void)sounds;  // a stored sound list is kept with the script but not read: a sound is its number
@@ -688,6 +771,24 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
 
     if (name_taken) {
       // the message is given; the line adds no step
+    } else if (startsWith(l, "tell") && (l.size() == 4 || l[4] == ' ')) {
+      // tell <board> <effect> / tell <board> <setting> = <value> (SHOW-SCRIPT.md §11): the other board's effects
+      // and settings are not known here, only the form
+      TellLine tl;
+      readTell(l, raw, tl);
+      if (tl.msg >= 0) err((Msg)tl.msg, tl.word.c_str());
+      else if (out.tell_bytes + tl.board.size() + tl.what.size() + tl.value.size() + 2 > SCRIPT_TELL_BYTES) err(M_TELLSPACE);
+      else {
+        st.op = ScriptStep::Op::Tell;
+        st.target = tl.set ? 1 : 0;
+        st.ms = out.tell_bytes;
+        std::string pool = tl.board + '\0' + tl.what + '\0' + tl.value;
+        memcpy(out.tell + out.tell_bytes, pool.data(), pool.size());
+        st.value = (uint16_t)pool.size();
+        out.tell_bytes = (uint16_t)(out.tell_bytes + pool.size());
+        if (tl.board == "all") out.tell_all = true;
+        good = true;
+      }
     } else if (startsWith(l, "wait")) {
       // wait <time> and wait for <time> pause (a time starts with a digit or is a time setting); wait for <input>
       // waits for an input or a name given to one, and an input's name wins over a setting's (SS-L)
@@ -948,9 +1049,9 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
   if (fx.size() > SCRIPT_MAX_EFFECTS) r.errors.push_back({0, msg(M_EFFECTS, 0, "", "", "", fx.size())});
   if (lines.size() > SCRIPT_MAX_LINES) r.errors.push_back({0, msg(M_LINES, 0, "", "", "", lines.size())});
   if (text.size() > SCRIPT_MAX_BYTES) r.errors.push_back({0, msg(M_BYTES, 0, "", "", "", text.size())});
-  if (!r.ok()) return r;
+  if (!r.ok()) { out.reset(); return r; }
 
-  // the table (the limits above make it fit)
+  // the table (the limits above make it fit; the tell pool is filled as the lines are read)
   for (auto& f : fx) {
     ScriptEffect& e = out.fx[out.effects++];
     strncpy(e.name, f.name.c_str(), SCRIPT_MAX_NAME);
@@ -978,12 +1079,13 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
 
 // The step table as JSON, the one place it is written (README "The step table": keys in this order).
 void scriptTableJson(const ScriptProgram& p, JsonObject o) {
-  static const char* const OP[] = {"wait_for", "set", "sleep", "fade", "flicker", "audio_single", "audio_loop", "audio_stop", "pulse", "audio_loop_off", "audio_volume", "pixels"};
+  static const char* const OP[] = {"wait_for", "set", "sleep", "fade", "flicker", "audio_single", "audio_loop", "audio_stop", "pulse", "audio_loop_off", "audio_volume", "pixels", "tell"};
   // what each op writes after "op": T target, L level, M ms (or the setting), S sound, V volume, I input,
   // P the pixel effect and its colour ("#rrggbb", for an effect that takes one)
-  static const char* const KEYS[] = {"I", "TL", "M", "TLM", "TM", "S", "S", "", "TM", "", "V", "P"};
-  PT_ONE_PER(OP, ScriptStep::Op::Pixels);
-  PT_ONE_PER(KEYS, ScriptStep::Op::Pixels);
+  // B the tell line's board and its effect, or its setting and value
+  static const char* const KEYS[] = {"I", "TL", "M", "TLM", "TM", "S", "S", "", "TM", "", "V", "P", "B"};
+  PT_ONE_PER(OP, ScriptStep::Op::Tell);
+  PT_ONE_PER(KEYS, ScriptStep::Op::Tell);
   JsonArray effects = o["effects"].to<JsonArray>();
   for (int e = 0; e < p.effects; e++) {
     const ScriptEffect& f = p.fx[e];
@@ -1014,6 +1116,13 @@ void scriptTableJson(const ScriptProgram& p, JsonObject o) {
         else if (*k == 'P') {
           so["effect"] = SCRIPT_PIXEL_EFFECTS[s.target < SCRIPT_PIXEL_EFFECT_COUNT ? s.target : 0];
           if (scriptPixelColoured((uint8_t)s.target)) so["color"] = colorText(Rgb((uint8_t)(s.ms >> 16), (uint8_t)(s.ms >> 8), (uint8_t)s.ms));
+        }
+        else if (*k == 'B') {
+          ScriptTell t;
+          if (!scriptTellOf(p, s, t)) continue;
+          so["board"] = t.board;
+          if (t.set) { so["setting"] = t.what; so["value"] = t.value; }
+          else so["effect"] = t.what;
         }
         else so["sound"] = s.value;
       }
@@ -1050,6 +1159,7 @@ void ScriptRunner::load(const ScriptProgram* p, Millis now) {
   for (auto& x : pulse_until_) x = 0;
   for (auto& x : press_armed_) x = false;  // armed after a release: held at load never starts
   pending_sound_.clear();
+  tell_head_ = tell_n_ = 0;
   pixel_step_ = -1;  // the strip keeps no effect from an earlier script
   rng_ = FLICKER_SEED;
   if (!p_) return;
@@ -1194,6 +1304,14 @@ bool ScriptRunner::cancelRemote() {
   return any;
 }
 
+bool ScriptRunner::takeTell(uint16_t& step) {
+  if (!tell_n_) return false;
+  step = tell_ring_[tell_head_];
+  tell_head_ = (uint8_t)((tell_head_ + 1) % SCRIPT_TELL_RING);
+  tell_n_--;
+  return true;
+}
+
 uint16_t ScriptRunner::line(int e) const {
   if (!p_ || e >= p_->effects) return 0;
   const ScriptEffect& f = p_->fx[e];
@@ -1227,6 +1345,7 @@ PT_STEP_CODE void ScriptRunner::enter(int e, Millis now) {
     case ScriptStep::Op::Flicker: s.before = get(st.target); s.until = now + st.ms; s.next_flicker = now; break;
     case ScriptStep::Op::Loop: case ScriptStep::Op::Set: case ScriptStep::Op::Single: case ScriptStep::Op::Stop:
     case ScriptStep::Op::Pulse: case ScriptStep::Op::LoopOff: case ScriptStep::Op::Volume: case ScriptStep::Op::Pixels:
+    case ScriptStep::Op::Tell:
     default: break;
   }
 }
@@ -1350,6 +1469,15 @@ PT_STEP_CODE bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& 
       // the strip's effect from now until another pixels line (the controller renders it)
       pixel_step_ = (int16_t)(p_->fx[e].first + s.pc);
       pixel_since_ = now;
+      break;
+    case ScriptStep::Op::Tell:
+      // handed to the network (Controller::linkTake); the line never waits
+      if (tell_n_ < SCRIPT_TELL_RING) {
+        tell_ring_[(tell_head_ + tell_n_) % SCRIPT_TELL_RING] = (uint16_t)(p_->fx[e].first + s.pc);
+        tell_n_++;
+      } else {
+        tell_dropped_++;
+      }
       break;
   }
   bool back_to_top = s.pc + 1 >= p_->fx[e].count;

@@ -6,6 +6,7 @@
 #include "dfplayer.h"
 #include "gate.h"
 #include <ArduinoJson.h>
+#include <string.h>
 #include <string>
 #include <vector>
 
@@ -56,7 +57,7 @@ bool scriptPixelColoured(uint8_t effect);
 extern const char* const SCRIPT_OUTPUT_WORDS[CHANNEL_COUNT];
 extern const char* const SCRIPT_INPUT_WORDS[INPUT_COUNT];
 // the words that make or join a line (effect, wait, for, fade, to, over, ... pixels), the level words, the time units
-static const uint8_t SCRIPT_KEYWORD_COUNT = 18;
+static const uint8_t SCRIPT_KEYWORD_COUNT = 19;
 extern const char* const SCRIPT_KEYWORDS[SCRIPT_KEYWORD_COUNT];
 extern const char* const SCRIPT_LEVEL_WORDS[2];  // on, off
 struct ScriptUnit {
@@ -66,6 +67,19 @@ struct ScriptUnit {
 static const uint8_t SCRIPT_UNIT_COUNT = 10;
 extern const ScriptUnit SCRIPT_TIME_UNITS[SCRIPT_UNIT_COUNT];
 
+// Telling other boards (`tell porch blackout`, `tell porch pixel_speed = 150`, SHOW-SCRIPT.md §11): the board's name
+// (its network name, as in porch.local) or "all", then an effect's name or a setting and its value. The names and
+// values of every tell line are kept in one pool of the table.
+static const size_t SCRIPT_TELL_BYTES = 512;      // the pool: "board\0what\0value" per line
+static const size_t SCRIPT_TELL_BOARD_MAX = 40;   // a board's network name (hostLabel)
+static const size_t SCRIPT_TELL_VALUE_MAX = 64;   // a setting's value as written
+static const uint8_t SCRIPT_TELL_RING = 8;        // tell lines run and not yet handed to the network
+// Settings a board never takes from another board (the receiver also refuses every secret and every setting that
+// needs a restart): who it is, how it is reached, its locks and the remote start gate.
+static const uint8_t SCRIPT_TELL_REFUSED_COUNT = 14;
+extern const char* const SCRIPT_TELL_REFUSED[SCRIPT_TELL_REFUSED_COUNT];
+bool scriptTellRefused(const std::string& key);
+
 // A target: 0-7 the board's outputs (OUT1 ... CC2), SCRIPT_DMX + k the DMX channel k + 1.
 static const uint16_t SCRIPT_DMX = 8;
 inline bool scriptIsDmx(uint16_t target) { return target >= SCRIPT_DMX; }
@@ -74,8 +88,9 @@ static const uint8_t SCRIPT_NAMED = CHANNEL_COUNT + INPUT_COUNT;
 
 struct ScriptStep {
   // Pixels (a `pixels = <effect> <colour>` line): target the effect (SCRIPT_PIXEL_EFFECTS, Effect::Kind's order),
-  // ms the colour 0xRRGGBB.
-  enum class Op : uint8_t { Wait, Set, Sleep, Fade, Flicker, Single, Loop, Stop, Pulse, LoopOff, Volume, Pixels };
+  // ms the colour 0xRRGGBB. Tell: target 0 an effect, 1 a setting; ms the offset of its text in the pool, value its
+  // length ("board\0what\0value").
+  enum class Op : uint8_t { Wait, Set, Sleep, Fade, Flicker, Single, Loop, Stop, Pulse, LoopOff, Volume, Pixels, Tell };
   uint32_t ms = 0;      // wait / fade / flicker / pulse time
   uint16_t target = 0;  // input index (Wait) or target
   uint16_t value = 0;   // level: permille for an output, 0-255 for DMX; the sound number; the volume 0-30
@@ -103,6 +118,9 @@ struct ScriptProgram {
   uint8_t inputs = 0;    // bit per Input the script waits for
   bool dmx = false;      // a dmx line: the port sends frames
   bool pixels = false;   // a pixels line
+  bool tell_all = false; // a tell line to all
+  uint16_t tell_bytes = 0;            // used of the pool
+  char tell[SCRIPT_TELL_BYTES] = {0}; // the tell lines' names and values
   void reset() {
     effects = 0;
     for (auto& e : fx) e = ScriptEffect();
@@ -112,8 +130,18 @@ struct ScriptProgram {
     inputs = 0;
     dmx = false;
     pixels = false;
+    tell_all = false;
+    tell_bytes = 0;
+    memset(tell, 0, sizeof tell);
   }
 };
+
+// A tell line's parts, read from the pool.
+struct ScriptTell {
+  bool set = false;  // a setting (else an effect)
+  std::string board, what, value;
+};
+bool scriptTellOf(const ScriptProgram& p, const ScriptStep& st, ScriptTell& out);
 
 struct ScriptMessage {
   uint16_t line;  // 0: the whole script
@@ -237,6 +265,11 @@ class ScriptRunner {
   Level level(int channel) const { return level_[channel]; }
   const uint8_t* dmx() const { return dmx_; }
   bool running(int effect) const { return st_[effect].running; }
+  // Tell lines that ran (their step index), oldest first, for the network (Controller::linkTake); a line that finds
+  // SCRIPT_TELL_RING waiting is dropped and counted.
+  bool takeTell(uint16_t& step);
+  bool tellsWaiting() const { return tell_n_ > 0; }
+  uint32_t tellsDropped() { uint32_t d = tell_dropped_; tell_dropped_ = 0; return d; }
   // The strip's effect the script set last (its pixels line) and when that line ran; false while no line has set
   // one. It stays until another pixels line (SHOW-SCRIPT.md: like audio_loop).
   bool pixels(const ScriptStep*& step, Millis& since) const {
@@ -303,6 +336,9 @@ class ScriptRunner {
   bool remote_enabled_ = false;
   uint8_t remote_free_ = 0;
   std::vector<SoundCommand> pending_sound_;         // sound lines since the last tick
+  uint16_t tell_ring_[SCRIPT_TELL_RING] = {0};      // tell lines that ran, for the network
+  uint8_t tell_head_ = 0, tell_n_ = 0;
+  uint32_t tell_dropped_ = 0;
 };
 
 }  // namespace pt

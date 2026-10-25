@@ -1,0 +1,12 @@
+effect doorbell:
+  wait for trig1
+  tell porch blackout              # start the effect "blackout" on the board called porch
+  out1 = on
+  wait 2
+  out1 = off
+  tell porch bright
+  TELL  Front-Door   Porch Light   # an effect's name with spaces: porch_light
+  tell all pixel_speed = 150       # a setting on every board of the group
+  tell porch title: Hello Porch    # a value keeps its case
+  tell porch ambient = "off"
+  wait 1

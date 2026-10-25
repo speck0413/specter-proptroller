@@ -1,7 +1,7 @@
 // The show-script language's words (SHOW-SCRIPT.md) for every editor (this page, Specter Studio): the checker's own
 // tables (script.h), checked both ways by test_script. No DOM.
 export const KEYWORDS = ['effect', 'wait', 'for', 'sleep', 'fade', 'to', 'over', 'flicker', 'pulse', 'limit', 'run', 'runs',
-  'per', 'audio_single', 'audio_loop', 'audio_volume', 'audio_stop', 'pixels'];
+  'per', 'audio_single', 'audio_loop', 'audio_volume', 'audio_stop', 'pixels', 'tell'];
 export const OUTPUTS = ['out1', 'out2', 'out3', 'out4', 'rly1', 'rly2', 'cc1', 'cc2'];
 export const INPUTS = ['trig1', 'trig2', 'user1', 'user2', 'user3'];
 export const LEVELS = ['on', 'off'];

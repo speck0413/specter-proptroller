@@ -1,0 +1,88 @@
+{
+  "spec": [
+    "SS-B"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "doorbell",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 3,
+              "op": "tell",
+              "board": "porch",
+              "effect": "blackout"
+            },
+            {
+              "line": 4,
+              "op": "set",
+              "target": "OUT1",
+              "level": 1000
+            },
+            {
+              "line": 5,
+              "op": "sleep",
+              "ms": 2000
+            },
+            {
+              "line": 6,
+              "op": "set",
+              "target": "OUT1",
+              "level": 0
+            },
+            {
+              "line": 7,
+              "op": "tell",
+              "board": "porch",
+              "effect": "bright"
+            },
+            {
+              "line": 8,
+              "op": "tell",
+              "board": "front-door",
+              "effect": "porch_light"
+            },
+            {
+              "line": 9,
+              "op": "tell",
+              "board": "all",
+              "setting": "pixel_speed",
+              "value": "150"
+            },
+            {
+              "line": 10,
+              "op": "tell",
+              "board": "porch",
+              "setting": "title",
+              "value": "Hello Porch"
+            },
+            {
+              "line": 11,
+              "op": "tell",
+              "board": "porch",
+              "setting": "ambient",
+              "value": "off"
+            },
+            {
+              "line": 12,
+              "op": "sleep",
+              "ms": 1000
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

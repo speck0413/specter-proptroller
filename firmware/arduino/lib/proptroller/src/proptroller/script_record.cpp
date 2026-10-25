@@ -53,6 +53,9 @@ std::string scriptTableEncode(const ScriptProgram& p) {
     put8(b, (uint8_t)st.op);
     put8(b, st.setting);
   }
+  // format 3: the tell lines' pool
+  put16(b, p.tell_bytes);
+  b.append(p.tell, p.tell_bytes);
   return b;
 }
 
@@ -62,7 +65,12 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
   uint8_t effects = b[0];
   uint16_t steps = get16(b + 1);
   if (effects == 0 || effects > SCRIPT_MAX_EFFECTS || steps > SCRIPT_MAX_LINES) return false;
-  if (n != TABLE_HEAD + effects * EFFECT_BYTES + steps * STEP_BYTES) return false;
+  const size_t fixed = TABLE_HEAD + effects * EFFECT_BYTES + steps * STEP_BYTES;
+  if (n < fixed + 2) return false;
+  const uint16_t tell_bytes = get16(b + fixed);
+  if (tell_bytes > SCRIPT_TELL_BYTES || n != fixed + 2 + tell_bytes) { out.reset(); return false; }
+  memcpy(out.tell, b + fixed + 2, tell_bytes);
+  out.tell_bytes = tell_bytes;
   if (b[4] >> INPUT_COUNT || b[5] > 1) return false;
   out.channels = b[3];
   out.inputs = b[4];
@@ -92,7 +100,7 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
     st.line = get16(p + 8);
     uint8_t op = p[10];
     st.setting = p[11];
-    if (op > (uint8_t)ScriptStep::Op::Pixels || st.setting > SCRIPT_SETTING_COUNT) { out.reset(); return false; }
+    if (op > (uint8_t)ScriptStep::Op::Tell || st.setting > SCRIPT_SETTING_COUNT) { out.reset(); return false; }
     st.op = (ScriptStep::Op)op;
     bool ok = true;
     switch (st.op) {
@@ -108,6 +116,12 @@ bool scriptTableDecode(const uint8_t* b, size_t n, ScriptProgram& out) {
       case ScriptStep::Op::LoopOff: break;
       case ScriptStep::Op::Volume: ok = st.value <= 30; break;
       case ScriptStep::Op::Pixels: ok = st.target < SCRIPT_PIXEL_EFFECT_COUNT && st.ms <= 0xFFFFFF; break;
+      case ScriptStep::Op::Tell: {
+        ScriptTell t;
+        ok = st.target <= 1 && scriptTellOf(out, st, t);
+        if (ok && t.board == "all") out.tell_all = true;
+        break;
+      }
     }
     if (!ok || st.ms > SCRIPT_MAX_TIME_MS) { out.reset(); return false; }
   }

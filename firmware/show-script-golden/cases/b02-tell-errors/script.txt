@@ -1,0 +1,18 @@
+effect a:
+  tell porch blackout
+  wait for trig1
+  tell
+  tell porch
+  tell porch_2 blackout
+  tell -porch blackout
+  tell broadcast blackout
+  tell porch an effect name that is far too long to send
+  tell porch fog/on
+  tell porch pixel speed = 150
+  tell porch 9lives = 1
+  tell porch wifi_pass = secret
+  tell all remote_trigger_enable = true
+  tell porch pixel_speed =
+  tell porch title = 0123456789012345678901234567890123456789012345678901234567890123456789
+  tell porch=blackout
+  wait 1
