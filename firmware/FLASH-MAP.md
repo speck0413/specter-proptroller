@@ -15,6 +15,9 @@ Rules:
 
 ## ESP32 DevKit (4 MB)
 
+Flash at QIO 80 MHz (the esp32dev env; the merged first-flash image keeps the bootloader's own DIO 80 MHz header,
+and the bootloader switches to quad mode: `docs/FIRMWARE-BUILD.md`).
+
 `esp32-4mb.csv`: two 1,966,080 B app slots (ota_0, ota_1), LittleFS on the partition labelled `spiffs` (128 KB:
 the settings and script records), and two reserved 32 KB partitions after it (`store`, `script`, unused).
 

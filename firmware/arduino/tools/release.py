@@ -155,7 +155,10 @@ def main(argv):
             firsts.append(entry(dst, mcu, first_flash=True))
 
     merged = os.path.join(assets, "first-flash-esp32-devkit-%s.bin" % version)
-    cmd = esptool() + ["--chip", "esp32", "merge_bin", "-o", merged, "--flash_mode", "dio", "--flash_freq", "40m",
+    # the flash mode and speed as the build made the bootloader (esp32dev: QIO 80 MHz, FLASH-MAP.md): its header says
+    # DIO 80 MHz, the mode the ROM reads it in, and the QIO bootloader switches the chip to QIO itself. A header
+    # that says QIO makes the ROM read the bootloader in QIO before the chip's quad mode is on: it never starts.
+    cmd = esptool() + ["--chip", "esp32", "merge_bin", "-o", merged, "--flash_mode", "keep", "--flash_freq", "keep",
                        "--flash_size", "4MB"]
     for off, p in parts:
         cmd += ["0x%x" % off, p]

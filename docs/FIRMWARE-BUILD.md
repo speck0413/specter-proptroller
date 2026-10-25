@@ -81,6 +81,11 @@ Then write the first-flash image from address 0x0:
 (Windows, in Git Bash: `~/.platformio/penv/Scripts/python.exe`. With esptool on your PATH:
 `esptool --port PORT write_flash 0x0 …`.) To go back: `write_flash 0x0 backup.bin`.
 
+The image runs the flash at QIO 80 MHz. Its bootloader's header says DIO 80 MHz, the mode the chip's ROM reads
+it in, and the bootloader turns quad mode on itself: write it as it is (no `--flash_mode`; esptool keeps the
+image's own setting). `--flash_mode qio` would make the ROM read the bootloader in quad mode before quad mode is
+on, and the board would restart over and over until it is flashed again.
+
 **Ports** (PORT above):
 
 | Computer | Port name | Find it |

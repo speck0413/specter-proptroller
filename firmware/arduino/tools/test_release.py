@@ -20,7 +20,7 @@ import release  # noqa: E402
 FAKE_ESPTOOL = """import sys
 a = sys.argv[1:]
 out = a[a.index("-o") + 1]
-files = [x for x in a if not x.startswith("-") and not x.startswith("0x") and x not in ("esp32", "dio", "40m", "4MB", "merge_bin", out)]
+files = [x for x in a if not x.startswith("-") and not x.startswith("0x") and x not in ("esp32", "keep", "4MB", "merge_bin", out)]
 with open(out, "wb") as f:
     for p in files:
         with open(p, "rb") as src:
