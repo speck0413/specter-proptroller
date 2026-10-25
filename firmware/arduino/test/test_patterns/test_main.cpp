@@ -270,6 +270,75 @@ void control_values_sent_with_a_pattern_apply_at_its_start() {
   TEST_ASSERT_EQUAL(10, count(*b, YELLOW, 20, 29));
 }
 
+// A pattern that moves keeps moving: it starts once per pixels line (or pixel test), not at every tick.
+static int brightest(Sim& b) {
+  auto& px = b.world().pixels;
+  int at = -1, best = -1;
+  for (size_t i = 0; i < px.size(); i++)
+    if (px[i].b > best) { best = px[i].b; at = (int)i; }
+  return at;
+}
+void a_moving_pattern_keeps_moving() {
+  std::unique_ptr<Sim> b(board());
+  TEST_ASSERT_TRUE(put(*b, "comet", program("example-comet")).isOk());
+  TEST_ASSERT_TRUE(setScript(*b, "effect a:\n  pixels = pattern comet\n  wait for trig1\n").doc()["result"]["ok"].as<bool>());
+  b->step(2500);
+  int a0 = brightest(*b);
+  b->step(300);
+  int a1 = brightest(*b);
+  TEST_ASSERT_TRUE_MESSAGE(a1 - a0 >= 8, "the comet moves about 10 lights in 300 ms");
+  // the pixel test too
+  TEST_ASSERT_TRUE(b->request(R"({"op":"pixel","action":{"target":"PIXEL","do":"pattern","name":"comet"}})").isOk());
+  b->step(30);
+  int p0 = brightest(*b);
+  b->step(300);
+  TEST_ASSERT_TRUE(brightest(*b) - p0 >= 8);
+}
+
+// The presses of one tick land in order: clue 1 then reset ends red; reset then clue 1 ends with clue 1 lit. Two
+// effects started in the same millisecond both land.
+void presses_in_one_moment_land_in_order() {
+  std::unique_ptr<Sim> b(board());
+  TEST_ASSERT_TRUE(put(*b, "clue puzzle", program("puzzle-out-of-order")).isOk());
+  TEST_ASSERT_TRUE(setScript(*b, "effect p:\n  pixels = pattern clue puzzle\n  wait for user3\n"
+                                 "effect a:\n  wait for trig1\n  pixels press clue1\n  pixels press reset\n"
+                                 "effect b:\n  wait for user1\n  pixels press reset\n  pixels press clue1\n"
+                                 "effect c:\n  wait for trig2\n  pixels press clue5\n"
+                                 "effect d:\n  wait for user2\n  pixels press clue6\n").doc()["result"]["ok"].as<bool>());
+  b->step(2500);
+  b->press(Input::Trig1, 150);
+  b->step(60);
+  TEST_ASSERT_EQUAL(60, count(*b, RED));
+  b->press(Input::User1, 150);
+  b->step(60);
+  TEST_ASSERT_EQUAL(10, count(*b, YELLOW, 0, 9));
+  // TRIG2 and USER2 closed in the same millisecond
+  b->setInput(Input::Trig2, true);
+  b->setInput(Input::User2, true);
+  b->step(150);
+  b->setInput(Input::Trig2, false);
+  b->setInput(Input::User2, false);
+  b->step(60);
+  TEST_ASSERT_EQUAL(30, count(*b, YELLOW));
+  TEST_ASSERT_EQUAL(10, count(*b, YELLOW, 40, 49));
+  TEST_ASSERT_EQUAL(10, count(*b, YELLOW, 50, 59));
+}
+
+// A pattern sent again while the pixel test shows it: the test follows the new copy; deleted: dark.
+void the_pixel_test_follows_a_pattern_sent_again() {
+  std::unique_ptr<Sim> b(board());
+  TEST_ASSERT_TRUE(put(*b, "x", program("puzzle-out-of-order")).isOk());
+  TEST_ASSERT_TRUE(b->request(R"({"op":"pixel","action":{"target":"PIXEL","do":"pattern","name":"x"}})").isOk());
+  b->step(60);
+  TEST_ASSERT_EQUAL(60, count(*b, RED));
+  TEST_ASSERT_TRUE(put(*b, "x", program("puzzle-out-of-order"), R"({"triggerClue1":[]})").isOk());
+  b->step(60);
+  TEST_ASSERT_EQUAL(10, count(*b, YELLOW, 0, 9));
+  TEST_ASSERT_TRUE(b->request(R"({"op":"delete_pattern","name":"x"})").isOk());
+  b->step(60);
+  TEST_ASSERT_EQUAL(60, count(*b, DARK));
+}
+
 // The heavy pattern on 600 lights: its frame time on this computer (the board's own numbers come from `mem`).
 void the_heavy_pattern_on_600_lights() {
   JsonDocument d;
@@ -311,6 +380,9 @@ int main() {
   RUN_TEST(a_runaway_pattern_stops_with_the_strip_dark_and_the_show_goes_on);
   RUN_TEST(the_pixel_test_plays_a_stored_pattern);
   RUN_TEST(control_values_sent_with_a_pattern_apply_at_its_start);
+  RUN_TEST(a_moving_pattern_keeps_moving);
+  RUN_TEST(presses_in_one_moment_land_in_order);
+  RUN_TEST(the_pixel_test_follows_a_pattern_sent_again);
   RUN_TEST(the_heavy_pattern_on_600_lights);
   return UNITY_END();
 }

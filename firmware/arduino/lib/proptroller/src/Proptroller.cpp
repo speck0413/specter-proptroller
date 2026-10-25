@@ -414,7 +414,11 @@ static void tickTask(void* arg) {
 static const uint32_t PIXEL_SERVICE_MS = 2;
 // an LED pattern's interpreter calls itself for a pattern's own function calls (pattern_vm.h, up to
 // PATTERN_MAX_DEPTH deep): 8 KB with the player
-static const uint32_t PIXEL_TASK_STACK = PT_PATTERNS ? 8192 : 4096;
+#if PT_PATTERNS
+static const uint32_t PIXEL_TASK_STACK = 8192;
+#else
+static const uint32_t PIXEL_TASK_STACK = 4096;
+#endif
 static void pixelTask(void* arg) {
   Controller* c = (Controller*)arg;
   for (;;) {

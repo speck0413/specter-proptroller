@@ -631,7 +631,7 @@ class Controller : public Firmware {
   void patternBackground(bool flush = false);     // the loop: the program to the pixel side, the record, its notes
   int patternRender(const PixelRequest& f, Millis now);  // the pixel side: -1 not a pattern, 0 no frame now, 1 a frame
   std::string patternsHeldText() const;
-  bool patternEffect(const std::string& name, Effect& out) const;  // a stored pattern as the strip's effect
+  bool patternEffect(const std::string& name, Effect& out);  // a stored pattern as the pixel test (followed when it is sent again)
   void patternScriptSlots();                      // the script's pattern names to the stored patterns
   void patternBoard(ScriptBoard& b) const;         // the stored patterns and their buttons, for the checker
   bool patternsWipe();                            // factory reset

@@ -121,6 +121,8 @@ class Sim : public NetApp {
   // add the example show (op add_example; a fresh board has none): TRIG1 pulses OUT1 for 2 s
   void addExample() { (void)request(R"({"op":"add_example"})"); }
   std::vector<Change> trace;
+  // tests: the strip's frames are rendered by the caller's own thread (pixelService), as on a board, not in tick()
+  bool pixels_by_caller = false;
   uint32_t boots = 0;
   // the two app slots and the boot selection (survive restarts)
   SimSlots& slots() { return slots_; }

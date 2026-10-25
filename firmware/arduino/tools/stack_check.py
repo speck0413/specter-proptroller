@@ -13,7 +13,9 @@ ESP32 estimate walks the same graph with the Xtensa frames from its .su files wh
 library matches by file:line:col (the rest keep their RP2040 frames). Indirect calls (virtual functions,
 function pointers) are not in the graph: each path below names its hops through them, and a path is the sum of
 its hops (the longest direct path from one hop to the caller of the next) plus the worst path from the last.
-Recursion is cut at the first repeat. Figures are lower bounds of what a board uses; the margin covers the rest
+Recursion is cut at the first repeat, except an LED pattern's (pattern_vm.cpp: exec calls itself through a
+pattern's own calls and its list built-ins, at most PATTERN_MAX_DEPTH deep), which is counted that many times
+on the stack that renders the strip (the Pico 2 W's core 0, the ESP32's pixel task). Figures are lower bounds of what a board uses; the margin covers the rest
 (interrupt frames, the C library's printf, LittleFS's internals behind its function pointers).
 
 Exit 1 when a path does not fit its stack with the margin. Stacks (bytes):
@@ -22,6 +24,7 @@ Exit 1 when a path does not fit its stack with the margin. Stacks (bytes):
   Pico core 0 (requests, the network, the serial port)       8 KB (arduino-pico: scratch X + Y), less 1 KB for
                                                              lwIP's background interrupt on the Pico W / 2 W
   Pico core 1 (the step)                                     8 KB (core1_separate_stack)
+  ESP32 pixel task (the strip's frames, an LED pattern)      PIXEL_TASK_STACK (Proptroller.cpp)
 """
 import glob
 import os
@@ -187,6 +190,26 @@ def stack_size(name, default):
     return eval(m.group(1)) if m else default
 
 
+def pattern_depth():
+    src = open(os.path.join(HERE, "lib/proptroller/src/proptroller/pattern_vm.h")).read()
+    m = re.search(r"PATTERN_MAX_DEPTH = (\d+);", src)
+    return int(m.group(1)) if m else 0
+
+
+class PatternWalker(Walker):
+    """Counts an LED pattern's interpreter PATTERN_MAX_DEPTH times: exec and the built-in that calls it again."""
+
+    def chain(self, hops):
+        total, path = Walker.chain(self, hops)
+        ex, bi = self.find("pt::PatternVM::exec("), self.find("pt::PatternVM::builtin(")
+        n = pattern_depth()
+        return total + n * (self.frame(ex) + self.frame(bi)), path + [ex, bi] * n
+
+
+# the strip's frame with a pattern playing: from where the pixel side is called down to the interpreter
+PATTERN_HOPS = [["pt::Controller::pixelService(", "pt::Controller::patternRender(", "pt::PatternVM::frame("]]
+
+
 def report(env, w, stacks, margin, verbose):
     ok = True
     print("== %s" % env)
@@ -236,8 +259,19 @@ def main():
             ("core 0: boot (setup)", pico_core0, BOOT_HOPS),
             ("core 1: the step", pico_core1, STEP_HOPS),
         ]
+        if env == "pico2w":
+            # the strip's frames run in loop() on core 0 (with lwIP's interrupt on top)
+            stacks.append(("core 0: a pattern frame (loop) + lwIP IRQ", pico_core0 - irq,
+                           [[LOOP_ROOT] + h for h in PATTERN_HOPS]))
         if only != "esp32dev":
             ok &= report(env, w, stacks, margin, verbose)
+            if env == "pico2w":
+                ok &= report(env + " (an LED pattern at its deepest)", PatternWalker(g), stacks[-1:], margin, verbose)
+                su = load_su("esp32dev")
+                if su:
+                    pixel_stack = stack_size("PIXEL_TASK_STACK", 4096)
+                    ok &= report("esp32dev (Xtensa frames on the Pico 2 W graph, a pattern at its deepest)", PatternWalker(g, su),
+                                 [("ESP32 pixel task", pixel_stack, PATTERN_HOPS)], margin, verbose)
         if env == "picow" and only in (None, "picow", "esp32dev"):
             su = load_su("esp32dev")
             if su:

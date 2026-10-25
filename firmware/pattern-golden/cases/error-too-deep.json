@@ -12,6 +12,6 @@
  "frames": [],
  "error": {
   "step": 0,
-  "message": "functions call each other too deeply (more than 24 at once)"
+  "message": "functions call each other too deeply (more than 12 at once)"
  }
 }

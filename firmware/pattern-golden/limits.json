@@ -4,7 +4,7 @@
   "functions": 128,
   "controls": 16,
   "stack": 256,
-  "depth": 24,
+  "depth": 12,
   "locals": 512,
   "cells": 2048,
   "steps": 98304

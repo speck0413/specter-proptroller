@@ -550,6 +550,7 @@ void Controller::runStatus(std::vector<ParamValue>& out, bool aliased) const {
 PT_STEP_CODE void Controller::scriptPixels(Frame& f) const {
   const ScriptStep* st = nullptr;
   Millis since = 0;
+  if (engine_.manualPixel() && !engine_.isPaused()) { patternPixels(f); return; }  // a pixel test of a stored pattern
   if (engine_.isPaused() || engine_.manualPixel() || !script_run_ || !script_prog_ || !script_run_->pixels(st, since)) return;
   f.has_pixel = true;
   f.pixel = pixelEffect((Effect::Kind)st->target, Rgb((uint8_t)(st->ms >> 16), (uint8_t)(st->ms >> 8), (uint8_t)st->ms), settings_.pixel_speed);
@@ -1179,8 +1180,7 @@ std::string Controller::call(const char* body, size_t len) {
   }
   // what reads only what requests change (the shows, the profile, the settings, the script's text, a script to
   // check): answered in a window, so only the step runs meanwhile and nothing it changes is read
-  static const char* const READ_ONLY[] = {"list_shows", "get_show", "get_profile", "get_script", "info", "check_script", "get_backup", "get_params",
-                                          "list_patterns"};
+  static const char* const READ_ONLY[] = {"list_shows", "get_show", "get_profile", "get_script", "info", "check_script", "get_backup", "get_params"};
   bool read_only = false;
   for (auto op : READ_ONLY) read_only |= r.op == op;
   auto answerIt = [&]() -> Response {

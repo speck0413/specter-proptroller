@@ -39,9 +39,11 @@ bool patternNameOk(const std::string& name, std::string& why) {
   return true;
 }
 
-std::string patternRecordEncode(const std::vector<StoredPattern>& ps) {
+std::string patternRecordEncode(const std::vector<StoredPattern>& ps, const StoredPattern* with, int at) {
   std::string body;
-  for (auto& p : ps) {
+  size_t n = ps.size() + (with && at < 0 ? 1 : 0);
+  for (size_t i = 0; i < n; i++) {
+    const StoredPattern& p = with && ((at >= 0 && (size_t)at == i) || (at < 0 && i == ps.size())) ? *with : ps[i];
     put8(body, (uint32_t)p.name.size());
     body += p.name;
     put16(body, (uint32_t)p.program.size());

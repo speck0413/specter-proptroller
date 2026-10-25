@@ -46,7 +46,9 @@ struct StoredPattern {
 // The name as stored: spaces around it trimmed, runs of spaces made one (its case kept).
 std::string patternNameClean(const std::string& name);
 
-std::string patternRecordEncode(const std::vector<StoredPattern>& p);
+// `with` (optional): the record as it would be with that pattern in place `at` (-1: added at the end), without a
+// copy of the list.
+std::string patternRecordEncode(const std::vector<StoredPattern>& p, const StoredPattern* with = nullptr, int at = -1);
 enum class PatternRecordKind : uint8_t { Current, Newer, Unreadable };
 // `version` the record's format (for the message about a newer one).
 PatternRecordKind patternRecordDecode(const std::string& bytes, std::vector<StoredPattern>& out, uint32_t& version);

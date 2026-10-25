@@ -11,6 +11,8 @@
 #include <cstring>
 #include <mutex>
 #include <thread>
+#include <fstream>
+#include <sstream>
 #include "proptroller/sim/sim.h"
 #include "proptroller/window_lock.h"
 
@@ -300,6 +302,87 @@ void the_window_lock_lets_only_the_step_in() {
   (void)phase;
 }
 
+// LED patterns across the board's tasks: the pixel side on a thread of its own without the lock (as the core-0 task
+// on the ESP32), the step pressing buttons, and requests sending, listing and deleting patterns and changing the
+// script meanwhile. ThreadSanitizer (native_tsan) checks that the pixel side only ever touches its own copy.
+void patterns_across_the_tasks() {
+  static BoardLock lk;
+  Sim sim("t");
+  sim.pixels_by_caller = true;
+  Controller& c = sim.ctl();
+  std::string prog;
+  {
+    std::ifstream f("../pattern-golden/cases/puzzle-out-of-order.json", std::ios::binary);
+    std::stringstream ss;
+    ss << f.rdbuf();
+    JsonDocument d;
+    TEST_ASSERT_FALSE(deserializeJson(d, ss.str()));
+    prog = d["program"].as<std::string>();
+  }
+  auto put = [&](const char* name) {
+    JsonDocument d;
+    d["op"] = "put_pattern";
+    d["name"] = name;
+    d["program"] = prog;
+    std::string b;
+    serializeJson(d, b);
+    return c.call(b.data(), b.size());
+  };
+  std::string pc = R"({"op":"set_params","values":[{"key":"pixel_count","value":60}]})";
+  TEST_ASSERT_TRUE(ok(c.call(pc.data(), pc.size())));
+  TEST_ASSERT_TRUE(ok(put("clue puzzle")));
+  std::string sc = scriptBody("effect p:\n  pixels = pattern clue puzzle\n  wait for user3\neffect c:\n  wait for trig1\n  pixels press clue1\n  pixels press reset\n  pixels press clue2\n");
+  TEST_ASSERT_TRUE(stored(c.call(sc.data(), sc.size())));
+  sim.step(2500);
+  c.setLockHooks(BoardLock::release, BoardLock::retake, &lk);
+  std::atomic<bool> done{false};
+  std::atomic<int> frames{0};
+  std::atomic<uint64_t> up{sim.uptime()};
+  std::thread step([&] {
+    for (int i = 0; !done; i++) {
+      lk.takeStep();
+      if (i % 20 == 0) sim.setInput(Input::Trig1, true);
+      if (i % 20 == 10) sim.setInput(Input::Trig1, false);
+      if (i % 50 == 25) sim.setInput(Input::User3, true);
+      if (i % 50 == 35) sim.setInput(Input::User3, false);
+      sim.tick();
+      up = sim.uptime();
+      lk.give();
+      std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+  });
+  std::thread pixel([&] {
+    while (!done) {
+      c.pixelService(up.load());  // no lock, as the board's pixel task
+      frames++;
+      std::this_thread::sleep_for(std::chrono::microseconds(50));
+    }
+  });
+  std::thread service([&] {
+    const char* list = R"({"op":"list_patterns"})";
+    const char* del = R"({"op":"delete_pattern","name":"clue puzzle"})";
+    const char* test = R"({"op":"pixel","action":{"target":"PIXEL","do":"pattern","name":"clue puzzle"}})";
+    const char* untest = R"({"op":"pixel","action":null})";
+    for (int i = 0; i < 150; i++) {
+      lk.take();
+      (void)put(i % 3 ? "clue puzzle" : "other");
+      (void)c.call(list, strlen(list));
+      if (i % 5 == 0) (void)c.call(del, strlen(del));
+      if (i % 7 == 0) (void)c.call(test, strlen(test));
+      if (i % 7 == 3) (void)c.call(untest, strlen(untest));
+      c.background();
+      lk.give();
+      std::this_thread::sleep_for(std::chrono::microseconds(300));
+    }
+  });
+  service.join();
+  done = true;
+  step.join();
+  pixel.join();
+  c.setLockHooks(nullptr, nullptr, nullptr);
+  TEST_ASSERT_TRUE(frames.load() > 100);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(the_window_lock_lets_only_the_step_in);
@@ -307,5 +390,6 @@ int main() {
   RUN_TEST(a_name_change_during_the_script_write_is_refused);
   RUN_TEST(three_tasks_with_the_board_lock);
   RUN_TEST(three_tasks_with_a_plain_lock);
+  RUN_TEST(patterns_across_the_tasks);
   return UNITY_END();
 }

@@ -65,6 +65,7 @@ struct PatternSide {
   uint32_t script_gen[SCRIPT_MAX_NAMES] = {0};
   uint32_t slots_for = UINT32_MAX;  // the script table (script_gen_) they were found for
   Millis missing_told = UINT64_MAX; // the pixels line run whose missing pattern was told
+  std::string test_name;            // the pattern the pixel test shows (a new copy sent meanwhile is followed)
   // the step's last pattern picture, and its play number
   bool last_pattern = false;
   uint32_t last_gen = 0;
@@ -210,10 +211,11 @@ void Controller::patternBoard(ScriptBoard& b) const {
   }
 }
 
-bool Controller::patternEffect(const std::string& name, Effect& out) const {
+bool Controller::patternEffect(const std::string& name, Effect& out) {
   if (!pat_) return false;
   int i = pat_->byName(name);
   if (i < 0) return false;
+  pat_->test_name = name;
   out = Effect();
   out.kind = Effect::Kind::Pattern;
   out.pattern = (uint8_t)i;
@@ -224,12 +226,20 @@ bool Controller::patternEffect(const std::string& name, Effect& out) const {
 // ---------------------------------------------------------------- the step
 
 PT_STEP_CODE void Controller::patternPixels(Frame& f) const {
-  const ScriptStep* st = nullptr;
-  Millis since = 0;
-  if (!f.has_pixel || f.pixel.kind != Effect::Kind::Pattern || !script_run_ || !script_run_->pixels(st, since)) return;
-  // a script's pixels = pattern line: the stored pattern of that name (dark when there is none)
-  uint32_t gen = pat_ && st->value < SCRIPT_MAX_NAMES ? pat_->script_gen[st->value] : 0;
-  const StoredPattern* p = pat_ ? pat_->byGen(gen) : nullptr;
+  if (!f.has_pixel || f.pixel.kind != Effect::Kind::Pattern || !pat_) return;
+  uint32_t gen = 0;
+  if (engine_.manualPixel()) {
+    // the pixel test: the pattern of that name as it is stored now (sent again: the new copy; deleted: dark)
+    int i = pat_->byName(pat_->test_name);
+    gen = i >= 0 ? pat_->list[(size_t)i].gen : 0;
+  } else {
+    // a script's pixels = pattern line: the stored pattern of that name (dark when there is none)
+    const ScriptStep* st = nullptr;
+    Millis since = 0;
+    if (!script_run_ || !script_run_->pixels(st, since)) return;
+    gen = st->value < SCRIPT_MAX_NAMES ? pat_->script_gen[st->value] : 0;
+  }
+  const StoredPattern* p = pat_->byGen(gen);
   if (!p) { f.pixel = Effect(); return; }
   f.pixel.pattern = (uint8_t)(p - pat_->list.data());
   f.pixel.pattern_gen = gen;
@@ -296,8 +306,9 @@ void Controller::patternBackground(bool flush) {
   }
   // the program the strip should play, handed over once
   const PixelRequest& r = pixel_req_;
-  if (r.has && r.effect.kind == Effect::Kind::Pattern && r.effect.pattern_gen != pat_->offered && !window_open_) {
-    const StoredPattern* p = pat_->byGen(r.effect.pattern_gen);
+  uint32_t want = r.has && r.effect.kind == Effect::Kind::Pattern ? r.effect.pattern_gen : 0;  // read before any window
+  if (want && want != pat_->offered && !window_open_) {
+    const StoredPattern* p = pat_->byGen(want);
     if (p) {
       PatternLoad* l = new PatternLoad();
       l->gen = p->gen;
@@ -311,7 +322,7 @@ void Controller::patternBackground(bool flush) {
       }
       if (ok) delete pat_->mail.exchange(l, std::memory_order_acq_rel);
       else { log("pattern " + p->name + " cannot play: " + why); delete l; }
-      pat_->offered = r.effect.pattern_gen;
+      pat_->offered = want;
     }
   }
   // the record: written when nothing runs (a flash write stalls both cores), at the latest a minute after the change
@@ -492,18 +503,16 @@ Response Controller::patternOp(Request& r) {
   if (at < 0 && s.list.size() >= PATTERN_MAX_STORED)
     return Response::err(r, ErrorCode::Refused, "the board keeps at most 8 patterns: delete one first");
   // does the new list fit the board's memory and its store?
-  std::vector<StoredPattern> next = s.list;
-  if (at >= 0) next[(size_t)at] = np;
-  else next.push_back(np);
-  size_t ram = 0;
-  for (auto& p : next) ram += p.program.size();
+  size_t ram = np.program.size();
+  for (size_t i = 0; i < s.list.size(); i++)
+    if ((int)i != at) ram += s.list[i].program.size();
   if (ram > PATTERN_STORE_RAM_MAX)
     return Response::err(r, ErrorCode::Refused, "the board's patterns would take " + std::to_string(ram / 1024 + 1) + " KB, more than its " +
                                                    std::to_string(PATTERN_STORE_RAM_MAX / 1024) + " KB: delete a pattern first");
   size_t packed = 0;
   {
-    Unlocked u(*this);  // the list copy is this request's own
-    packed = patternRecordEncode(next).size();
+    Unlocked u(*this);  // the stored list changes only in requests, which wait meanwhile (window_lock.h)
+    packed = patternRecordEncode(s.list, &np, at).size();
   }
   if (packed > PATTERN_STORE_CAPACITY)
     return Response::err(r, ErrorCode::Refused, "the board's pattern store is full (" + std::to_string(packed) + " of " +
@@ -538,7 +547,7 @@ void Controller::setPatternStore(Storage* store) { (void)store; }
 std::string Controller::patternsHeldText() const { return ""; }
 void Controller::patternScriptSlots() {}
 void Controller::patternBoard(ScriptBoard& b) const { b.pattern_player = false; }
-bool Controller::patternEffect(const std::string& name, Effect& out) const { (void)name; (void)out; return false; }
+bool Controller::patternEffect(const std::string& name, Effect& out) { (void)name; (void)out; return false; }
 void Controller::patternPixels(Frame& f) const { if (f.has_pixel && f.pixel.kind == Effect::Kind::Pattern) f.pixel = Effect(); }
 void Controller::patternPlay(PixelRequest& r) { (void)r; }
 void Controller::patternPresses(Millis now) {
