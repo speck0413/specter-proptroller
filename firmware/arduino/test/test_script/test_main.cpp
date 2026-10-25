@@ -331,7 +331,8 @@ void random_presses_never_break_the_rules() {
 
 // The public example scripts (firmware/show-script-examples/, workspace-template/effects/): each passes the
 // checker with the board settings its header names (`# Board setting: dmx_port = s4`), and a press on its
-// first effect's input changes an output, a DMX channel or plays a sound.
+// first effect's input changes an output, a DMX channel, plays a sound, presses a pattern's button or runs a
+// pixels line again.
 void every_example_script_checks_and_runs() {
   std::vector<std::string> names;
   for (const std::string dir : {"../show-script-examples/", "workspace-template/effects/"}) {
@@ -348,7 +349,8 @@ void every_example_script_checks_and_runs() {
     std::stringstream ss;
     ss << f.rdbuf();
     std::string text = ss.str();
-    ScriptBoard b;  // rly1, rly2 shows, cc1 trigger repeat, cc2 sound trigger; user1-3 learn buttons
+    ScriptBoard b;  // rly1, rly2 shows, cc1 trigger repeat, cc2 sound trigger
+    b.buttons_are_triggers = true;  // as on every board of this firmware
     b.dmx_on = text.find("dmx_port = s4") != std::string::npos;
     ScriptProgram* p = new ScriptProgram();
     ScriptCheck c = scriptCompile(text, {}, b, *p);
@@ -372,12 +374,17 @@ void every_example_script_checks_and_runs() {
         for (int ch = 0; ch < CHANNEL_COUNT; ch++) changed |= run.level(ch) > 0;
         for (int k = 0; k < DMX_CHANNELS; k++) changed |= run.dmx()[k] > 0;
         changed |= !snd.empty();
+        uint8_t pressed[SCRIPT_MAX_PRESSES];
+        changed |= run.takePresses(pressed) > 0;
+        const ScriptStep* px = nullptr;
+        Millis since = 0;
+        changed |= now > 3000 && run.pixels(px, since) && since >= 3000;
       }
     }
     TEST_ASSERT_TRUE_MESSAGE(changed, (n + ": a press does nothing").c_str());
     delete p;
   }
-  TEST_ASSERT_EQUAL_MESSAGE(10, (int)names.size(), "the eight public examples and the workspace's two");
+  TEST_ASSERT_EQUAL_MESSAGE(11, (int)names.size(), "the nine public examples and the workspace's two");
 }
 
 // Every limit at once: 8 effects, 224 lines, just under SCRIPT_MAX_BYTES (blank lines would only add text).
