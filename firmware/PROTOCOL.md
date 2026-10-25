@@ -397,7 +397,7 @@ trigger switch beside the buttons, also found under a profile's alias of `remote
 idle, and an unplugged cable counts as a trigger in this mode, so use `switch` for anything safety-related; a
 change re-arms the trigger: it must be seen released first), `trig_debounce_ms`,
 `trig_release_ms`, `pixel_count`, `pixel_brightness` (%), `pixel_speed` (%: how fast a show script's pixel effects run),
-`volume`, `df_ack`, `df_checksum`, `status_led`, and the pulse-and-recover effect's keys (`effect`,
+`volume`, `df_ack`, `df_checksum`, `status_led`, `board_link`, `link_group`, `link_key` ([Board link](#board-link)), and the pulse-and-recover effect's keys (`effect`,
 `out1_on_ms` …, README "The pulse-and-recover effect"). Other firmwares publish their own keys the same way.
 
 USER1-3 are always plain triggers. The board has no recorder of its own: the older learn mode (setting `buttons` =
@@ -470,8 +470,9 @@ and `cooldown_remaining_ms` of the first; `pulsing`, `recovering` as OUT1 / OUT2
 `remote_trigger_enable`, `remote_trigger_by`: SS-R13), so a profile's status aliases apply, and `out4_ready_lamp`
 makes OUT4 the first effect's ready lamp. `trig1_wait` / `trig2_wait` (`ready`, the default, or `return`) choose
 how a first `wait for` on that input starts its effect (SS-R4). Lines may name a setting for a time
-(`wait out1_on_ms`), read when they run. The stored table's format is 2; a table stored by an earlier firmware is
-checked again at power-on.
+(`wait out1_on_ms`), read when they run. The stored table's format is 3 (the tell lines' names and values after
+the steps); a table stored by an earlier firmware is checked again at power-on. A script's `tell` lines reach
+other boards ([Board link](#board-link)).
 
 The step table the checker makes stays on the board: a `script_check` (the answer of `check_script` and
 `set_script`, `get_script`'s `check`, MQTT `script/result`) carries `ok`, `errors`, `warnings` and, when `ok`,
@@ -507,6 +508,8 @@ bytes on the way is refused instead of stored.
   drives up to four others with plain show tracks.
 * **Radio cues**: an `emit` cue is broadcast over ESP-NOW as `PTCUE1:<name>`; every other Proptroller in
   range starts its shows that have a `cue` trigger with that name.
+* **Board link**: a show script's `tell` lines start effects and change settings on other boards
+  ([Board link](#board-link)).
 
 ## MQTT
 
@@ -536,7 +539,9 @@ the mDNS label of the device name (`Front Door` → `front-door`). A profile's `
 | `<p>/error` | out | why a `config/set` was refused (unknown key, out of range, bad value) |
 | `<p>/cue` | in | a cue name: sends it, like a radio cue from another controller |
 | `<p>/control/restart` | in | anything: restarts the board |
-| `<p>/control/trigger`, `…/recover`, `…/cancel`, `…/<script effect>` | in | the pulse-and-recover effect, or a show-script effect by its name (a start needs `remote_trigger_enable` unless the effect is in `remote_free_effects`); refusals on `<p>/error` |
+| `<p>/control/trigger`, `…/recover`, `…/cancel`, `…/<script effect>` | in | the pulse-and-recover effect, or a show-script effect by its name (a start needs `remote_trigger_enable` unless the effect is in `remote_free_effects`); refusals on `<p>/error`. The payload is not read, except another board's tell `{"from","id","seq","group"}`, which is answered on `<root>/<from>/link/answer` ([Board link](#board-link)) |
+| `<p>/config/now/<key>` | in | the value (as for `config/set`), or another board's tell `{"value","from","id","seq","group"}`: the setting is used at once and **not saved** (it lasts until a restart or a change on the board); refused while page-locked and for the settings a board never takes from another ([Board link](#board-link)); the new value is published on `<p>/config/<key>`, refusals on `<p>/error` |
+| `<p>/link/answer` | in | the answer to one of this board's tells: `{"from","id","seq","ok","message"}` |
 | `<p>/status/<key>` | out, retained | the [run counters](#run-counters) (always, as soon as they change) and the effect's status lines (while it is on or a script is stored, when they change, at most every 0.1 s; a time left at most once a second) |
 | `<p>/status/get/<key>` | in | anything: that status value is published again |
 | `<p>/script/set` | in | `{"text": "..."}`: checks and stores the show script |
@@ -549,11 +554,81 @@ random at each start of the board, and `mqtt_seq` counts the state and event mes
 lost (QoS 0, or a session that ended), so a fleet backend reads the retained state again. An event keeps its own
 `seq` (the board's event counter, the WebSocket's).
 
-The two `proptroller/broadcast/…` topics are the only ones every board listens to; everything else names
-one board, so a setting reaches only that board, and a setting or control sent to a broadcast or wildcard
+The two `proptroller/broadcast/…` topics are the only ones every board listens to (a board whose script tells
+`all` over MQTT also reads every board's retained `<root>/+/online`, to know which boards there are; it acts on
+nothing there); everything else names one board, so a setting reaches only that board, and a setting or control sent to a broadcast or wildcard
 topic is ignored. No board can be named `broadcast`. With the page lock on MQTT is read-only: `config/set`,
 `script/set`, `cue` and every `control/…` but `trigger` (which needs `remote_trigger_enable`) are refused: use
 `rpc`, which carries the page password.
+
+## Board link
+
+A show script's `tell` lines (SHOW-SCRIPT.md §11) reach other boards over MQTT or straight from board to board
+(peer to peer). The setting `board_link` chooses how this board sends: `auto` (MQTT when `mqtt_broker` is set,
+otherwise peer to peer), `mqtt`, `wifi` (peer to peer) or `off`. A board takes tells over MQTT whenever it has a
+broker, and peer to peer unless `board_link` is `mqtt` or `off`. A board is addressed by its MQTT / mDNS label
+(`hostLabel` of its name: `Front Door` is `front-door`); `all` is every other board (over MQTT: every board whose
+retained `<root>/<label>/online` is `true`; peer to peer: every board of the group that hears the broadcast).
+
+What the receiving board does is what a start by name or a `config/set` does, with the same rules:
+
+* **Effect** (`tell porch blackout`): `remoteControl`, the code behind MQTT `<p>/control/<name>`: a control alias
+  works, a start needs `remote_trigger_enable` unless the effect is in `remote_free_effects`, a page-locked board
+  takes only starts that have that gate (as over MQTT), one start waits while the effect is busy. `restart` is
+  never taken from another board.
+* **Setting** (`tell porch pixel_speed = 150`): the value as `config/set` reads it (plus `on` / `off` for a switch
+  and a trailing `%` for a percentage), key aliases included; it is applied at once and never written to flash:
+  the value the flash keeps is remembered and written by any later save (and a backup carries it), until the
+  setting is changed on the board, a backup is restored or the board restarts. Refused: every secret, every setting
+  that needs a restart, `name`, `page_lock`, `pin`, `wifi_ssid`, `wifi_pass`, `ap_pass`, `mqtt_broker`,
+  `mqtt_port`, `board_link`, `link_group`, `link_key`, `remote_trigger_enable`, `remote_free_effects`, `effect`,
+  and everything while the board is page-locked.
+* The sender keeps each tell 2 s for its answer (`LINK_ANSWER_MS`) and logs `sent`, a refusal with its reason,
+  `no answer from <board>`, or for `all` how many boards answered; at most 20 tells a second (`LINK_MAX_PER_S`).
+  The receiver logs who started what (`remote start by front-door: effect "blackout"`) and every setting changed.
+
+**Over MQTT**: an effect is published to `<root>/<board>/control/<effect>`, a setting to
+`<root>/<board>/config/now/<key>`, never retained, with the payload `{"from":"front-door","id":"<id>","seq":12,
+"group":"<link_group>"}` (a setting adds `"value"`). The receiver answers on `<root>/<from>/link/answer` with
+`{"from","id","seq","ok","message"}`; a payload whose `group` is not the receiver's own is ignored. Other tools
+can publish the same messages; a plain payload works as before and gets no answer. MQTT has no key.
+
+**Peer to peer**: one binary frame, sent as a UDP datagram to the discovery port (47800) as a subnet broadcast on
+each network the board is on (its Wi-Fi network, and its own hotspot at 192.168.4.255), and on the ESP32 also as
+an ESP-NOW broadcast (the radio's current channel, the cues' peer). Little endian, at most 250 bytes (ESP-NOW's
+payload):
+
+| Bytes | Field |
+|---|---|
+| 0-3 | `PTL1` |
+| 4 | kind: 1 start an effect, 2 change a setting, 3 an answer, 4 a challenge |
+| 5 | flags: bit 0 a tag follows (signed), bit 1 ok (an answer) |
+| 6-9 | boot: the author's random nonce for this boot |
+| 10-13 | seq: a request's number (from 1 at each boot); an answer's or challenge's: the request's |
+| 14-17 | bound: a request: the receiver's nonce it is bound to (0: none); an answer or challenge: the request author's nonce |
+| 18 … | six strings, each a length byte then its bytes: group (≤ 16), the author's id (≤ 16), the author's name (≤ 40), to (a board's label or `all`; an answer's or challenge's: the request author's id, ≤ 40), what (the effect or setting, ≤ 32), value (the setting's value, or an answer's text, ≤ 64) |
+| last 16 | with a key: the first 16 bytes of HMAC-SHA256(`link_key`, every byte before them) |
+
+A board takes a frame only from its own group (`link_group`, compared exactly), never its own (its id), and only a
+request addressed to its label or `all`. Each request is answered back the way it came (UDP to its source
+address and port, or an ESP-NOW broadcast). A request not answered is sent again after 250 and 700 ms; the
+receiver keeps a window of 32 numbers per sender and boot, so a frame that arrives twice (UDP and ESP-NOW, or sent
+again) runs once and is answered again, and one that arrives late still runs once.
+
+**With `link_key`** (the same on every board of the group; set-only, never published or logged; sent empty from
+the serial console or `set_params` it is removed): every frame is signed, unsigned or wrongly signed frames are
+dropped, and a request is taken only when it is bound to the receiver's nonce for this boot. An unbound request
+(the first one to a board, or any `tell all`) is answered with a signed challenge carrying the receiver's nonce;
+the sender sends the request again bound to it and remembers the nonce for the next tells. A frame recorded on the
+network and sent again is dropped: it is bound to another nonce (or none, and gets only a challenge nobody can
+answer without the key), or its number was taken already. A receiver that has to forget a sender (more than 8)
+takes a new nonce. **Without a key nothing is signed and anyone on the network can send tells**, as anyone on it
+can use the board's page with the page lock off.
+
+ESP-NOW reaches ESP32 boards on the same channel with no router; UDP reaches every Wi-Fi board (ESP32, Pico W,
+Pico 2 W) on the same network, also when the boards are joined to one board's hotspot. Not yet tried on hardware:
+the UDP broadcasts (ESP32, Pico W), ESP-NOW frames, and a board joined to another board's hotspot (it then has
+two networks at 192.168.4.x).
 
 ## Firmware updates
 

@@ -128,3 +128,19 @@ test('a pixels line is a pixels block, written back as "pixels = <look>"', () =>
   assert.equal(blocksToText(m), 'effect a:\n  pixels = comet 0x40ff80   # waiting\n  wait for trig1\n  pixels = fire\n');
   assert.equal(blocksToText({ eol: '\n', blocks: [newBlock('ps_pixels')] }), 'pixels = rainbow\n');
 });
+
+test('a tell line is a tell block (a board, then an effect or a setting), written back as "tell <board> <what>"', () => {
+  for (const [l, b, d] of [['tell porch blackout', 'porch', 'blackout'], ['TELL  Front-Door   Porch Light', 'Front-Door', 'Porch Light'],
+    ['tell all pixel_speed = 150', 'all', 'pixel_speed = 150'], ['tell porch title: Hello', 'porch', 'title: Hello']]) {
+    const x = parse(l);
+    assert.equal(x.type, 'ps_tell', l);
+    assert.equal(x.f.BOARD, b, l);
+    assert.equal(x.f.DO, d, l);
+  }
+  assert.equal(parse('tell porch').type, 'ps_raw');  // the board's checker says what is missing
+  assert.equal(parse('tell').type, 'ps_raw');
+  const m = textToBlocks('effect a:\n  wait for trig1\n  tell porch blackout   # lights out\n');
+  all(m).find((b) => b.type === 'ps_tell').f.DO = 'bright';
+  assert.equal(blocksToText(m), 'effect a:\n  wait for trig1\n  tell porch bright   # lights out\n');
+  assert.equal(blocksToText({ eol: '\n', blocks: [newBlock('ps_tell')] }), 'tell porch blackout\n');
+});

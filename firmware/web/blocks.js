@@ -43,6 +43,8 @@ export const KINDS = {
     tip: 'How loud the script\'s sounds play from here on: 0% (silent) to 100%.' },
   ps_pixels: { words: ['light the pixels:', 'LOOK'], fields: { LOOK: 'rainbow' }, colour: '#a6a05b',
     tip: 'Lights the pixel strip until another pixels line: an effect (off, fill, chase, rainbow, flash, fade, flicker, comet, sparkle, breathe, fire) and a colour (red … warm white, or 0xRRGGBB), for example chase red.' },
+  ps_tell: { words: ['tell', 'BOARD', 'DO'], fields: { BOARD: 'porch', DO: 'blackout' }, colour: '#5ba6a0',
+    tip: 'Tells another board (its network name, or all) to start one of its effects, or to use a setting: blackout, or pixel_speed = 150. The line does not wait.' },
   ps_comment: { words: ['#', 'TEXT'], fields: { TEXT: '' }, colour: '#6d6d6d', tip: 'A comment or a blank line: the board skips it.' },
   ps_raw: { words: ['line', 'TEXT'], fields: { TEXT: '' }, colour: '#a65b5b', tip: 'A line the blocks do not know: Check says what is wrong with it.' },
 };
@@ -52,7 +54,7 @@ export const ADDABLE = [
   ['ps_flicker', 'flicker'], ['ps_pulse', 'pulse an output'], ['ps_limit', 'limit the runs'],
   ['ps_audio_single', 'play a sound once'], ['ps_audio_loop', 'play a sound over and over'],
   ['ps_audio_stop', 'stop the sound'], ['ps_audio_volume', 'set the sound volume'], ['ps_pixels', 'light the pixel strip'],
-  ['ps_comment', 'a comment'],
+  ['ps_tell', 'tell a board'], ['ps_comment', 'a comment'],
 ];
 
 // ---------------------------------------------------------------- one line → kind and fields
@@ -122,6 +124,11 @@ export function parse(raw) {
     const v = r.trim();
     if (v === '' || v[0] === '=' || v[0] === ':') return { type: 'ps_pixels', f: { LOOK: v.slice(1).trim() } };
   }
+  // tell <board> <effect> / tell <board> <setting> = <value>: before the output line (it may hold "=")
+  if ((r = kw(low, 'tell')) !== null) {
+    const m = r.match(/^ +([^ =:]+) +(\S.*)$/);
+    if (m) return { type: 'ps_tell', f: { BOARD: m[1], DO: m[2].trim() } };
+  }
   if ((r = kw(low, 'sleep')) !== null) return { type: 'ps_sleep', f: { TIME: r.trim() } };
   if ((r = kw(low, 'fade')) !== null) {
     const m = r.match(/^\s*([A-Za-z_]+\d*)\s*[Tt][Oo]\s*(.*?)\s*[Oo][Vv][Ee][Rr]\s*(.*)$/);
@@ -162,6 +169,7 @@ export function lineOf(type, f) {
     case 'ps_audio_stop': return 'audio_stop';
     case 'ps_audio_volume': return `audio_volume = ${f.VOLUME}`;
     case 'ps_pixels': return `pixels = ${f.LOOK}`;
+    case 'ps_tell': return `tell ${f.BOARD} ${f.DO}`;
     case 'ps_comment': return f.TEXT ? `# ${f.TEXT}` : '';
     default: return f.TEXT || '';
   }

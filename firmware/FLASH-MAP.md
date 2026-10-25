@@ -90,7 +90,7 @@ Records (LittleFS, each an A/B file pair with a sequence number and CRC):
 * `/script-a.bin` / `/script-b.bin`: the show script (`SCRIPT_RECORD_VERSION`, `script_record.h`): a 24-byte
   header ("PTSR", the format, the step table's format and key, the lengths), the text and its sound list
   compressed together (`lz.h`; `get_script` and backups get the exact text back), then the checked step table
-  (table format 2, at most about 3 KB). Power-on runs the stored table while its key matches (table format, firmware version
+  (table format 3, at most about 3.5 KB). Power-on runs the stored table while its key matches (table format, firmware version
   and build, the settings the checker reads, the sound list); otherwise the text is checked again and the record
   rewritten. The worst case (8 KB of incompressible text, the largest table, 254 random 32-character sound
   names) takes 22.2 KB of the 24 KB store; a longer sound list does not fit and `set_script` says so, keeping
