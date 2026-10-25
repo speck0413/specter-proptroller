@@ -102,25 +102,23 @@ mean:
 
 ### LED patterns (QEMU, esp32dev_qemu, icount shift 2, 600 lights)
 
-QEMU has no RMT, and the image as built does not boot there: `rmt_translator_init` fails ("RMT translator buffer
-create fail"), and the heap check in the first `mem` report then panics (seen at af9ab35 too, before the pattern
-player). These numbers come from the same image with `BoardPixels::begin()` returning false at once (a local
-build only, `-DPT_QEMU_NO_RMT`, not in the tree): the strip's frames are rendered and not sent.
+The image as built (the pixel driver's install fails in QEMU and is reported; the strip's frames are rendered and
+not sent), `mem` over 10 s of guest time each:
 
 | | no pattern (strip off) | the heavy golden pattern (`pattern-golden/cases/heavy-600`) |
 |---|---|---|
-| step | max 33-39 us (average 16), 0 of about 1,030 over 1 ms | max 40-45 us (average 33), 0 of about 1,020 over 1 ms |
-| 1 ms sample | max 7-14 us (average 2) | max 17-24 us (average 15) |
-| pattern frame | | average 32.5 ms, max 36.6 ms, 42,021 steps of the 98,304 budget; about 150 frames in 10 s (the rest after a long frame) |
+| step | max 32 us (average 15), 0 of 1,010 over 1 ms | max 109 us (average 36), 0 of 997 over 1 ms |
+| 1 ms sample | max 10 us (average 2), 0 of 8,974 over 250 us | max 83 us (average 17), 0 of 8,814 over 250 us |
+| sample handled after its latch | max 508 us | max 418 us, 0 lost |
+| pattern frame | | average 21.0 ms, max 37.1 ms, 42,021 steps of the 98,304 budget; 228 frames in 10 s (a long frame is followed by as long a rest) |
 | free heap | 258 KB | 228 KB (the player 23 KB, the stored list and the hand-over copy) |
 
-Per piece, 600 lights, average frame: an empty `render` 1.6 ms, `rgb()` 4.4 ms, `hsv()` 6.2 ms, `sin()` 7.6 ms,
-some arithmetic (12,600 steps) 10.7 ms. A runaway pattern (`while (1) {}` in `render`) stops on its step budget
-after 153 ms with the event-log line, no watchdog and no panic.
-
-In QEMU both cores run on one host thread, so while core 0 renders, core 1's timer interrupt and wakes come late
-(the step's wake gap reaches 6 ms there, and the 1 ms samples are taken once per step): an emulator artifact,
-not seen as late steps (0 over 1 ms). Board timing is a bench item: run `mem` with a heavy pattern on 600 lights.
+Per piece, 600 lights, average frame (from an earlier build of the player, same interpreter): an empty `render`
+1.6 ms, `rgb()` 4.4 ms, `hsv()` 6.2 ms, `sin()` 7.6 ms, some arithmetic (12,600 steps) 10.7 ms. A runaway pattern
+(`while (1) {}` in `render`) stops on its step budget after 154 ms with the event-log line, no watchdog and no
+panic. Both cores run on one host thread in QEMU, so the step's wake gap there (2.3 ms with or without a pattern,
+8.5 ms during the runaway's frame) is an emulator artifact; board timing is a bench item: run `mem` with a heavy
+pattern on 600 lights.
 
 The heap peaks are about 3.5 times (check) and 2.6 times (put_backup) the old host estimates (30 KB and
 53 KB, 64-bit host); they include the serial path's line buffer and answer strings. With Wi-Fi up the board
