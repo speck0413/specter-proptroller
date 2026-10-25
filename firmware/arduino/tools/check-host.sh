@@ -4,7 +4,8 @@
 #     checked field by field against the golden files, HTTP RPC, a WebSocket session), the calls the desktop
 #     app makes;
 #     then MQTT with tools/mqtt_check.py (its own small broker: connect, broker down and up, a broker that never
-#     answers, the will);
+#     answers, the will); then the board link with tools/link_check.py (two simulators: a tell line peer to peer over
+#     UDP on localhost, refused, signed, a setting, then over MQTT);
 #  2. a firmware update over HTTP (POST /api/v1/update with a `ptclient.py image` file): the board restarts
 #     into that version and build, pending;
 #  3. the unit tests of the shared Record effect module (node --test web-test/take-test.mjs: take.js), then the
@@ -27,6 +28,8 @@ sleep 1
 python3 tools/ptclient.py conformance "127.0.0.1:$PORT" "$DISC"
 # MQTT against a broker of our own: connect, broker down / up, a broker that never answers, the will
 python3 tools/mqtt_check.py .pio/build/sim/program
+# the board link: two simulated boards, one's show script tells the other (UDP on localhost, then MQTT)
+python3 tools/link_check.py .pio/build/sim/program
 # a firmware update with a simulator image, on a fresh board
 kill $pid 2>/dev/null; wait $pid 2>/dev/null || true
 .pio/build/sim/program --port "$PORT" --discovery-port "$DISC" >"$WORK/sim-update.log" 2>&1 &

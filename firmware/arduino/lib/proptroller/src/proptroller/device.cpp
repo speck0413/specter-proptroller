@@ -1804,7 +1804,8 @@ std::vector<std::string> Controller::mqttSubscriptions() {
   std::vector<std::string> v = {p.substr(0, p.find('/')) + "/broadcast/getName", p + "/rpc", p + "/config/get/+", p + "/config/set/+", p + "/cue", p + "/control/+",
           p + "/status/get/+", p + "/script/set", p + "/script/check", p + "/config/now/+"};
   // the board link over MQTT: answers to this board's tells; with a script that tells all, which boards are online
-  if (linkVia() == LinkVia::Mqtt) v.push_back(p + "/link/answer");
+  mqtt_.answers = linkVia() == LinkVia::Mqtt;
+  if (mqtt_.answers) v.push_back(p + "/link/answer");
   mqtt_.names = mqttWantsNames();
   mqtt_names_.clear();
   if (mqtt_.names) v.push_back(p.substr(0, p.find('/')) + "/+/online");
@@ -2003,7 +2004,7 @@ std::vector<MqttMsg> Controller::mqttPoll() {
     uint16_t port = 0;
     bool has = mqttTarget(host, port);
     if (mqttPrefixNow() != mqtt_.prefix || has != mqtt_.has_target || host != mqtt_.host || port != mqtt_.port ||
-        mqttWantsNames() != mqtt_.names) {  // (a script that tells all over MQTT came or went: subscribe again)
+        mqttWantsNames() != mqtt_.names || (linkVia() == LinkVia::Mqtt) != mqtt_.answers) {  // (a script that tells all over MQTT came or went: subscribe again)
       // renamed, a new topic_prefix, or another broker: end this session so the client reconnects; nothing more
       // is published on the old connection
       mqtt_.epoch++;

@@ -579,7 +579,8 @@ class Controller : public Firmware {
     uint16_t port = 0;
     uint32_t epoch = 0;
     Millis status_at = 0, time_left_at = 0;
-    bool names = false;  // subscribed to <root>/+/online (a script that tells all over MQTT)
+    bool names = false;    // subscribed to <root>/+/online (a script that tells all over MQTT)
+    bool answers = false;  // subscribed to <p>/link/answer (the board link goes over MQTT)
   } mqtt_;
   bool mqttWantsNames() const { return linkVia() == LinkVia::Mqtt && script_prog_ && script_prog_->tell_all; }
   // every setting as MQTT messages, built from a copy without the lock

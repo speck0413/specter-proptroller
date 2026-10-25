@@ -162,6 +162,13 @@ class Sim : public NetApp {
   std::vector<MqttMsg> mqttOnMessage(const std::string& t, const std::string& p) override { return ctl_->mqttOnMessage(t, p); }
   std::vector<MqttMsg> mqttPoll() override { return ctl_->mqttPoll(); }
   void cueIn(const std::string& c) override { ctl_->cueIn(c); }
+  // the board link (link.h): the controller's
+  uint32_t linkEpoch() override { return ctl_->linkEpoch() + boots * 0x10000u; }  // a power cycle: read again
+  bool linkWork() override { return ctl_->linkWork(); }
+  bool linkConfig(LinkConfig& c) override { return ctl_->linkConfig(c); }
+  std::vector<LinkOut> linkTake() override { return ctl_->linkTake(); }
+  LinkReply linkIn(const LinkIn& in) override { return ctl_->linkIn(in); }
+  void linkAnswer(uint32_t seq, const std::string& from, bool ok, const std::string& text) override { ctl_->linkAnswer(seq, from, ok, text); }
 
  private:
   void tickAt(Millis at);

@@ -49,6 +49,49 @@ static int sockClose(int fd) { return ::close(fd); }
 
 namespace pt {
 
+static uint32_t linkRandom() {
+  static std::mt19937 g{std::random_device{}()};
+  return (uint32_t)g();
+}
+
+// The board link's way out on a computer: the discovery socket, to every peer given, else a broadcast on the port.
+struct PosixNet::Radio : LinkRadio {
+  PosixNet& n;
+  std::vector<sockaddr_in> peers;
+  explicit Radio(PosixNet& net) : n(net) {}
+  void sendTo(const std::string& f, const sockaddr_in& a) {
+    if (n.udp_fd_ >= 0) (void)sendto(n.udp_fd_, PT_SENDBUF(f.data()), (int)f.size(), 0, (const sockaddr*)&a, sizeof a);
+  }
+  void broadcast(const std::string& f) override {
+    if (!peers.empty()) {
+      for (auto& a : peers) sendTo(f, a);
+      return;
+    }
+    sockaddr_in a{};
+    a.sin_family = AF_INET;
+    a.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    a.sin_port = htons(n.udp_port_);
+    sendTo(f, a);
+  }
+  void reply(const std::string& f, const LinkAddr& to) override {
+    sockaddr_in a{};
+    a.sin_family = AF_INET;
+    a.sin_addr.s_addr = to.ip;
+    a.sin_port = htons(to.port);
+    sendTo(f, a);
+  }
+};
+
+void PosixNet::setLinkPeers(const std::vector<std::pair<std::string, uint16_t>>& peers) {
+  radio_->peers.clear();
+  for (auto& p : peers) {
+    sockaddr_in a{};
+    a.sin_family = AF_INET;
+    a.sin_port = htons(p.second);
+    if (inet_pton(AF_INET, p.first.c_str(), &a.sin_addr) == 1) radio_->peers.push_back(a);
+  }
+}
+
 class PosixConn : public Conn {
  public:
   explicit PosixConn(int fd) : fd_(fd) {}
@@ -156,10 +199,11 @@ struct PosixMqtt {
   }
 };
 
-PosixNet::PosixNet(NetApp& app) : app_(app), http_(app), mqtt_(new PosixMqtt(app)) {}
+PosixNet::PosixNet(NetApp& app)
+    : app_(app), http_(app), mqtt_(new PosixMqtt(app)), link_(new LinkPeer(linkRandom)), radio_(new Radio(*this)) {}
 #else
 struct PosixMqtt {};
-PosixNet::PosixNet(NetApp& app) : app_(app), http_(app) {}
+PosixNet::PosixNet(NetApp& app) : app_(app), http_(app), link_(new LinkPeer(linkRandom)), radio_(new Radio(*this)) {}
 #endif
 
 PosixNet::~PosixNet() {
@@ -203,7 +247,9 @@ bool PosixNet::start(uint16_t http_port, uint16_t udp_port) {
     u.sin_addr.s_addr = htonl(INADDR_ANY);
     u.sin_port = htons(udp_port);
     if (bind(udp_fd_, (sockaddr*)&u, sizeof u) < 0) return false;
+    setsockopt(udp_fd_, SOL_SOCKET, SO_BROADCAST, PT_SOCKOPT(&one), sizeof one);  // the board link (link.h)
     nonblocking(udp_fd_);
+    udp_port_ = udp_port;
   }
   return true;
 }
@@ -236,9 +282,15 @@ void PosixNet::poll(Millis now) {
       if (isDiscover(buf, (size_t)n)) {
         std::string a = app_.announceJson(http_port_);
         sendto(udp_fd_, a.data(), (int)a.size(), 0, (sockaddr*)&from, fl);
+      } else {
+        LinkAddr la;
+        la.ip = from.sin_addr.s_addr;
+        la.port = ntohs(from.sin_port);
+        link_->received((const uint8_t*)buf, (size_t)n, la, now, app_, *radio_);
       }
       fl = sizeof from;
     }
+    link_->poll(now, app_, *radio_);
   }
 }
 
