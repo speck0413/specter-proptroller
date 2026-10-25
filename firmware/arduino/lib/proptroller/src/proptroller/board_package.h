@@ -61,6 +61,10 @@ struct BuiltinBoard {
 // support package compiled in, proptroller_board.h), which then comes first and replaces a built-in of its id.
 std::vector<BuiltinBoard> builtinBoards(const ChipRules& chip, const BuiltinBoard* image_default = nullptr);
 const BuiltinBoard* findBuiltin(const std::vector<BuiltinBoard>& all, const std::string& id);
+// The bare devkit of a chip family (firmware/BARE-DEVKIT.md, bsp/<id>/): esp32-devkit-bare (classic ESP32; built into
+// the esp32dev_generic image, a package file for the stock one), esp32-s3-devkit, esp32-c3-supermini (the S3's and
+// C3's only built-in board); null for the Pico.
+const BuiltinBoard* bareDevkit(Mcu m);
 // No pins at all: what the board runs on when its stored package cannot be used.
 PinMap noPins(Mcu m);
 

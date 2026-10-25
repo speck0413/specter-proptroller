@@ -18,7 +18,7 @@
   "tasks": [
     {
       "label": "Build all boards",
-      "detail": "pio run: esp32dev, pico, picow, pico2w (the stack check runs after each board)",
+      "detail": "pio run: esp32dev, pico, picow, pico2w (the stack check runs after each) and the bare devkits esp32dev_generic, esp32s3_generic, esp32c3_supermini",
       "type": "shell",
       "command": "pio run",
       "group": { "kind": "build", "isDefault": true },

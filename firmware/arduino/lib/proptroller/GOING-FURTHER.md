@@ -96,7 +96,8 @@ image's default built-in board (`get_board`), and a board package sent later rep
 A terminal set to `NO_PIN` is never configured, driven or read and is not offered on the phone page or in `info`.
 The map is checked at compile time like the built-in ones (no GPIO used twice, no ESP32 output on GPIO34-39, no
 internal pull on GPIO34-39). `bsp/relay4-button/` is an example (four outputs, an active-high button, nothing
-else); `tools/build-examples.sh` builds it and `test/test_board_support` runs it on the simulated board
+else); `bsp/esp32-devkit-bare/`, `bsp/esp32-s3-devkit/` and `bsp/esp32-c3-supermini/` are the bare devkits, each a
+good starting point for a board you wire yourself (every line commented: `firmware/BARE-DEVKIT.md`); `tools/build-examples.sh` builds it and `test/test_board_support` runs it on the simulated board
 (`Sim(id, build, &map)`).
 
 A BSP can also give a fresh board (nothing stored yet, or after a factory reset) its own starting point: define

@@ -5,6 +5,9 @@ stock firmware, set up the sound card, wire one input and one output, and type a
 
 Words you may not know are in the [glossary](firmware/arduino/lib/proptroller/GLOSSARY.md).
 
+No Proptroller board? The firmware also runs on a bare ESP32 DevKit, ESP32-S3 DevKit or ESP32-C3 SuperMini (on
+its own or on a breakout board), with MOSFET or relay modules for the outputs: [firmware/BARE-DEVKIT.md](firmware/BARE-DEVKIT.md).
+
 ## 1. What you need
 
 | Part | Notes |

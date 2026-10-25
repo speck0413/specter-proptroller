@@ -103,10 +103,15 @@ namespace esp_image {
 static const uint8_t MAGIC = 0xE9;
 static const size_t CHIP_ID_OFFSET = 12;
 static const uint16_t CHIP_ESP32 = 0x0000;
+static const uint16_t CHIP_ESP32S3 = 0x0009;
+static const uint16_t CHIP_ESP32C3 = 0x0005;
 static const size_t APP_DESC_OFFSET = 32;
 static const uint32_t APP_DESC_MAGIC = 0xABCD5432;
 static const size_t HEADER_LEN = APP_DESC_OFFSET + 4;
 [[nodiscard]] bool isEsp32App(const uint8_t* first, size_t n);
+// the same for the chip whose id is `chip` (CHIP_ESP32, CHIP_ESP32S3, CHIP_ESP32C3): an image for another chip of
+// the family is refused before anything is written
+[[nodiscard]] bool isEspApp(const uint8_t* first, size_t n, uint16_t chip);
 }  // namespace esp_image
 
 // Raspberry Pi Pico W / Pico 2 W images of this firmware, behind the Pico bootloader (picoboot_map.h,

@@ -7,6 +7,7 @@ What runs where before a board is on the bench, and what that does and does not 
 
     tools/qemu/run-esp32.sh              # build, merge, boot, smoke test: about 2 minutes, exit code 1 on failure
     tools/qemu/run-esp32.sh --soak 300   # and 300 s of emulated time with shows and requests (23 minutes here)
+    tools/qemu/run-esp32.sh --s3         # the bare ESP32-S3 image on QEMU's esp32s3 machine (section below)
 
 VS Code: Terminal > Run Task > "ESP32 in QEMU". The first run downloads Espressif's QEMU release (sha256 pinned in
 the script) into `$HOME/.cache/proptroller-qemu`; nothing fetched goes into the repo. Serial logs:
@@ -279,6 +280,24 @@ What it does not prove:
 - QEMU timing is approximate (the clock section above), and slirp is not a phone on a 2.4 GHz network.
 - QEMU's own restart path is unreliable (a software reset sometimes hangs in the second-stage bootloader). The
   driver therefore power-cycles QEMU after the board says "restarting", and the stores persist as on a board.
+
+## The bare ESP32-S3 image (`--s3`)
+
+    tools/qemu/run-esp32.sh --s3 [--soak 60]
+
+The bare S3 DevKit image ([../BARE-DEVKIT.md](../BARE-DEVKIT.md)) without Wi-Fi (env `esp32s3_qemu`) on the same QEMU
+release's `esp32s3` machine: the flash image a first USB flash writes (bootloader at 0x0), booted with
+`-icount shift=2`, and the serial smoke test of stage 2 (`drive.py --machine esp32s3 --mcu esp32-s3`). It proves
+that the S3 image boots on its dual-core layout (the step and the 1 ms sampling interrupt on core 1), formats and
+mounts LittleFS, answers the protocol, keeps its records over a reboot, and runs shows and scripts without a panic
+or watchdog. QEMU's esp32s3 machine has no LED PWM controller and no RMT, so this env drives OUT1-4 on / off only
+and has no pixel driver (`PROPTROLLER_QEMU_NO_LEDC`), and its GPIO model reads every input LOW (no pull-ups): every
+active-low input reads pressed from power-on (held at power-on, so nothing triggers). Every check passes.
+
+Measured 2026-10-25 (`mem`, icount shift 2, with a 7 KB script on every output and requests in a loop): step max
+340-575 us (average 106-115 us), none over 1 ms; samples handled at most 1.25 ms after they were latched, none
+lost; the step's longest wait for the lock 2.15 ms (the requests building their answers). There is no C3 machine
+in this QEMU release: the C3 image is built and host-tested only.
 
 ## RP2040 / RP2350: Renode
 

@@ -72,7 +72,8 @@ void ProptrollerAuto::start(Proptroller& p) {
   g_auto = &p;
   p.begin();
 #if defined(ARDUINO) && defined(ESP32)
-  xTaskCreatePinnedToCore(serviceTask, "proptroller-io", SERVICE_TASK_STACK, &p, 1, &g_service, 1);
+  // with loop() (core 1 on the dual-core chips, core 0 on the single-core C3)
+  xTaskCreatePinnedToCore(serviceTask, "proptroller-io", SERVICE_TASK_STACK, &p, 1, &g_service, portNUM_PROCESSORS > 1 ? 1 : 0);
 #elif PT_AUTO_HOST
   g_host_stop = false;
   g_host_thread = std::thread([&p] {

@@ -33,6 +33,10 @@ using namespace pt;
 #ifndef PT_SERIAL_RX_BYTES
 #define PT_SERIAL_RX_BYTES 4096
 #endif
+// the C3's USB-CDC send buffer (start())
+#ifndef PT_USB_CDC_TX_BYTES
+#define PT_USB_CDC_TX_BYTES 4096
+#endif
 
 // Board support (pins.h "Another board"): a board support package, a folder with proptroller_board.h on the include
 // path (build_flags = -I path/to/bsp), or -D PROPTROLLER_BOARD_HEADER='"my_board.h"', defines constexpr pt::PinMap PROPTROLLER_BOARD_MAP; it is checked
@@ -48,6 +52,7 @@ using namespace pt;
 static_assert(pinsDistinct(PROPTROLLER_BOARD_MAP), "board profile: a GPIO serves two board functions");
 static_assert(outputsCanDrive(PROPTROLLER_BOARD_MAP), "board profile: an ESP32 output on an input-only GPIO (34-39)");
 static_assert(internalPullsPossible(PROPTROLLER_BOARD_MAP), "board profile: an ESP32 input on GPIO34-39 needs external_pull");
+static_assert(c3UartsOk(PROPTROLLER_BOARD_MAP), "board profile: on the ESP32-C3 the sound port and expansion S4 (DMX) need the same UART: leave one out");
 #endif
 #endif
 // A board support package may also give a fresh board (nothing stored yet, or after a factory reset) its own
@@ -213,7 +218,11 @@ static const BuiltinBoard* const IMAGE_BOARD_PTR = nullptr;
 // The chip this image runs on (board_package.h): which GPIOs exist and which belong to something else.
 static ChipRules chipRules() {
   ChipRules c;
-#if defined(ESP32)
+#if defined(ESP32) && CONFIG_IDF_TARGET_ESP32S3
+  c.mcu = Mcu::Esp32S3;  // the octal PSRAM pins are refused on every S3 (board_package.cpp)
+#elif defined(ESP32) && CONFIG_IDF_TARGET_ESP32C3
+  c.mcu = Mcu::Esp32C3;
+#elif defined(ESP32)
   c.mcu = Mcu::Esp32DevKit;
   c.psram = psramFound();
 #else
@@ -336,7 +345,7 @@ static volatile uint32_t g_gap_max = 0, g_gap_over15 = 0;
 // waits. Full ring (the step held up 64 ms, a flash write): the newest are dropped and counted.
 struct InputSample {
   uint64_t us;       // esp_timer microseconds when latched
-  uint64_t gpio_in;  // GPIO_IN (0-31) | GPIO_IN1 (32-39) << 32
+  uint64_t gpio_in;  // PT_GPIO_IN_ALL(): bit n = GPIO n
 };
 static const uint32_t SAMPLE_RING = 64;
 static const uint32_t SAMPLE_TIMER_DIVIDER = 80;  // 1 MHz from the 80 MHz APB clock
@@ -350,7 +359,7 @@ static void IRAM_ATTR sampleIsr() {
   if (h - g_ring_tail < SAMPLE_RING) {
     InputSample& s = g_ring[h % SAMPLE_RING];
     s.us = (uint64_t)esp_timer_get_time();
-    s.gpio_in = (uint64_t)REG_READ(GPIO_IN_REG) | ((uint64_t)(REG_READ(GPIO_IN1_REG) & 0xFF) << 32);
+    s.gpio_in = PT_GPIO_IN_ALL();
     g_ring_head = h + 1;
   } else {
     g_ring_lost = g_ring_lost + 1;
@@ -361,7 +370,7 @@ static void IRAM_ATTR sampleIsr() {
 }
 static void startSampleTimer() {
   hw_timer_t* t = timerBegin(0, SAMPLE_TIMER_DIVIDER, true);
-  timerAttachInterrupt(t, &sampleIsr, true);  // on this core (setup runs on core 1, as the step)
+  timerAttachInterrupt(t, &sampleIsr, true);  // on this core (setup runs on PT_STEP_CORE, as the step)
   timerAlarmWrite(t, SAMPLE_PERIOD_US, true);
   timerAlarmEnable(t);
 }
@@ -552,6 +561,13 @@ void Proptroller::start(FirmwareMaker make) {
   // receive buffer lost bytes from the middle of such lines (first hardware run, 2026-10-22). Before begin().
   Serial.setRxBufferSize(PT_SERIAL_RX_BYTES);
 #endif
+#if defined(ESP32) && ARDUINO_USB_CDC_ON_BOOT && ARDUINO_USB_MODE
+  // the chip's own USB port is the serial port (the C3 SuperMini): 4 KB to send instead of the core's 256 B, so a
+  // state line or an answer goes into the buffer at once. A computer that is plugged in but not reading makes a
+  // write wait at most the core's 100 ms before the port counts as closed (writes then return at once); nothing is
+  // written from the step, only from loop(), as the ESP32's UART writes (which wait for the wire)
+  Serial.setTxBufferSize(PT_USB_CDC_TX_BYTES);
+#endif
   Serial.begin(115200);
 #if defined(ARDUINO_ARCH_RP2040)
   analogReadResolution(12);
@@ -624,7 +640,9 @@ void Proptroller::start(FirmwareMaker make) {
   // 4. the 10 ms step
   {
 #if defined(ESP32)
-    xTaskCreatePinnedToCore(tickTask, "proptroller", TICK_TASK_STACK, this, 5, &g_tick_task, 1);
+    // the step at priority 5: above loop() and the pixel task (1) and AsyncTCP (3), below lwIP and Wi-Fi's own
+    // tasks; on the dual-core chips on core 1, alone with loop(); on the single-core C3 on core 0 with everything
+    xTaskCreatePinnedToCore(tickTask, "proptroller", TICK_TASK_STACK, this, 5, &g_tick_task, PT_STEP_CORE);
     if (ctl_) xTaskCreatePinnedToCore(pixelTask, "pixels", PIXEL_TASK_STACK, ctl_, 1, nullptr, 0);
     startSampleTimer();
     // a hung step restarts the board (task watchdog, 5 s, panic on: sdkconfig CONFIG_ESP_TASK_WDT_PANIC)

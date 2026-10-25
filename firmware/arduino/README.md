@@ -1,7 +1,8 @@
 # Spectre Proptroller firmware (C++, Arduino framework)
 
 One firmware for four boards, built with PlatformIO on the Arduino cores: ESP32 DevKit (`esp32dev`), Pico
-(`pico`, USB only), Pico W (`picow`) and Pico 2 W (`pico2w`). It speaks the protocol (`firmware/PROTOCOL.md`)
+(`pico`, USB only), Pico W (`picow`) and Pico 2 W (`pico2w`), and for three bare devkits with no Proptroller board
+(`esp32dev_generic`, `esp32s3_generic`, `esp32c3_supermini`: [../BARE-DEVKIT.md](../BARE-DEVKIT.md)). It speaks the protocol (`firmware/PROTOCOL.md`)
 over HTTP, WebSocket, USB serial and MQTT, serves the phone page (`firmware/web`), runs shows, show scripts
 (`firmware/SHOW-SCRIPT.md`) and the pulse-and-recover effect (`firmware/STATE-MACHINE.md`), and updates over
 the air with rollback. The library (`lib/proptroller`) makes effects easy to write: start with
@@ -22,12 +23,13 @@ tools/                    build helpers, check scripts, ptclient.py (protocol cl
 bench/hw_bench/           on-hardware measurement firmware
 workspace-template/       a workspace for your own firmware: one Arduino sketch folder per project
 bsp/relay4-button/        an example board support package (another board's pin map)
+bsp/esp32-devkit-bare/, bsp/esp32-s3-devkit/, bsp/esp32-c3-supermini/   the bare devkits' BSPs (BARE-DEVKIT.md)
 ```
 
 ## Build, test, run
 
 ```sh
-pio run                                 # esp32dev, pico, picow, pico2w
+pio run                                 # esp32dev, pico, picow, pico2w and the three bare devkits
 pio run -e boot_rp2040 -e boot_rp2350   # the Pico bootloaders
 pio run -e esp32dev -t upload           # flash an ESP32 DevKit
 pio test -e native                      # every host test
@@ -45,6 +47,10 @@ tools/fuzz.sh [seconds] [target]        # libFuzzer
 | `esp32dev` | 30-pin ESP32 DevKit | Wi-Fi, setup AP, mDNS, UDP discovery, MQTT, ESP-NOW cues |
 | `pico` | Raspberry Pi Pico | JSON lines over USB serial |
 | `picow`, `pico2w` | Pico W (RP2040), Pico 2 W (RP2350), behind the Pico bootloader | as `esp32dev`, without ESP-NOW |
+| `esp32dev_generic` | bare ESP32 30-pin DevKit (BSP `bsp/esp32-devkit-bare`) | as `esp32dev` |
+| `esp32s3_generic` | bare ESP32-S3 DevKit (BSP `bsp/esp32-s3-devkit`) | as `esp32dev` |
+| `esp32c3_supermini` | ESP32-C3 SuperMini (BSP `bsp/esp32-c3-supermini`), single core, USB-CDC console | as `esp32dev` |
+| `esp32s3_qemu` | the S3 image without Wi-Fi, for QEMU's esp32s3 machine (QEMU.md) | none |
 | `boot_rp2040`, `boot_rp2350` | the Pico bootloader | none |
 | `native`, `native_asan` | host | unit tests |
 | `sim` | host | simulated board server |
@@ -192,6 +198,9 @@ used):
 | pico | 309,544 B | 1,830,912 B (sketch) | 16.9 % | 9,468 B |
 | picow | 644,756 B | 933,888 B (active slot) | 69.0 % | 77,008 B |
 | pico2w | 635,368 B | 1,982,464 B (active slot) | 32.0 % | 79,348 B |
+| esp32dev_generic (2026-10-25) | 1,268,029 B | 1,966,080 B (app slot) | 64.5 % | 49,040 B |
+| esp32s3_generic (2026-10-25) | 1,217,629 B | 1,966,080 B (app slot) | 61.9 % | 49,032 B |
+| esp32c3_supermini (2026-10-25) | 1,284,612 B | 1,966,080 B (app slot) | 65.3 % | 43,076 B |
 | boot_rp2040 / boot_rp2350 | 2,760 / 2,704 B (`firmware.bin` 3,016 / 2,704 B) | 24,576 B (bootloader region) | about 12 % | |
 
 ## MQTT on the simulator
