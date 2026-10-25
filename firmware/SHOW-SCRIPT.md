@@ -171,7 +171,9 @@ way (a settings reset) is kept but does not run until the name is back or the sc
 - **SS-E1 The board's web page** has a text box, a Check button and a Save button that shows the checker's
   messages, and the same three views as the desktop app (Script and blocks, Script only, Blocks only): its blocks
   are a small plain-JavaScript view (`web/blocks.js`, about 4 KB gzipped; Blockly would not fit the flash) with
-  the desktop app's block words and colours, the same text round trip, ↑ ↓ / drag to move, ✕ to remove.
+  the desktop app's block words and colours, the same text round trip, ↑ ↓ / drag to move, ✕ to remove. The text box colours the words as you type (keywords, outputs, inputs, numbers, pixel effects and colours,
+  comments); the words come from one shared list, `web/words.js`, which the firmware's tests check against the checker
+  and which the desktop app can use too.
 - **SS-E2 The desktop app** has the same text editor plus a **block editor**. Blocks snap together like
   building bricks, with one block for each kind of line: an effect block holds a stack of line blocks.
   Built on Blockly (Apache-2.0).

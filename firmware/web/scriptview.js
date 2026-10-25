@@ -4,6 +4,7 @@
 // Blocks: change a value in place, move with ↑ ↓ (or drag by ⠿ with a mouse), remove with ✕, add a line to an
 // effect or a new effect. An ES module loaded after app.js (uses $, el, store, pageHooks, goToLine).
 import { textToBlocks, blocksToText, newBlock, KINDS, ADDABLE } from './blocks.js';
+import { highlight } from './words.js';
 
 const VIEWS = ['both', 'text', 'blocks'];
 const ta = $('script-text');
@@ -25,6 +26,29 @@ function setView(v, remember = true) {
 for (const r of document.querySelectorAll('input[name=script-view]')) r.addEventListener('change', () => setView(r.value));
 // the phone remembers; the first time, the script alone on a small screen and both side by side on a big one
 setView(store.get('scriptView', '') || (window.innerWidth < 760 ? 'text' : 'both'), false);
+
+// ------------------------------------------------------------------ the text's colours
+
+// A layer behind the text box, coloured by words.js; the box stays the control (typing, selection, Tab, go to
+// line), its text transparent. Repainted on input and on any value set from code (the setter below).
+const hl = $('script-hl');
+const syncHl = () => {
+  // the box's scroll bars as padding: the layer scrolls as far
+  const cs = getComputedStyle(ta);
+  const bx = parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth), by = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+  hl.style.paddingRight = `${parseFloat(cs.paddingRight) + Math.max(0, ta.offsetWidth - ta.clientWidth - bx)}px`;
+  hl.style.paddingBottom = `${parseFloat(cs.paddingBottom) + Math.max(0, ta.offsetHeight - ta.clientHeight - by)}px`;
+  hl.scrollTop = ta.scrollTop;
+  hl.scrollLeft = ta.scrollLeft;
+};
+// at once, never a frame late (a typed letter would blink): 8 KB colours in about a millisecond
+const paintHl = () => { hl.innerHTML = highlight(ta.value) + '\n'; syncHl(); };
+const valueOf = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value');
+Object.defineProperty(ta, 'value', { configurable: true, get() { return valueOf.get.call(this); }, set(v) { valueOf.set.call(this, v); paintHl(); } });
+ta.addEventListener('input', paintHl);
+ta.addEventListener('scroll', syncHl);
+if (window.ResizeObserver) new ResizeObserver(syncHl).observe(ta);
+paintHl();
 
 // ------------------------------------------------------------------ text ⇄ blocks
 

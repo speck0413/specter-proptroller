@@ -55,6 +55,16 @@ bool scriptPixelColoured(uint8_t effect);
 // inputs, the settings a line may name.
 extern const char* const SCRIPT_OUTPUT_WORDS[CHANNEL_COUNT];
 extern const char* const SCRIPT_INPUT_WORDS[INPUT_COUNT];
+// the words that make or join a line (effect, wait, for, fade, to, over, ... pixels), the level words, the time units
+static const uint8_t SCRIPT_KEYWORD_COUNT = 18;
+extern const char* const SCRIPT_KEYWORDS[SCRIPT_KEYWORD_COUNT];
+extern const char* const SCRIPT_LEVEL_WORDS[2];  // on, off
+struct ScriptUnit {
+  const char* name;
+  uint32_t ms;
+};
+static const uint8_t SCRIPT_UNIT_COUNT = 10;
+extern const ScriptUnit SCRIPT_TIME_UNITS[SCRIPT_UNIT_COUNT];
 
 // A target: 0-7 the board's outputs (OUT1 ... CC2), SCRIPT_DMX + k the DMX channel k + 1.
 static const uint16_t SCRIPT_DMX = 8;

@@ -164,6 +164,27 @@ button.hold-start .fill { position: absolute; left: 0; bottom: 0; height: 4px; w
 .smsg.err { border-color: var(--bad); color: var(--bad); }
 .smsg.warn { border-color: var(--warn); color: var(--warn); }
 #script-text { min-height: 280px; tab-size: 2; white-space: pre; overflow-x: auto; }
+/* the script's colours: a layer behind the transparent text box (scriptview.js); 4.5:1 on --bg in both themes */
+.hl-wrap { position: relative; }
+.hl-wrap pre.hl { position: absolute; inset: 0; margin: 0; overflow: hidden; pointer-events: none; white-space: pre; tab-size: 2;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 16px; line-height: 1.4; padding: 8px; border: 1px solid transparent;
+  border-radius: 8px; color: var(--text); background: var(--bg); }
+.hl-wrap #script-text { position: relative; display: block; line-height: 1.4; background: transparent; color: transparent;
+  -webkit-text-fill-color: transparent; caret-color: var(--text); }
+.hl-wrap #script-text::placeholder { color: var(--dim); -webkit-text-fill-color: var(--dim); }
+.hl-wrap #script-text::selection { background: rgba(255, 204, 51, .45); color: transparent; }
+.t-kw { color: var(--hl-kw); } .t-out { color: var(--hl-out); } .t-in { color: var(--hl-in); }
+.t-num { color: var(--hl-num); } .t-lv { color: var(--hl-lv); } .t-fx { color: var(--hl-fx); } .t-name { color: var(--hl-name); }
+.t-cm { color: var(--dim); font-style: italic; }
+:root { --hl-kw: #c4b5fd; --hl-out: #fbbf24; --hl-in: #6ee7b7; --hl-num: #93c5fd; --hl-lv: #fda4af; --hl-fx: #f0abfc; --hl-name: #5eead4; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) { --hl-kw: #6d28d9; --hl-out: #9a3412; --hl-in: #047857; --hl-num: #1d4ed8; --hl-lv: #be123c; --hl-fx: #a21caf; --hl-name: #0f766e; }
+}
+:root[data-theme="light"] { --hl-kw: #6d28d9; --hl-out: #9a3412; --hl-in: #047857; --hl-num: #1d4ed8; --hl-lv: #be123c; --hl-fx: #a21caf; --hl-name: #0f766e; }
+@media (forced-colors: active) {
+  .hl-wrap pre.hl { display: none; }
+  .hl-wrap #script-text { color: CanvasText; -webkit-text-fill-color: CanvasText; background: Canvas; }
+}
 code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
 .drop { border: 2px dashed var(--line); border-radius: 12px; padding: 22px 12px; text-align: center; display: grid; gap: 10px; justify-items: center; }
 .drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }

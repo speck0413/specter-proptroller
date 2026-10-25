@@ -1617,6 +1617,7 @@ $('script-text').addEventListener('keydown', (e) => {
   e.preventDefault();
   const ta = e.target, a = ta.selectionStart;
   ta.setRangeText('  ', a, ta.selectionEnd, 'end');
+  ta.dispatchEvent(new Event('input'));  // as typing: the colours and the blocks follow (setRangeText sends none)
 });
 // The effect script and a show on the same terminals (say both start on TRIG1, or both drive OUT2) run together:
 // the page says so on the Live and Script tabs.

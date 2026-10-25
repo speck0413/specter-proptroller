@@ -35,8 +35,13 @@ image` (`PTCLIENT=` another path to it).
 the Pico W / Pico 2 W (`--speed 10 --swap-ms 20000`): the page says "the board is installing the update, this can
 take up to 3 minutes" while the board is away.
 
-`take-test.mjs` and `blocks-test.mjs` are the unit tests of `firmware/web/take.js` (take → effect script) and
-`firmware/web/blocks.js` (text ⇄ blocks, round trip on every golden case and example), the modules Specter Studio
-can share: `node --test take-test.mjs blocks-test.mjs`, no packages.
+`highlight-test.mjs` (the Script tab's colours at 390 px: the layer behind the text box follows the stored script,
+typing, Tab, a block edit and Revert, lines up with the box and scrolls with go to line, is aria-hidden, 4.5:1 in
+both themes, off under forced colours).
+
+`take-test.mjs`, `blocks-test.mjs` and `words-test.mjs` are the unit tests of `firmware/web/take.js` (take → effect script) and
+`firmware/web/blocks.js` (text ⇄ blocks, round trip on every golden case and example) and `firmware/web/words.js`
+(the language's words and the script colours; its lists are checked against the firmware by test_script), the
+modules Specter Studio can share: `node --test take-test.mjs blocks-test.mjs words-test.mjs`, no packages.
 
 `firmware/arduino/tools/check-host.sh` runs take-test, blocks-test and all ten browser tests, each on a fresh board.

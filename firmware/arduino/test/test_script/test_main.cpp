@@ -1,6 +1,8 @@
 // Show scripts (firmware/SHOW-SCRIPT.md): the checker (SS-W, SS-L, SS-C) and the runner (SS-R), on their own.
 // Every message is checked word for word by test_script_golden (firmware/show-script-golden/).
 #include <unity.h>
+#include <regex>
+#include <set>
 #include "proptroller/script_record.h"
 #include <string.h>
 #include <vector>
@@ -509,6 +511,61 @@ void names_change_the_stored_table_key() {
   TEST_ASSERT_NOT_EQUAL(scriptTableKey(b, "{}", "fw"), scriptTableKey(c, "{}", "fw"));
 }
 
+// firmware/web/words.js (the words an editor colours, Studio's too) holds the checker's own tables, both ways, so
+// the two never drift; and a script using every keyword passes the checker.
+static std::vector<std::string> jsList(const std::string& js, const char* name) {
+  std::smatch m;
+  std::regex def(std::string("export const ") + name + R"( = \[([^;]*)\];)");
+  if (!std::regex_search(js, m, def)) return {};
+  std::string body = m[1].str();
+  std::vector<std::string> out;
+  std::regex item(R"('([^']*)')");
+  for (std::sregex_iterator i(body.begin(), body.end(), item), e; i != e; ++i) out.push_back((*i)[1].str());
+  return out;
+}
+static void sameSet(const std::vector<std::string>& js, const std::vector<std::string>& cpp, const char* what) {
+  TEST_ASSERT_TRUE_MESSAGE(!js.empty(), what);
+  TEST_ASSERT_TRUE_MESSAGE(std::set<std::string>(js.begin(), js.end()) == std::set<std::string>(cpp.begin(), cpp.end()), what);
+  TEST_ASSERT_EQUAL_MESSAGE(cpp.size(), js.size(), what);
+}
+void words_js_matches_the_checker() {
+  std::ifstream f("../web/words.js", std::ios::binary);
+  std::stringstream ss;
+  ss << f.rdbuf();
+  const std::string js = ss.str();
+  TEST_ASSERT_TRUE_MESSAGE(!js.empty(), "firmware/web/words.js (run from firmware/arduino)");
+  auto v = [](const char* const* a, size_t n) { return std::vector<std::string>(a, a + n); };
+  sameSet(jsList(js, "KEYWORDS"), v(SCRIPT_KEYWORDS, SCRIPT_KEYWORD_COUNT), "KEYWORDS");
+  sameSet(jsList(js, "OUTPUTS"), v(SCRIPT_OUTPUT_WORDS, CHANNEL_COUNT), "OUTPUTS");
+  sameSet(jsList(js, "INPUTS"), v(SCRIPT_INPUT_WORDS, INPUT_COUNT), "INPUTS");
+  sameSet(jsList(js, "LEVELS"), v(SCRIPT_LEVEL_WORDS, 2), "LEVELS");
+  sameSet(jsList(js, "SETTINGS"), v(SCRIPT_SETTINGS, SCRIPT_SETTING_COUNT), "SETTINGS");
+  sameSet(jsList(js, "EFFECTS"), v(SCRIPT_PIXEL_EFFECTS, SCRIPT_PIXEL_EFFECT_COUNT), "EFFECTS");
+  std::vector<std::string> units, colours;
+  for (auto& u : SCRIPT_TIME_UNITS) units.push_back(u.name);
+  sameSet(jsList(js, "UNITS"), units, "UNITS");
+  for (auto& c : SCRIPT_COLOURS) {
+    char hex[8];
+    snprintf(hex, sizeof hex, "%06x", (unsigned)c.rgb);
+    colours.push_back(c.name);
+    colours.push_back(hex);
+  }
+  sameSet(jsList(js, "COLOURS"), colours, "COLOURS (name, rrggbb)");
+  // every keyword in a script the checker passes
+  const char* every = "effect a:\n  pixels = rainbow\n  wait for trig1\n  limit 2 runs per 1 min\n  fade out1 to 50% over 1\n"
+                      "  flicker out1 for 1\n  pulse rly1 for 200 ms\n  sleep 1\n  audio_single = 1\n  audio_loop = 2\n"
+                      "  audio_volume = 50%\n  audio_stop\n  out1 = off\n";
+  std::unique_ptr<ScriptProgram> p(new ScriptProgram());
+  ScriptBoard b;
+  ScriptCheck c = scriptCompile(every, {}, b, *p);
+  TEST_ASSERT_TRUE_MESSAGE(c.ok(), c.ok() ? "" : c.errors[0].text.c_str());
+  std::string low = every;
+  for (auto k : SCRIPT_KEYWORDS) {
+    if (!strcmp(k, "run")) continue;  // "limit 1 run per ..." (the same line as runs)
+    TEST_ASSERT_TRUE_MESSAGE(std::regex_search(low, std::regex(std::string("(^|[^a-z0-9_])") + k + "($|[^a-z0-9_])")), k);
+  }
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(first_look_example_checks);
@@ -534,5 +591,6 @@ int main() {
   RUN_TEST(the_messages_show_the_terminal_beside_the_name);
   RUN_TEST(names_that_cannot_be_used_are_said_plainly);
   RUN_TEST(names_change_the_stored_table_key);
+  RUN_TEST(words_js_matches_the_checker);
   return UNITY_END();
 }

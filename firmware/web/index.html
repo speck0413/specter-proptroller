@@ -191,7 +191,7 @@
       <div class="row between"><h2>Effect script</h2><small id="script-state"></small></div>
       <p class="hint">One effect per block: <code>effect porch light:</code>, then its lines: <code>wait for trig1</code>,
         <code>out1 = on</code>, <code>wait 2</code>, <code>fade out1 to 0% over 3</code>, <code>flicker out2 for 5</code>,
-        <code>audio_single = 1</code> (plays the card's <code>01/001-….mp3</code>), <code>audio_loop = 2</code>, <code>audio_volume = 60%</code>, <code>audio_stop</code>.
+        <code>audio_single = 1</code> (plays the card's <code>01/001-….mp3</code>), <code>audio_loop = 2</code>, <code>audio_volume = 60%</code>, <code>audio_stop</code>, <code>pixels = chase red</code>.
         Times are seconds (or <code>200 ms</code>, <code>3 min</code>); <code>#</code> starts a comment.</p>
       <div class="seg3" id="script-view" role="radiogroup" aria-label="How to show the script">
         <label class="check"><input type="radio" name="script-view" value="both"> Script and blocks</label>
@@ -200,7 +200,8 @@
       </div>
       <div class="panes" id="script-panes">
       <div class="pane" id="script-text-pane">
-      <textarea id="script-text" rows="16" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Effect script" aria-describedby="script-keys" placeholder="(no effect script stored yet: type one here, for example)&#10;&#10;effect porch light:&#10;  wait for trig1&#10;  out1 = on&#10;  wait 30&#10;  fade out1 to 0% over 2"></textarea>
+      <div class="hl-wrap"><pre id="script-hl" class="hl" aria-hidden="true"></pre>
+      <textarea id="script-text" rows="16" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Effect script" aria-describedby="script-keys" placeholder="(no effect script stored yet: type one here, for example)&#10;&#10;effect porch light:&#10;  wait for trig1&#10;  out1 = on&#10;  wait 30&#10;  fade out1 to 0% over 2"></textarea></div>
       <p class="hint" id="script-keys">Tab indents; press Esc, then Tab, to leave the box.</p>
       </div>
       <div class="pane" id="script-blocks-pane">

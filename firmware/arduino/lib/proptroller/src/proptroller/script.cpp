@@ -15,6 +15,14 @@ const char* const SCRIPT_INPUT_WORDS[INPUT_COUNT] = {"trig1", "trig2", "user1", 
 static const char* const (&OUT_NAMES)[CHANNEL_COUNT] = SCRIPT_OUTPUT_WORDS;
 static const char* const OUT_UPPER[CHANNEL_COUNT] = {"OUT1", "OUT2", "OUT3", "OUT4", "RLY1", "RLY2", "CC1", "CC2"};
 static const char* const (&IN_NAMES)[INPUT_COUNT] = SCRIPT_INPUT_WORDS;
+const char* const SCRIPT_KEYWORDS[SCRIPT_KEYWORD_COUNT] = {"effect", "wait",  "for",   "sleep",        "fade",       "to",
+                                                          "over",   "flicker", "pulse", "limit",      "run",        "runs",
+                                                          "per",    "audio_single", "audio_loop", "audio_volume", "audio_stop", "pixels"};
+const char* const SCRIPT_LEVEL_WORDS[2] = {"on", "off"};
+// no unit: seconds
+const ScriptUnit SCRIPT_TIME_UNITS[SCRIPT_UNIT_COUNT] = {{"ms", 1},         {"s", 1000},       {"sec", 1000},  {"secs", 1000},
+                                                         {"second", 1000},  {"seconds", 1000}, {"min", 60000}, {"mins", 60000},
+                                                         {"minute", 60000}, {"minutes", 60000}};
 static const char* const IN_UPPER[INPUT_COUNT] = {"TRIG1", "TRIG2", "USER1", "USER2", "USER3"};
 static const char* const ROLE_WORDS[4] = {"shows", "pulse on every trigger", "pulse when a sound starts", "not used"};
 const char* const SCRIPT_SETTINGS[SCRIPT_SETTING_COUNT] = {"out1_on_ms", "out2_on_ms", "out3_on_ms", "recover_time_ms",
@@ -248,11 +256,10 @@ static int parseTime(const std::string& s0, uint32_t& ms) {
   uint64_t num = 0, den = 0;
   if (!decimal(s.substr(0, i), num, den)) return 0;
   std::string unit = trim(s.substr(i));
-  uint64_t scale = 0;
-  if (unit.empty() || unit == "s" || unit == "sec" || unit == "secs" || unit == "second" || unit == "seconds") scale = 1000;
-  else if (unit == "ms") scale = 1;
-  else if (unit == "min" || unit == "mins" || unit == "minute" || unit == "minutes") scale = 60000;
-  else return 0;
+  uint64_t scale = unit.empty() ? 1000 : 0;
+  for (auto& u : SCRIPT_TIME_UNITS)
+    if (unit == u.name) scale = u.ms;
+  if (!scale) return 0;
   uint64_t v = roundDiv(num * scale, den);
   if (v > SCRIPT_MAX_TIME_MS) return -1;
   ms = (uint32_t)v;
@@ -266,8 +273,8 @@ static uint16_t volumeOf(const std::string& s0);
 // Level: on, off or N% (0-100); for an output permille, for DMX 0-255.
 static bool parseLevel(const std::string& s0, bool dmx, uint16_t& out) {
   std::string s = trim(s0);
-  if (s == "on") { out = dmx ? DMX_FULL : FULL; return true; }
-  if (s == "off") { out = 0; return true; }
+  if (s == SCRIPT_LEVEL_WORDS[0]) { out = dmx ? DMX_FULL : FULL; return true; }
+  if (s == SCRIPT_LEVEL_WORDS[1]) { out = 0; return true; }
   if (s.empty() || s.back() != '%') return false;
   uint64_t num = 0, den = 0;
   if (!decimal(trim(s.substr(0, s.size() - 1)), num, den)) return false;

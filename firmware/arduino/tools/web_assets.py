@@ -1,7 +1,7 @@
 """Generate the gzipped web UI header. Run directly: python3 tools/web_assets.py"""
 import gzip, hashlib, io, os
 
-FILES = ["index.html", "app.js", "record.js", "take.js", "scriptview.js", "blocks.js", "style.css", "icon.svg", "manifest.webmanifest"]
+FILES = ["index.html", "app.js", "record.js", "take.js", "scriptview.js", "blocks.js", "words.js", "style.css", "icon.svg", "manifest.webmanifest"]
 TYPES = {"html": "text/html; charset=utf-8", "js": "text/javascript; charset=utf-8", "css": "text/css; charset=utf-8",
          "svg": "image/svg+xml", "webmanifest": "application/manifest+json"}
 

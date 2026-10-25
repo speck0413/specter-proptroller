@@ -9,7 +9,7 @@
 #     into that version and build, pending;
 #  3. the unit tests of the shared Record effect module (node --test web-test/take-test.mjs: take.js), then the
 #     browser tests from firmware/web-test (the phone UI, the Live tab when things go wrong (live-test), the Shows tab (shows-test), Settings, Settings -> Wi-Fi (wifi-test), aliases, the Script tab,
-#     Record effect (record-test) and the Firmware tab's update-test and update-swap-test; needs node, npm and a Chromium or Chrome: set CHROMIUM).
+#     Record effect (record-test), the Script tab's colours (highlight-test) and the Firmware tab's update-test and update-swap-test; needs node, npm and a Chromium or Chrome: set CHROMIUM).
 # Needs python3 (standard library only). Scratch files go to $WORK (default: a temporary directory);
 # PORT / DISC choose the simulator's HTTP and discovery ports.
 set -e
@@ -46,7 +46,7 @@ assert (info["fw_version"], info["fw_build"], info["fw_impl"], info["update"]["s
 print("ok: update over HTTP: restarted into 0.9.0 chk0001, pending")
 PY
 # take.js (Record effect: take -> effect script), shared with Specter Studio: plain node, no packages
-node --test ../web-test/take-test.mjs ../web-test/blocks-test.mjs
+node --test ../web-test/take-test.mjs ../web-test/blocks-test.mjs ../web-test/words-test.mjs
 # program --check: show-script messages as FILE:LINE:COL: error: message (VS Code's "Check effect scripts" task
 # turns them into clickable problems with the pattern in .vscode/tasks.json, checked here against the output)
 printf 'effect porch:\n  wait for trig1\n  out5 = on\n\n    rly1 = 50%%\n' >"$WORK/bad script.txt"
@@ -86,7 +86,7 @@ if [ -n "$CHROMIUM" ]; then
   export PTCLIENT="$here/tools/ptclient.py"
   # update-swap-test: a board that installs the update at the restart, as the Pico W bootloader swaps it in
   # (off the network for 20 s of board time, 2 s at 10x)
-  for t in ui-test live-test shows-test settings-test wifi-test alias-test script-test remote-script-test record-test views-test update-test update-swap-test; do
+  for t in ui-test live-test shows-test settings-test wifi-test alias-test script-test remote-script-test record-test views-test highlight-test update-test update-swap-test; do
     kill $pid 2>/dev/null; wait $pid 2>/dev/null || true
     opts="--speed 1"
     [ "$t" = update-test ] && opts="--speed 10"
