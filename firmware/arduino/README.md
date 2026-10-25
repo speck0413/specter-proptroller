@@ -198,9 +198,9 @@ used):
 | pico | 309,544 B | 1,830,912 B (sketch) | 16.9 % | 9,468 B |
 | picow | 644,756 B | 933,888 B (active slot) | 69.0 % | 77,008 B |
 | pico2w | 635,368 B | 1,982,464 B (active slot) | 32.0 % | 79,348 B |
-| esp32dev_generic (2026-10-25) | 1,267,889 B | 1,966,080 B (app slot) | 64.5 % | 49,040 B |
-| esp32s3_generic (2026-10-25) | 1,217,489 B | 1,966,080 B (app slot) | 61.9 % | 49,032 B |
-| esp32c3_supermini (2026-10-25) | 1,284,456 B | 1,966,080 B (app slot) | 65.3 % | 43,076 B |
+| esp32dev_generic (2026-10-25) | 1,268,029 B | 1,966,080 B (app slot) | 64.5 % | 49,040 B |
+| esp32s3_generic (2026-10-25) | 1,217,629 B | 1,966,080 B (app slot) | 61.9 % | 49,032 B |
+| esp32c3_supermini (2026-10-25) | 1,284,612 B | 1,966,080 B (app slot) | 65.3 % | 43,076 B |
 | boot_rp2040 / boot_rp2350 | 2,760 / 2,704 B (`firmware.bin` 3,016 / 2,704 B) | 24,576 B (bootloader region) | about 12 % | |
 
 ## MQTT on the simulator

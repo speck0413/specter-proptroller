@@ -184,6 +184,10 @@ void the_s3_and_c3_rules() {
   // analog on ADC1 only
   refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-s3","analog":11})", "use GPIO 1-10", S3);
   refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-c3","analog":5})", "use GPIO 0-4", C3);
+  // the C3's second UART: the sound port or the DMX port on S4, not both
+  refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-c3","sound":{"tx":21,"rx":20},"expansion":{"S4":10}})",
+          "one serial port for the sound player and the DMX port", C3);
+  TEST_ASSERT_EQUAL_STRING("", check(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-c3","expansion":{"S4":10}})", C3).c_str());
   // a package for one chip on another
   refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-s3"})", "is for the esp32-s3 socket; this board has the esp32-c3", C3);
   refused(R"({"board_package":1,"id":"x","name":"X","mcu":"esp32-devkit"})", "this board has the esp32-s3", S3);

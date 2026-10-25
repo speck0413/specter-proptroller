@@ -222,6 +222,10 @@ static bool pinOk(const PinUse& u, const ChipRules& c, std::vector<std::string>&
 
 bool checkPinMap(const PinMap& m, const ChipRules& chip, std::vector<std::string>& warnings, std::string& why) {
   if (m.mcu != chip.mcu) { why = std::string("this pin map is for the ") + mcuFamily(m.mcu) + " socket; this board has the " + mcuFamily(chip.mcu); return false; }
+  if (!c3UartsOk(m)) {
+    why = "expansion S4: the ESP32-C3 has one serial port for the sound player and the DMX port on S4: leave out one of them";
+    return false;
+  }
   std::vector<PinUse> u = uses(m);
   for (size_t i = 0; i < u.size(); i++) {
     if (u[i].pin == NO_PIN) continue;

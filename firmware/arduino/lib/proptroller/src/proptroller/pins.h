@@ -123,7 +123,13 @@ constexpr bool internalPullsPossible(const PinMap& m) {
       if (m.mcu == Mcu::Esp32DevKit && !inputExternalPull(m, k) && inputPin(m, k) == ESP32_INPUT_ONLY[j]) return false;
   return true;
 }
+// The ESP32-C3 has two UARTs: the USB console needs none, the sound port takes UART1, and the DMX port on S4 would
+// need it too: one or the other
+constexpr bool c3UartsOk(const PinMap& m) {
+  return m.mcu != Mcu::Esp32C3 || m.exp[0] == NO_PIN || m.df_tx == NO_PIN || m.df_rx == NO_PIN;
+}
 static_assert(pinsDistinct(ESP32_DEVKIT) && pinsDistinct(PICO), "a GPIO serves two board functions");
+static_assert(c3UartsOk(ESP32C3_SUPERMINI), "the C3's sound port and DMX port share UART1");
 static_assert(internalPullsPossible(ESP32_DEVKIT), "an ESP32 input on GPIO34-39 needs external_pull");
 static_assert(outputsCanDrive(ESP32_DEVKIT), "an ESP32 output on an input-only GPIO (34-39)");
 static_assert(pinsDistinct(ESP32_DEVKIT_BARE) && pinsDistinct(ESP32S3_DEVKIT) && pinsDistinct(ESP32C3_SUPERMINI),

@@ -33,6 +33,10 @@ using namespace pt;
 #ifndef PT_SERIAL_RX_BYTES
 #define PT_SERIAL_RX_BYTES 4096
 #endif
+// the C3's USB-CDC send buffer (start())
+#ifndef PT_USB_CDC_TX_BYTES
+#define PT_USB_CDC_TX_BYTES 4096
+#endif
 
 // Board support (pins.h "Another board"): a board support package, a folder with proptroller_board.h on the include
 // path (build_flags = -I path/to/bsp), or -D PROPTROLLER_BOARD_HEADER='"my_board.h"', defines constexpr pt::PinMap PROPTROLLER_BOARD_MAP; it is checked
@@ -48,6 +52,7 @@ using namespace pt;
 static_assert(pinsDistinct(PROPTROLLER_BOARD_MAP), "board profile: a GPIO serves two board functions");
 static_assert(outputsCanDrive(PROPTROLLER_BOARD_MAP), "board profile: an ESP32 output on an input-only GPIO (34-39)");
 static_assert(internalPullsPossible(PROPTROLLER_BOARD_MAP), "board profile: an ESP32 input on GPIO34-39 needs external_pull");
+static_assert(c3UartsOk(PROPTROLLER_BOARD_MAP), "board profile: on the ESP32-C3 the sound port and expansion S4 (DMX) need the same UART: leave one out");
 #endif
 #endif
 // A board support package may also give a fresh board (nothing stored yet, or after a factory reset) its own
@@ -556,12 +561,14 @@ void Proptroller::start(FirmwareMaker make) {
   // receive buffer lost bytes from the middle of such lines (first hardware run, 2026-10-22). Before begin().
   Serial.setRxBufferSize(PT_SERIAL_RX_BYTES);
 #endif
-  Serial.begin(115200);
 #if defined(ESP32) && ARDUINO_USB_CDC_ON_BOOT && ARDUINO_USB_MODE
-  // the chip's own USB port is the serial port (the C3 SuperMini): a write never waits for a computer that is not
-  // reading (the core waits up to 100 ms by default); what does not fit is dropped
-  Serial.setTxTimeoutMs(0);
+  // the chip's own USB port is the serial port (the C3 SuperMini): 4 KB to send instead of the core's 256 B, so a
+  // state line or an answer goes into the buffer at once. A computer that is plugged in but not reading makes a
+  // write wait at most the core's 100 ms before the port counts as closed (writes then return at once); nothing is
+  // written from the step, only from loop(), as the ESP32's UART writes (which wait for the wire)
+  Serial.setTxBufferSize(PT_USB_CDC_TX_BYTES);
 #endif
+  Serial.begin(115200);
 #if defined(ARDUINO_ARCH_RP2040)
   analogReadResolution(12);
 #endif

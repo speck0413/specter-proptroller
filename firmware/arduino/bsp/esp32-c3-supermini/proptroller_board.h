@@ -47,7 +47,9 @@
 //    if two terminals share a GPIO; the board refuses the flash and USB pins when it starts.
 // 2. Drop a terminal you do not want: write pt::NO_PIN instead of its number. That frees its GPIO for another
 //    terminal: for example drop the sound port (TX, RX = pt::NO_PIN) and use 20 and 21 for RLY1-2 (they
-//    flicker at power-on: fine for a relay that you do not mind clicking once, not for a valve).
+//    flicker at power-on: fine for a relay that you do not mind clicking once, not for a valve). The DMX port
+//    (expansion S4) needs the sound port's UART: give S4 a GPIO only with the sound port left out (the build and
+//    the board refuse both at once).
 // 3. An input wired the other way (to 3V3, active HIGH): set its bit in active_high (bit 0 TRIG1, bit 1 TRIG2,
 //    bit 2-4 USER1-3). An input with its own resistor on your breakout: set its bit in external_pull.
 // 4. Relay modules that switch ON when their IN pin is LOW ("low level trigger"): this firmware drives every
