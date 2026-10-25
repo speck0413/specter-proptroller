@@ -26,6 +26,27 @@ struct NetConfig {
   std::string hostname_taken;  // the label to use when another device already answers for hostname (mdnsLabel)
 };
 
+// The board link (`tell` lines between boards, PROTOCOL.md "Board link"): what the network loop's peer-to-peer
+// side (link.h) needs from the firmware.
+struct LinkConfig {
+  bool listen = false;  // take tells from other boards peer to peer
+  bool send = false;    // this board's tells go out peer to peer (else MQTT, or nowhere)
+  std::string group, key, id, name;  // key: link_key (set-only; never logged); name: the board's network name
+};
+struct LinkOut {        // one of this board's tell lines
+  uint32_t seq = 0;
+  bool set = false;     // a setting (else an effect)
+  std::string to, what, value;
+};
+struct LinkIn {         // another board's tell
+  bool set = false;
+  std::string id, from, what, value, via;  // via: "Wi-Fi", "ESP-NOW", "MQTT"
+};
+struct LinkReply {
+  bool ok = false;
+  std::string text;
+};
+
 class NetApp {
  public:
   virtual ~NetApp() {}
@@ -59,6 +80,14 @@ class NetApp {
   // Named cues to broadcast to other controllers (ESP-NOW), and cues that arrived.
   virtual std::vector<std::string> takeCuesOut() { return {}; }
   virtual void cueIn(const std::string&) {}
+  // Board link (all optional). linkEpoch and linkWork are read without the lock (atomics): the epoch changes with
+  // the settings linkConfig reads; linkWork says tell lines or answers wait, so linkTake is worth the lock.
+  virtual uint32_t linkEpoch() { return 0; }
+  virtual bool linkWork() { return false; }
+  virtual bool linkConfig(LinkConfig& c) { (void)c; return false; }
+  virtual std::vector<LinkOut> linkTake() { return {}; }
+  virtual LinkReply linkIn(const LinkIn& in) { (void)in; LinkReply r; r.text = "this board takes no tells"; return r; }
+  virtual void linkAnswer(uint32_t seq, const std::string& from, bool ok, const std::string& text) { (void)seq; (void)from; (void)ok; (void)text; }
   // Wi-Fi scan (PROTOCOL.md "wifi_scan"; all optional): the network layer says it can scan (scan_now: a first
   // list right away), asks whether a scan is due (true: it starts one now) and hands in what it found
   // (ok = false: the scan failed). The scan itself runs in the network loop, never in the step.

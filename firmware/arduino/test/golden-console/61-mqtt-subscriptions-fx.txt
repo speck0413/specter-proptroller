@@ -7,3 +7,4 @@ proptroller/front-door/control/+
 proptroller/front-door/status/get/+
 proptroller/front-door/script/set
 proptroller/front-door/script/check
+proptroller/front-door/config/now/+

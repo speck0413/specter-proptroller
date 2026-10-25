@@ -43,7 +43,9 @@ void generic_firmware_over_mqtt() {
   TEST_ASSERT_EQUAL_STRING("proptroller/front-door/online", c.mqttWill().topic.c_str());
   TEST_ASSERT_EQUAL_STRING("false", c.mqttWill().payload.c_str());
   auto subs = c.mqttSubscriptions();
-  TEST_ASSERT_EQUAL(9, subs.size());  // and status/get/+, script/set, script/check
+  TEST_ASSERT_EQUAL(11, subs.size());  // and status/get/+, script/set, script/check, config/now/+, link/answer (board link)
+  TEST_ASSERT_EQUAL_STRING("proptroller/front-door/config/now/+", subs[9].c_str());
+  TEST_ASSERT_EQUAL_STRING("proptroller/front-door/link/answer", subs[10].c_str());
   TEST_ASSERT_EQUAL_STRING("proptroller/broadcast/getName", subs[0].c_str());
   TEST_ASSERT_EQUAL_STRING("proptroller/front-door/config/set/+", subs[3].c_str());
   TEST_ASSERT_EQUAL_STRING("proptroller/front-door/control/+", subs[5].c_str());

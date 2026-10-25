@@ -10,6 +10,9 @@
 namespace pt {
 
 enum class Trig2Role : uint8_t { Trigger, Pause };
+// board_link: auto (MQTT when a broker is set, else Wi-Fi peer to peer), mqtt, wifi (peer to peer), off
+enum class BoardLink : uint8_t { Auto, Mqtt, Wifi, Off };
+const char* boardLinkName(BoardLink b);
 
 // The setup hotspot's password out of the box and after a factory reset (owner's choice: simple on purpose, as
 // on the original controller; the ap_pass setting changes it). WPA2 needs 8-63 characters.
@@ -110,6 +113,9 @@ struct Settings {
   bool start_hold = false;
   std::string mqtt_broker;
   uint16_t mqtt_port = 1883;
+  // The board link (`tell` lines, SHOW-SCRIPT.md §11): how this board's tells go out, its group, its key (set-only)
+  BoardLink board_link = BoardLink::Auto;
+  std::string link_group, link_key;
   // The pulse-and-recover effect (firmware/STATE-MACHINE.md): off unless a profile turns it on.
   bool effect_on = false;  // key "effect": "none" | "pulse_and_recover"
   EffectConfig fx;         // its settings (remote_trigger_enable is never stored)

@@ -41,6 +41,11 @@ SoundConfig Settings::sound() const {
   return c;
 }
 
+const char* boardLinkName(BoardLink b) {
+  static const char* const N[4] = {"auto", "mqtt", "wifi", "off"};
+  return N[(int)b & 3];
+}
+
 OutputRole Settings::role(Channel c) const {
   for (int i = 0; i < 4; i++)
     if (ROLE_CHANNELS[i] == c) return roles[i];
@@ -57,6 +62,7 @@ static std::string lower(const char* s) {
 static const uint16_t NAME_MAX_LEN = 32, PAGE_PASSWORD_MAX_LEN = 32, SSID_MAX_LEN = 32, WIFI_PASS_MAX_LEN = 63, BROKER_MAX_LEN = 64;
 // remote_free_effects: a few effect names (an effect name has up to 32 characters)
 static const uint16_t REMOTE_FREE_MAX_LEN = 128;
+static const uint16_t LINK_GROUP_MAX_LEN = 16, LINK_KEY_MAX_LEN = 64;  // link.h LINK_GROUP_MAX, LINK_KEY_MAX
 static const uint16_t TERMINAL_NAME_MAX_LEN = 24;
 static const uint32_t SOFT_START_MAX_MS = 2000, MAX_ON_MAX_MS = 3600000;
 // the reference's range for both (STATE-MACHINE.md): 10-1000 ms
@@ -132,6 +138,15 @@ static const ParamRow BOARD_ROWS[] = {
   {P_CHOICE("start_buttons", "Start buttons on the page", "Device", "click|hold"), "How the phone page's buttons start a script effect: a click, or a press held about a second (letting go early sends nothing)", false},
   {P_TEXT("mqtt_broker", "MQTT broker", "MQTT", BROKER_MAX_LEN, false), "Host name or address; empty = MQTT off. Topics: proptroller/<name>/\xe2\x80\xa6", true},
   {P_INT("mqtt_port", "MQTT port", "MQTT", 1, PORT_MAX, ""), "", true},
+  {P_CHOICE("board_link", "Tell lines go", "Board link", "auto|mqtt|wifi|off"),
+   "How this board's tell lines reach other boards. auto: MQTT when a broker is set, otherwise straight to the "
+   "boards on the same Wi-Fi. mqtt: through the broker only. wifi: straight to the other boards (an ESP32 also sends "
+   "by ESP-NOW). off: sends none and takes none peer to peer", false},
+  {P_TEXT("link_group", "Board link group", "Board link", LINK_GROUP_MAX_LEN, false),
+   "Boards with the same group hear each other's tell lines (empty is a group too)", false},
+  {P_TEXT("link_key", "Board link key", "Board link", LINK_KEY_MAX_LEN, true),
+   "A shared key for the group: with one set, a board takes tells peer to peer only from boards with the same key, "
+   "signed and never replayed. Empty: anyone on the network can send. Never shown", false},
 };
 static const ParamRow ROLE_PULSE_ROW[] = {
   {P_INT("role_pulse_ms", "Role pulse length", "Output roles", ROLE_PULSE_MIN_MS, ROLE_PULSE_MAX_MS, "ms"), "", false},
@@ -314,6 +329,9 @@ bool Settings::get(const std::string& key, Value& out) const {
   else if (key == "start_buttons") out = Value::text(start_hold ? "hold" : "click");
   else if (key == "mqtt_broker") out = Value::text(mqtt_broker);
   else if (key == "mqtt_port") out = Value::integer(mqtt_port);
+  else if (key == "board_link") out = Value::text(boardLinkName(board_link));
+  else if (key == "link_group") out = Value::text(link_group);
+  else if (key == "link_key") out = Value::text(link_key);
   else if (key == "effect") out = Value::text(effect_on ? "pulse_and_recover" : "none");
   else if (key == "out1_on_ms") out = Value::integer(fx.out1_on_ms);
   else if (key == "out2_on_ms") out = Value::integer(fx.out2_on_ms);
@@ -384,7 +402,8 @@ const char* Settings::set(const std::string& key, const Value& v) {
     return nullptr;
   }
   struct S { const char* k; std::string* p; };
-  S texts[] = { {"wifi_ssid", &wifi_ssid}, {"wifi_pass", &wifi_pass}, {"mqtt_broker", &mqtt_broker}, {"remote_free_effects", &remote_free_effects}};
+  S texts[] = { {"wifi_ssid", &wifi_ssid}, {"wifi_pass", &wifi_pass}, {"mqtt_broker", &mqtt_broker}, {"remote_free_effects", &remote_free_effects},
+                {"link_group", &link_group}, {"link_key", &link_key}};
   for (auto& t : texts)
     if (key == t.k) { if (!isText) return "wrong type"; *t.p = v.s; return nullptr; }
   struct B { const char* k; bool* p; };
@@ -419,6 +438,12 @@ const char* Settings::set(const std::string& key, const Value& v) {
   }
   if (key == "dmx_port") { if (!isText) return "wrong type"; dmx_s4 = v.s == "s4"; return nullptr; }
   if (key == "start_buttons") { if (!isText) return "wrong type"; start_hold = v.s == "hold"; return nullptr; }
+  if (key == "board_link") {
+    if (!isText) return "wrong type";
+    for (int i = 0; i < 4; i++)
+      if (v.s == boardLinkName((BoardLink)i)) { board_link = (BoardLink)i; return nullptr; }
+    return "not a choice";
+  }
   static const char* const INT_KEYS[] = {"trig_debounce_ms", "trig_release_ms", "pixel_count",
                                          "pixel_brightness", "pixel_speed", "ambient_track", "ambient_volume", "trigger_track",
                                          "trigger_volume", "role_pulse_ms", "mqtt_port"};
@@ -496,6 +521,10 @@ void Settings::toJson(JsonObject o) const {
   if (start_hold) o["start_buttons"] = "hold";
   o["mqtt_broker"] = mqtt_broker;
   o["mqtt_port"] = mqtt_port;
+  // only when not the default: a record from before the setting is written back unchanged
+  if (board_link != BoardLink::Auto) o["board_link"] = boardLinkName(board_link);
+  if (!link_group.empty()) o["link_group"] = link_group;
+  if (!link_key.empty()) o["link_key"] = link_key;
   // the effect (remote_trigger_enable is never stored, SM-R1)
   for (auto& d : params()) {
     if (d.group != "Effect" || d.key == "remote_trigger_enable") continue;
@@ -561,6 +590,9 @@ void Settings::fromJson(JsonVariantConst v) {
   if (v["start_buttons"].is<const char*>()) start_hold = !strcmp(v["start_buttons"], "hold");
   s("mqtt_broker", mqtt_broker);
   u("mqtt_port", mqtt_port);
+  if (v["board_link"].is<const char*>()) (void)set("board_link", Value::text(v["board_link"].as<const char*>()));
+  s("link_group", link_group);
+  s("link_key", link_key);
   for (auto& d : params()) {
     if (d.group != "Effect" || d.key == "remote_trigger_enable") continue;
     Value x;
