@@ -195,7 +195,7 @@ class Controller : public Firmware {
   void linkAnswer(uint32_t seq, const std::string& from, bool ok, const std::string& text) override;
   // Settings another board changed: in use now, not saved (key -> the value kept in flash). A change made here, a
   // backup restored or a restart ends them.
-  const std::map<std::string, Value>& linkKept() const { return link_kept_; }
+  const std::vector<std::pair<std::string, Value>>& linkKept() const { return link_kept_; }
   // How this board's tells go out now: off, MQTT or Wi-Fi peer to peer (board_link; auto: MQTT with a broker)
   enum class LinkVia : uint8_t { Off, Mqtt, Wifi };
   LinkVia linkVia() const;
@@ -501,14 +501,19 @@ class Controller : public Firmware {
     Millis until = 0;
     std::vector<std::string> answered;
   };
-  std::deque<LinkPending> link_pending_;
+  std::vector<LinkPending> link_pending_;  // oldest first (at most LINK_PENDING_MAX)
   std::vector<MqttMsg> link_mqtt_out_;   // tells for mqttPoll
   std::vector<std::string> mqtt_names_;  // boards online on the broker (<root>/+/online, for MQTT tell all)
   uint32_t link_seq_ = 0;
   Millis link_window_at_ = 0;
   uint8_t link_window_n_ = 0;
   uint32_t link_dropped_ = 0;
-  std::map<std::string, Value> link_kept_;
+  std::vector<std::pair<std::string, Value>> link_kept_;
+  int linkKeptAt(const std::string& key) const {
+    for (size_t i = 0; i < link_kept_.size(); i++)
+      if (link_kept_[i].first == key) return (int)i;
+    return -1;
+  }
   std::atomic<uint32_t> link_epoch_{1};
   std::atomic<bool> link_work_{false};
   std::string remote_by_;  // the board whose tell starts an effect (for the log)

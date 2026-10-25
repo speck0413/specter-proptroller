@@ -4,6 +4,11 @@
 #include <WiFiUdp.h>
 #include <atomic>
 #include "../net/locked.h"
+#include "../link.h"
+#include <deque>
+#if defined(ESP32)
+#include <mutex>
+#endif
 #include "../scanrun.h"
 #include "../wifijoin.h"
 #if defined(ESP32)
@@ -117,10 +122,38 @@ class WifiConn : public Conn {
   WiFiClient c_;
 };
 
+// The board link's frames that came by ESP-NOW (link.h): queued by the Wi-Fi task, handled in poll(); a queue of
+// their own, so they are handled whether or not an MQTT session is up. Bounded (LINK_ESPNOW_QUEUE frames).
+#if defined(ESP32)
+static const size_t LINK_ESPNOW_QUEUE = 8;
+struct LinkInbox {
+  std::mutex m;
+  std::deque<std::string> q;
+  void push(const uint8_t* d, size_t n) {
+    std::lock_guard<std::mutex> g(m);
+    if (q.size() < LINK_ESPNOW_QUEUE) q.emplace_back((const char*)d, n);
+  }
+  bool pop(std::string& out) {
+    std::lock_guard<std::mutex> g(m);
+    if (q.empty()) return false;
+    out.swap(q.front());
+    q.pop_front();
+    return true;
+  }
+};
+static LinkInbox g_link_inbox;
+#endif
+// at most this many datagrams on the discovery port handled per pass of the loop (discovery and the board link)
+static const int UDP_PER_POLL = 4;
+
 #if defined(ESP32)
 // ESP-NOW cues: the Wi-Fi task queues them in the MQTT session's inbox, poll() runs them behind the lock
 static Inbox* g_inbox = nullptr;
 static void onEspNow(const uint8_t*, const uint8_t* data, int len) {
+  if (len >= (int)sizeof LINK_MAGIC && len <= (int)LINK_FRAME_MAX && memcmp(data, LINK_MAGIC, sizeof LINK_MAGIC) == 0) {
+    g_link_inbox.push(data, (size_t)len);
+    return;
+  }
   if (len <= (int)sizeof(CUE_MAGIC) - 1 || memcmp(data, CUE_MAGIC, sizeof(CUE_MAGIC) - 1) != 0) return;
   if (g_inbox) g_inbox->push("", std::string((const char*)data + sizeof(CUE_MAGIC) - 1, (size_t)len - (sizeof(CUE_MAGIC) - 1)));
 }
@@ -208,6 +241,10 @@ class BoardScanRadio : public ScanRadio {
 };
 #endif
 
+// lwIP keeps an IPv4 address in network order: the four bytes as they print
+static uint32_t ipU32(const IPAddress& a) { return (uint32_t)a[0] | (uint32_t)a[1] << 8 | (uint32_t)a[2] << 16 | (uint32_t)a[3] << 24; }
+static IPAddress ipOf(uint32_t v) { return IPAddress((uint8_t)(v & 0xFF), (uint8_t)((v >> 8) & 0xFF), (uint8_t)((v >> 16) & 0xFF), (uint8_t)(v >> 24)); }
+
 struct ArduinoNet::Impl {
   NetApp& app;
   Lock& lock;
@@ -221,6 +258,44 @@ struct ArduinoNet::Impl {
   bool ap_on = false, sta_wanted = false, mdns_on = false, espnow_on = false;
   BoardScanRadio radio;
   ScanRun scan;
+  // the board link peer to peer (link.h): UDP on the discovery port on each network the board is on, and ESP-NOW
+  struct Radio : LinkRadio {
+    Impl& i;
+    explicit Radio(Impl& impl) : i(impl) {}
+    void udpTo(const std::string& f, const IPAddress& ip, uint16_t port) {
+      if (!i.udp.beginPacket(ip, port)) return;
+      i.udp.write((const uint8_t*)f.data(), f.size());
+      i.udp.endPacket();
+    }
+    void broadcast(const std::string& f) override {
+      // a subnet broadcast on the Wi-Fi network and on the board's own hotspot (another board may be joined to it)
+      IPAddress sta;
+      bool joined = i.sta_wanted && WiFi.status() == WL_CONNECTED;
+      if (joined) {
+        IPAddress ip = WiFi.localIP(), mask = WiFi.subnetMask();
+        sta = IPAddress(ip[0] | (uint8_t)~mask[0], ip[1] | (uint8_t)~mask[1], ip[2] | (uint8_t)~mask[2], ip[3] | (uint8_t)~mask[3]);
+        udpTo(f, sta, DISCOVERY_PORT);
+      }
+      IPAddress ap(AP_IP[0], AP_IP[1], AP_IP[2], 255);
+      if (i.ap_on && !(joined && sta == ap)) udpTo(f, ap, DISCOVERY_PORT);
+#if defined(ESP32)
+      static const uint8_t BCAST[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+      if (i.espnow_on && f.size() <= LINK_FRAME_MAX) esp_now_send(BCAST, (const uint8_t*)f.data(), f.size());
+#endif
+    }
+    void reply(const std::string& f, const LinkAddr& to) override {
+#if defined(ESP32)
+      static const uint8_t BCAST[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+      if (to.espnow) {
+        if (i.espnow_on) esp_now_send(BCAST, (const uint8_t*)f.data(), f.size());
+        return;
+      }
+#endif
+      udpTo(f, ipOf(to.ip), to.port);
+    }
+  };
+  LinkPeer link{randomU32};
+  Radio radio_link{*this};
   Millis joined_at = 0;
   IPAddress last_ip;
   std::string mdns_label;  // the mDNS label the board answers to, once it has one
@@ -531,16 +606,35 @@ struct ArduinoNet::Impl {
     joined_at = now;  // the loop's clock (millis64() here is later than the now scanPoll is given)
   }
 
-  void discovery() {
-    int n = udp.parsePacket();
-    if (n <= 0) return;
-    char buf[256];
-    int k = udp.read(buf, sizeof buf);
-    if (k <= 0 || !isDiscover(buf, (size_t)k)) return;
-    std::string a = locked.announceJson(HTTP_PORT);
-    udp.beginPacket(udp.remoteIP(), udp.remotePort());
-    udp.write((const uint8_t*)a.data(), a.size());
-    udp.endPacket();
+  // The discovery port: discovery requests, and the board link's frames (their own magic)
+  void discovery(Millis now) {
+    for (int pass = 0; pass < UDP_PER_POLL; pass++) {
+      int n = udp.parsePacket();
+      if (n <= 0) break;
+      uint8_t buf[256];
+      int k = udp.read(buf, sizeof buf);
+      if (k <= 0) continue;
+      if (isDiscover((const char*)buf, (size_t)k)) {
+        std::string a = locked.announceJson(HTTP_PORT);
+        udp.beginPacket(udp.remoteIP(), udp.remotePort());
+        udp.write((const uint8_t*)a.data(), a.size());
+        udp.endPacket();
+        continue;
+      }
+      LinkAddr from;
+      from.ip = ipU32(udp.remoteIP());
+      from.port = udp.remotePort();
+      link.received(buf, (size_t)k, from, now, locked, radio_link);
+    }
+#if defined(ESP32)
+    std::string f;
+    while (g_link_inbox.pop(f)) {  // by ESP-NOW
+      LinkAddr from;
+      from.espnow = true;
+      link.received((const uint8_t*)f.data(), f.size(), from, now, locked, radio_link);
+    }
+#endif
+    link.poll(now, locked, radio_link);
   }
 
   // ---------------------------------------------------------------- MQTT
@@ -657,7 +751,7 @@ void ArduinoNet::poll() {
     if (c) p_->http.add(new WifiConn(c), now);
   }
   p_->http.poll(now);
-  p_->discovery();
+  p_->discovery(now);
   p_->mqttPoll(now);
   p_->cues();
   p_->scanPoll(now);

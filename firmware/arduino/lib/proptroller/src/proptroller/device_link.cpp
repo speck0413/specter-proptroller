@@ -30,8 +30,8 @@ bool Controller::linkConfig(LinkConfig& c) {
 }
 
 bool Controller::storedValue(const std::string& key, Value& out) const {
-  auto it = link_kept_.find(key);
-  if (it != link_kept_.end()) { out = it->second; return true; }
+  int k = linkKeptAt(key);
+  if (k >= 0) { out = link_kept_[k].second; return true; }
   return settings_.get(key, out);
 }
 
@@ -130,7 +130,7 @@ std::vector<LinkOut> Controller::linkTake() {
       o.to = t.board;
       o.what = t.what;
       o.value = t.value;
-      if (link_pending_.size() >= LINK_PENDING_MAX) link_pending_.pop_front();
+      if (link_pending_.size() >= LINK_PENDING_MAX) link_pending_.erase(link_pending_.begin());
       LinkPending p;
       p.seq = o.seq;
       p.all = t.board == "all";
@@ -157,7 +157,7 @@ std::vector<LinkOut> Controller::linkTake() {
     if (!p.all) log(p.line + ": no answer from " + p.to);
     else if (p.answered.empty()) log(p.line + ": no board answered");
     else log(p.line + ": " + std::to_string(p.answered.size()) + (p.answered.size() == 1 ? " board answered" : " boards answered"));
-    link_pending_.pop_front();
+    link_pending_.erase(link_pending_.begin());
   }
   link_work_.store(!link_pending_.empty() || (script_run_ && script_run_->tellsWaiting()), std::memory_order_relaxed);
   return out;

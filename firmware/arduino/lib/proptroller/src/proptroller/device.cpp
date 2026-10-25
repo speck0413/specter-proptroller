@@ -1747,9 +1747,10 @@ Response Controller::setParams(const Request& r, const std::vector<ParamValue>& 
   // another board's change is used, not saved: the value the flash keeps is remembered for every save until a
   // change here, a restored backup or a restart; a change here is saved and ends it
   for (auto& pv : values) {
-    if (save) { link_kept_.erase(pv.key); continue; }
+    int k = linkKeptAt(pv.key);
+    if (save) { if (k >= 0) link_kept_.erase(link_kept_.begin() + k); continue; }
     Value was;
-    if (!link_kept_.count(pv.key) && settings_.get(pv.key, was)) link_kept_[pv.key] = was;
+    if (k < 0 && settings_.get(pv.key, was)) link_kept_.push_back({pv.key, was});
   }
   settings_ = next;
   applySettings();
