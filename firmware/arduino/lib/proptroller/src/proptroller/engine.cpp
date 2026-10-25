@@ -147,6 +147,7 @@ bool Engine::manual(Channel c, Level& level) const {
 void Engine::setManualPixel(const Effect* e) {
   has_manual_pixel_ = e != nullptr;
   if (e) manual_pixel_ = *e;
+  manual_pixel_fresh_ = e != nullptr;
 }
 
 // ---------------------------------------------------------------- triggers
@@ -521,9 +522,11 @@ Frame Engine::tick(Millis now_in) {
     f.pixel = Effect();
     f.pixel_start = now;
   } else if (has_manual_pixel_) {
+    // the animation runs from when the test was set (a start of `now` every tick would hold it at its first frame)
+    if (manual_pixel_fresh_) { manual_pixel_start_ = now; manual_pixel_fresh_ = false; }
     f.has_pixel = true;
     f.pixel = manual_pixel_;
-    f.pixel_start = now;
+    f.pixel_start = manual_pixel_start_;
   } else {
     pixelLayer(now, f);
   }

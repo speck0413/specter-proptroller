@@ -7,6 +7,7 @@
 #include "proptroller/sim/sim.h"
 #include "proptroller/storage_ab.h"
 #include <map>
+#include <chrono>
 
 using namespace pt;
 void setUp() {}
@@ -868,6 +869,68 @@ void page_password_hash_is_salted_sha256() {
   TEST_ASSERT_TRUE(stored.find("door-42") == std::string::npos && stored.find("pin_hash") != std::string::npos);
 }
 
+// The strip's frames go out in the background (RMT, PIO + DMA): the step never writes while the last frame is on
+// the wire, and a frame it held back still arrives (a still colour changed during a send is not lost).
+void pixels_600_never_wait_for_the_wire_and_nothing_is_lost() {
+  Sim sim("t");
+  set(sim, "pixel_count", "600");
+  sim.world().pixel_wire = true;  // 600 x 30 us + latch: about 18.6 ms a frame, longer than a tick
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel","action":{"do":"rainbow","period_ms":2000}})").isOk());
+  sim.step(100);
+  uint32_t f0 = sim.world().pixel_frames;
+  sim.step(2000);
+  uint32_t frames = sim.world().pixel_frames - f0;
+  TEST_ASSERT_EQUAL(0, sim.world().pixel_writes_while_busy);
+  TEST_ASSERT_EQUAL(0, sim.world().pixel_errors);
+  // an animation every 20 ms (PIXEL_PERIOD_MS): 100 frames in 2 s, none dropped for good
+  TEST_ASSERT_INT_WITHIN(2, 100, frames);
+  // the animation runs (a manual test used to be held at its first frame)
+  std::vector<Rgb> a = sim.world().pixels;
+  sim.step(500);
+  TEST_ASSERT_FALSE(a == sim.world().pixels);
+  // a still colour, then another one tick later, while the first is still sending: the second lands
+  uint32_t skipped0 = sim.ctl().pixel_skipped;
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel","action":{"do":"fill","color":"#ff0000"}})").isOk());
+  sim.tick();  // red goes out (or waits for the last rainbow frame)
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel","action":{"do":"fill","color":"#0000ff"}})").isOk());
+  sim.tick();  // 10 ms later: either red is still on the wire or red never went: one of them waited
+  uint32_t skipped = sim.ctl().pixel_skipped - skipped0;
+  sim.step(100);
+  TEST_ASSERT_EQUAL(600, sim.world().pixels.size());
+  for (auto& p : sim.world().pixels) TEST_ASSERT_TRUE(p == Rgb(0, 0, 255));
+  TEST_ASSERT_TRUE(skipped > 0);
+  TEST_ASSERT_EQUAL(0, sim.world().pixel_writes_while_busy);
+  // a still colour is sent once, not every tick
+  uint32_t f1 = sim.world().pixel_frames;
+  sim.step(1000);
+  TEST_ASSERT_EQUAL(f1, sim.world().pixel_frames);
+}
+
+// The step's own work at 600 pixels (render, brightness scale, hand-off), timed on the host: the board's wire
+// time is no longer in the step, so what is left is this. Printed for the record; the bound is loose (a loaded
+// test machine), the board's numbers come from `mem` ("step max").
+void pixels_600_step_time_on_the_host() {
+  Sim sim("t");
+  set(sim, "pixel_count", "600");
+  set(sim, "pixel_brightness", "60");
+  sim.world().pixel_wire = true;
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel","action":{"do":"rainbow","period_ms":2000}})").isOk());
+  sim.step(100);
+  double total = 0, worst = 0;
+  const int N = 1000;
+  for (int i = 0; i < N; i++) {
+    auto t0 = std::chrono::steady_clock::now();
+    sim.tick();
+    double us = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - t0).count();
+    total += us;
+    if (us > worst) worst = us;
+  }
+  char b[160];
+  snprintf(b, sizeof b, "600 px rainbow: a 10 ms step (10 samples + tick) takes %.1f us on average, %.1f us at most (host)", total / N, worst);
+  TEST_MESSAGE(b);
+  TEST_ASSERT_TRUE_MESSAGE(total / N < 2000, b);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(boots_with_everything_off_and_arms);
@@ -907,5 +970,7 @@ int main() {
   RUN_TEST(set_values);
   RUN_TEST(stored_json_tolerates_missing_fields);
   RUN_TEST(ab_store_survives_power_cuts);
+  RUN_TEST(pixels_600_never_wait_for_the_wire_and_nothing_is_lost);
+  RUN_TEST(pixels_600_step_time_on_the_host);
   return UNITY_END();
 }

@@ -210,6 +210,8 @@ class Engine {
   Level manual_[CHANNEL_COUNT] = {0};
   bool has_manual_pixel_ = false;
   Effect manual_pixel_;
+  bool manual_pixel_fresh_ = false;  // set since the last tick: its animation starts at that tick
+  Millis manual_pixel_start_ = 0;
   bool paused_ = false;
   std::vector<std::string> pending_cues_;
   std::vector<uint16_t> pending_after_;

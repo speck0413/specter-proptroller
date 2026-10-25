@@ -184,13 +184,23 @@ bool BoardPixels::begin() {
   return ok_;
 }
 
+// The legacy driver's rmt_write_sample takes the channel's transmit semaphore with no time limit, so it is only
+// called once the last frame is done (rmt_wait_tx_done with no wait) and its latch has passed (the pacer).
+bool BoardPixels::busy() {
+  if (!ok_ || !pacer_.sending) return false;
+  if (!pacer_.ready((uint32_t)micros())) return true;
+  return rmt_wait_tx_done(PIX_CH, 0) != ESP_OK;
+}
+
 bool BoardPixels::write(const Rgb* px, size_t n) {
   if (pin_ == NO_PIN) return false;
-  if (!ok_) return false;
-  std::vector<uint8_t> grb(n * 3);
-  for (size_t i = 0; i < n; i++) { grb[3 * i] = px[i].g; grb[3 * i + 1] = px[i].r; grb[3 * i + 2] = px[i].b; }
-  // the idle level that follows is the latch; frames are at least 20 ms apart
-  return rmt_write_sample(PIX_CH, grb.data(), grb.size(), true) == ESP_OK;
+  if (!ok_ || busy()) return false;  // the caller asks busy() first: this never waits for the wire
+  buf_.resize(n * 3);  // not sending: the translator is done with the old buffer
+  for (size_t i = 0; i < n; i++) { buf_[3 * i] = px[i].g; buf_[3 * i + 1] = px[i].r; buf_[3 * i + 2] = px[i].b; }
+  if (n == 0) return true;
+  pacer_.start((uint32_t)micros(), n);
+  // returns at once: the RMT interrupt translates buf_ into items as it sends; the idle level after it is the latch
+  return rmt_write_sample(PIX_CH, buf_.data(), buf_.size(), false) == ESP_OK;
 }
 #else
 // WS2812 PIO program (side-set 1, 10 cycles per bit at 8 MHz): out x,1 side 0 [2]; jmp !x 3 side 1 [1];
@@ -229,17 +239,34 @@ bool BoardPixels::begin() {
     pio_sm_set_enabled(pio, sm, true);
     pio_ = pio;
     sm_ = (unsigned)sm;
-    ok_ = true;
-    return true;
+    dma_ = dma_claim_unused_channel(false);  // the frame goes from buf_ into the FIFO by DMA
+    ok_ = dma_ >= 0;
+    return ok_;
   }
   return false;
 }
 
+// Done when the DMA has moved the last word and the pacer's time (the FIFO's last 8 pixels and the latch) is over.
+bool BoardPixels::busy() {
+  if (!ok_ || !pacer_.sending) return false;
+  if (!pacer_.ready(time_us_32())) return true;
+  return dma_channel_is_busy((uint)dma_);
+}
+
 bool BoardPixels::write(const Rgb* px, size_t n) {
   if (pin_ == NO_PIN) return false;
-  if (!ok_) return false;
+  if (!ok_ || busy()) return false;  // the caller asks busy() first: this never waits for the wire
+  buf_.resize(n);  // not sending: the DMA is done with the old buffer
+  for (size_t i = 0; i < n; i++) buf_[i] = ((uint32_t)px[i].g << 24) | ((uint32_t)px[i].r << 16) | ((uint32_t)px[i].b << 8);
+  if (n == 0) return true;
   PIO pio = (PIO)pio_;
-  for (size_t i = 0; i < n; i++) pio_sm_put_blocking(pio, sm_, ((uint32_t)px[i].g << 24) | ((uint32_t)px[i].r << 16) | ((uint32_t)px[i].b << 8));
+  dma_channel_config c = dma_channel_get_default_config((uint)dma_);
+  channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
+  channel_config_set_read_increment(&c, true);
+  channel_config_set_write_increment(&c, false);
+  channel_config_set_dreq(&c, pio_get_dreq(pio, sm_, true));
+  pacer_.start(time_us_32(), n);
+  dma_channel_configure((uint)dma_, &c, &pio->txf[sm_], buf_.data(), (uint)n, true);
   return true;
 }
 #endif

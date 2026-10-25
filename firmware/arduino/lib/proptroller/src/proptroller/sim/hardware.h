@@ -24,6 +24,11 @@ struct SimWorld {
   std::vector<Rgb> pixels;
   uint32_t pixel_frames = 0;
   uint32_t pixel_errors = 0;
+  // the wire's time as a board's background send has it (ws2812FrameUs): off by default (a frame is there at
+  // once); on, the port is busy() until the frame and its latch are over, and a write while busy is counted
+  bool pixel_wire = false;
+  uint64_t pixel_busy_until_us = 0;
+  uint32_t pixel_writes_while_busy = 0;
   // the DMX port: on while started, every frame sent (time, the 512 slots)
   bool dmx_on = false;
   std::vector<std::pair<Millis, std::vector<uint8_t>>> dmx_frames;
@@ -87,7 +92,10 @@ class SimUart : public ByteStream {
 class SimPixels : public PixelOut {
  public:
   explicit SimPixels(SimWorld& w) : w_(w) {}
+  bool busy() override { return w_.pixel_wire && w_.now * 1000 < w_.pixel_busy_until_us; }
   bool write(const Rgb* px, size_t n) override {
+    if (busy()) { w_.pixel_writes_while_busy++; return false; }  // a board would wait here (or refuse)
+    if (w_.pixel_wire) w_.pixel_busy_until_us = w_.now * 1000 + ws2812FrameUs(n);
     // through the real encoder and back, as the strip would see it
     std::vector<Pulse> p;
     PROPTROLLER_PIXEL.pulses(px, n, p);

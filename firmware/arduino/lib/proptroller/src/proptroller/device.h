@@ -216,6 +216,7 @@ class Controller : public Firmware {
   static const size_t ANSWER_BLOCK_SPARE = 1024;
 
   uint32_t store_errors = 0, pixel_errors = 0;
+  uint32_t pixel_skipped = 0;  // frames held back a tick because the last one was still on the wire
   uint32_t script_checks_at_boot = 0;  // stored scripts checked again from their text at power-on
   // Accepted presses per input since power-on (TRIG: armed presses only; USER: every press). Sketches use
   // these through Proptroller::wasPressed().

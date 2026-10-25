@@ -64,15 +64,23 @@ class BoardPixels : public PixelOut {
  public:
   explicit BoardPixels(uint8_t pin, bool inverted = true) : pin_(pin), inverted_(inverted) {}
   bool begin();
+  // Starts the frame in the background (ESP32: RMT, its translator reading buf_ from the interrupt; RP2040: DMA
+  // into the PIO FIFO from buf_) and returns at once; never while busy().
   bool write(const Rgb* px, size_t n) override;
+  bool busy() override;
 
  private:
   uint8_t pin_;
   bool inverted_;
   bool ok_ = false;
+  FramePacer pacer_;
 #if defined(ARDUINO_ARCH_RP2040)
   void* pio_ = nullptr;
   unsigned sm_ = 0;
+  int dma_ = -1;
+  std::vector<uint32_t> buf_;  // one word a pixel, G R B in the top 24 bits; read by the DMA while it sends
+#else
+  std::vector<uint8_t> buf_;   // G R B bytes; read by the RMT translator while it sends
 #endif
 };
 

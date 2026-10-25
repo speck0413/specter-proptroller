@@ -478,9 +478,14 @@ void Controller::renderPixels(Millis now, const Frame& f) {
   if (pixel_buf_.empty()) return;
   bool animated = f.has_pixel && f.pixel.animated();
   if (pixel_have_last_) {
-    bool same = pixel_last_has_ == f.has_pixel && (!f.has_pixel || (pixel_last_ == f.pixel && pixel_last_start_ == f.pixel_start));
+    // a still effect looks the same whenever it started: only an animation's start matters
+    bool same = pixel_last_has_ == f.has_pixel &&
+                (!f.has_pixel || (pixel_last_ == f.pixel && (!animated || pixel_last_start_ == f.pixel_start)));
     if (same && (!animated || now - pixel_last_at_ < PIXEL_PERIOD_MS)) return;
   }
+  // the last frame is still on the wire: never wait for it in the step; this frame (or a newer one) goes on a
+  // later tick, as nothing above was marked sent
+  if (pixels_.busy()) { pixel_skipped++; return; }
   if (f.has_pixel) render(f.pixel, now > f.pixel_start ? now - f.pixel_start : 0, pixel_buf_.data(), pixel_buf_.size());
   else for (auto& p : pixel_buf_) p = Rgb();
   // the brightness cap: a plain scale of every channel (the firmware does not estimate current, SM-S3)
