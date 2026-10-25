@@ -1,0 +1,17 @@
+{
+ "name": "error-list-as-number",
+ "source": "var a = [1]\nexport function render(i) { rgb(a + 1, 0, 0) }\n",
+ "program": "U1BBVAEAGgACAAIAAAD//wEA/////wAAAAAKAAEBAQAAAAAAAQAkAAAAKwAAAAEAAAADAAAAAQAAAAEAAAAAAAAAJQAAAAIAAAABAAAAAQAAAAAAAQAKAAAAAQAAAAAAAAABAAAAAAAAACQAAAAiAAAAAwAAAAcAAAABAAAAAAAAACUAAAA=",
+ "pixels": 8,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [],
+ "error": {
+  "step": 0,
+  "message": "a list cannot be used as a number here"
+ }
+}

@@ -1,0 +1,17 @@
+{
+ "name": "error-not-a-function",
+ "source": "var f = 3\nexport function render(i) { f(1) }\n",
+ "program": "U1BBVAEAEQACAAIAAAD//wEA/////wAAAAAHAAEBAQAAAAAAAwADAAAAAQAAAAEAAAAAAAAAJQAAAAIAAAABAAAAAQAAAAAAAQAjAAAAAQAAAAcAAAABAAAAAAAAACUAAAA=",
+ "pixels": 8,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [],
+ "error": {
+  "step": 0,
+  "message": "this is not a function, so it cannot be called"
+ }
+}

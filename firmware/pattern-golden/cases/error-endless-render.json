@@ -1,0 +1,17 @@
+{
+ "name": "error-endless-render",
+ "source": "export function render(i) { while (1) {} }\n",
+ "program": "U1BBVAEADAABAAIAAAD//wEA/////wAAAAADAAEBAQAAAAAAAAAlAAAAAQAAAAAAAQAfAAAACQAAAB4AAAADAAAAAQAAAAAAAAAlAAAA",
+ "pixels": 8,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [],
+ "error": {
+  "step": 0,
+  "message": "the pattern took too long on one frame and was stopped (a loop that never ends?)"
+ }
+}

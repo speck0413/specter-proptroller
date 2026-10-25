@@ -1,0 +1,17 @@
+{
+ "name": "error-needs-a-function",
+ "source": "var a = [1, 2]\nexport function render(i) { a.forEach(5) }\n",
+ "program": "U1BBVAEAFwACAAIAAAD//wEA/////wAAAAAMAAEBAQAAAAAAAQABAAAAAAACACQAAAArAAAAAgAAAAMAAAABAAAAAQAAAAAAAAAlAAAAAgAAAAEAAAABAAAAAAAFACQAAAAkAAAAAgAAAAcAAAABAAAAAAAAACUAAAA=",
+ "pixels": 8,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [],
+ "error": {
+  "step": 0,
+  "message": "this needs a function, for example (v, i) => v * 2"
+ }
+}

@@ -1,0 +1,15 @@
+{
+ "name": "render3d",
+ "source": "export function render3D(index, x, y, z) { rgb(x, y + 0.5, z + x) }\n",
+ "program": "U1BBVAEAFgABAAIAAAD///////8BAAAAAAADAAQEAQAAAAAAAAAlAAAABAAAAAEAAAAEAAAAAgAAAAEAAAAAgAAACgAAAAQAAAADAAAABAAAAAEAAAAKAAAAJAAAACIAAAADAAAABwAAAAEAAAAAAAAAJQAAAA==",
+ "pixels": 9,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [
+  "0080001c801c3980395580557180718e808eaa80aac680c6e380e3"
+ ]
+}

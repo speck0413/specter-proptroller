@@ -1,0 +1,11 @@
+{
+  "code": 4096,
+  "globals": 256,
+  "functions": 128,
+  "controls": 16,
+  "stack": 256,
+  "depth": 24,
+  "locals": 512,
+  "cells": 2048,
+  "steps": 98304
+}

@@ -1,0 +1,31 @@
+{
+ "name": "example-rainbow",
+ "source": "// A rainbow that moves along the strip.\n// render(index) runs once for every light and gives it a colour with hsv(hue, saturation, brightness).\n\nexport var speed = 0.5\n\n// a slider under the preview (0 to 1)\nexport function sliderSpeed(v) {\n  speed = v\n}\n\nvar t\nexport function beforeRender(delta) {\n  // time(x) goes from 0 to 1 again and again; a bigger x is slower\n  t = time(0.2 * (1.05 - speed))\n}\n\nexport function render(index) {\n  hsv(t + index / pixelCount, 1, 1)\n}\n",
+ "program": "U1BBVAEAMQADAAQAAQACAAMA/////wAAAAAHAAEBDgABAR4AAQEAAQALc2xpZGVyU3BlZWQFU3BlZWQBAAAAAIAAAAMAAAABAAAAAQAAAAAAAAAlAAAABAAAAAAAAAADAAAAAQAAAAEAAAAAAAAAJQAAAAEAAAAzMwAAAQAAAM0MAQACAAAAAQAAAAsAAAAMAAAAJAAAAAAAAAABAAAAAwAAAAIAAAABAAAAAAAAACUAAAACAAAAAgAAAAQAAAAAAAAAAgAAAAAAAAANAAAACgAAAAEAAAAAAAEAAQAAAAAAAQAkAAAAIAAAAAMAAAAHAAAAAQAAAAAAAAAlAAAA",
+ "pixels": 30,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  },
+  {
+   "frame": 17
+  },
+  {
+   "frame": 16
+  },
+  {
+   "frame": 500
+  },
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [
+  "ff0300ff3600ff6900ff9c00ffcf00fcff00c9ff0096ff0063ff0030ff0000ff0300ff3600ff6900ff9c00ffcf00fcff00c9ff0096ff0063ff0030ff0300ff3600ff6900ff9c00ffcf00ffff00fcff00c9ff0096ff0063ff0030",
+  "ff0700ff3a00ff6d00ffa000ffd300f8ff00c5ff0092ff005fff002cff0000ff0700ff3a00ff6d00ffa000ffd300f8ff00c5ff0092ff005fff002cff0700ff3a00ff6d00ffa000ffd300ffff00f8ff00c5ff0092ff005fff002c",
+  "ff0a00ff3d00ff7000ffa300ffd600f5ff00c2ff008fff005cff0029ff0000ff0a00ff3d00ff7000ffa300ffd600f5ff00c2ff008fff005cff0029ff0a00ff3d00ff7000ffa300ffd600ffff00f5ff00c2ff008fff005cff0029",
+  "ff7500ffa800ffdb00f0ff00bdff008aff0057ff0024ff0000ff0f00ff4200ff7500ffa800ffdb00f0ff00bdff008aff0057ff0024ff0f00ff4200ff7500ffa800ffdb00ffff00f0ff00bdff008aff0057ff0024ff0f00ff4200",
+  "ff7800ffab00ffde00edff00baff0087ff0054ff0021ff0000ff1200ff4500ff7800ffab00ffde00edff00baff0087ff0054ff0021ff1200ff4500ff7800ffab00ffde00ffff00edff00baff0087ff0054ff0021ff1200ff4500"
+ ]
+}

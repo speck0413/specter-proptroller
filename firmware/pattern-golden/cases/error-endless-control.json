@@ -1,0 +1,26 @@
+{
+ "name": "error-endless-control",
+ "source": "export function triggerGo() { for (;;) {} }\nexport function render(i) { rgb(1, 0, 0) }\n",
+ "program": "U1BBVAEAFQABAAMAAQD//wIA/////wAAAAADAAAACAABAQQBAAl0cmlnZ2VyR28CR28BAAAAAAAAACUAAAAeAAAAAwAAAAEAAAAAAAAAJQAAAAEAAAAAAAEAAQAAAAAAAAABAAAAAAAAACQAAAAiAAAAAwAAAAcAAAABAAAAAAAAACUAAAA=",
+ "pixels": 8,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  },
+  {
+   "control": "triggerGo",
+   "values": []
+  },
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [
+  "ff0000ff0000ff0000ff0000ff0000ff0000ff0000ff0000"
+ ],
+ "error": {
+  "step": 1,
+  "message": "the pattern took too long on one frame and was stopped (a loop that never ends?)"
+ }
+}

@@ -1,0 +1,77 @@
+{
+ "name": "controls",
+ "source": "var speed = 0.5, hue = 0, sat = 1, on = 0, n = 0, r = 0, g = 0, b = 0, hits = 0\nexport function sliderSpeed(v) { speed = v }\nexport function hsvPickerMainColor(h, s, v) { hue = h; sat = s }\nexport function rgbPickerAccent(rr, gg, bb) { r = rr; g = gg; b = bb }\nexport function toggleSparkle(v) { on = v }\nexport function inputNumberCount(v) { n = v }\nexport function triggerFlash() { hits++ }\nvar t = 0\nexport function beforeRender(delta) { t += delta * speed / 1000 }\nexport function render(index) {\n  if (index < hits) rgb(r, g, b)\n  else if (on && index == n) rgb(1, 1, 1)\n  else hsv(hue + t + index / pixelCount, sat, 1)\n}\n",
+ "program": "U1BBVAEAtAALAAkABgAHAAgA/////wAAAAArAAEBMgADAz0AAwNMAAEBUwABAVoAAABkAAEBdAABAQABAAtzbGlkZXJTcGVlZAVTcGVlZAECABJoc3ZQaWNrZXJNYWluQ29sb3IKTWFpbiBjb2xvcgIDAA9yZ2JQaWNrZXJBY2NlbnQGQWNjZW50AwQADXRvZ2dsZVNwYXJrbGUHU3BhcmtsZQUFABBpbnB1dE51bWJlckNvdW50BUNvdW50BAYADHRyaWdnZXJGbGFzaAVGbGFzaAEAAAAAgAAAAwAAAAEAAAABAAAAAAAAAAMAAAACAAAAAQAAAAAAAQADAAAAAwAAAAEAAAAAAAAAAwAAAAQAAAABAAAAAAAAAAMAAAAFAAAAAQAAAAAAAAADAAAABgAAAAEAAAAAAAAAAwAAAAcAAAABAAAAAAAAAAMAAAAIAAAAAQAAAAAAAAADAAAACQAAAAEAAAAAAAAAAwAAAAoAAAABAAAAAAAAACUAAAAEAAAAAAAAAAMAAAABAAAAAQAAAAAAAAAlAAAABAAAAAAAAAADAAAAAgAAAAQAAAABAAAAAwAAAAMAAAABAAAAAAAAACUAAAAEAAAAAAAAAAMAAAAGAAAABAAAAAEAAAADAAAABwAAAAQAAAACAAAAAwAAAAgAAAABAAAAAAAAACUAAAAEAAAAAAAAAAMAAAAEAAAAAQAAAAAAAAAlAAAABAAAAAAAAAADAAAABQAAAAEAAAAAAAAAJQAAAAIAAAAJAAAAAQAAAAAAAQAKAAAAAwAAAAkAAAABAAAAAAAAACUAAAACAAAACgAAAAQAAAAAAAAAAgAAAAEAAAAMAAAAAQAAAAAA6AMNAAAACgAAAAMAAAAKAAAAAQAAAAAAAAAlAAAABAAAAAAAAAACAAAACQAAABkAAAAfAAAAhwAAAAIAAAAGAAAAAgAAAAcAAAACAAAACAAAACQAAAAiAAAAAwAAAAcAAAAeAAAAsQAAAAIAAAAEAAAAIAAAAJAAAAAEAAAAAAAAAAIAAAAFAAAAFwAAAB8AAACeAAAAAQAAAAAAAQABAAAAAAABAAEAAAAAAAEAJAAAACIAAAADAAAABwAAAB4AAACxAAAAAgAAAAIAAAACAAAACgAAAAoAAAAEAAAAAAAAAAIAAAAAAAAADQAAAAoAAAACAAAAAwAAAAEAAAAAAAEAJAAAACAAAAADAAAABwAAAAEAAAAAAAAAJQAAAA==",
+ "pixels": 16,
+ "seed": 305419896,
+ "steps": [
+  {
+   "control": "sliderSpeed",
+   "values": [
+    65536
+   ]
+  },
+  {
+   "control": "hsvPickerMainColor",
+   "values": [
+    21845,
+    52428,
+    65536
+   ]
+  },
+  {
+   "frame": 16
+  },
+  {
+   "control": "triggerFlash",
+   "values": []
+  },
+  {
+   "control": "triggerFlash",
+   "values": []
+  },
+  {
+   "control": "rgbPickerAccent",
+   "values": [
+    65536,
+    32768,
+    0
+   ]
+  },
+  {
+   "control": "toggleSparkle",
+   "values": [
+    65536
+   ]
+  },
+  {
+   "control": "inputNumberCount",
+   "values": [
+    458752
+   ]
+  },
+  {
+   "frame": 16
+  },
+  {
+   "control": "noSuchControl",
+   "values": [
+    1
+   ]
+  },
+  {
+   "control": "sliderSpeed",
+   "values": [
+    13107
+   ]
+  },
+  {
+   "frame": 100
+  }
+ ],
+ "frames": [
+  "33ff4733ff9333ffe033d2ff3385ff3339ff7a33ffc633ffff33ebff339fff3352ff6033ffad33fff933b8ff336cff33",
+  "ff8000ff800033fff333beff3372ff4133ff8d33ffffffffff33d8ff338bff333fff7433ffc033f1ff33a5ff3358ff33",
+  "ff8000ff800033f2ff33a6ff3359ff5933ffa633ffffffffff33bfff3373ff4033ff8c33ffd933d9ff338cff3340ff33"
+ ]
+}

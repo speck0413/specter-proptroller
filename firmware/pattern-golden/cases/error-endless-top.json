@@ -1,0 +1,17 @@
+{
+ "name": "error-endless-top",
+ "source": "var x = 0\nwhile (1) { x++ }\nexport function render(i) {}\n",
+ "program": "U1BBVAEAFwACAAIAAAD//wEA/////wAAAAAUAAEBAQAAAAAAAAADAAAAAQAAAAEAAAAAAAEAHwAAABEAAAACAAAAAQAAAAEAAAAAAAEACgAAAAMAAAABAAAAHgAAAAQAAAABAAAAAAAAACUAAAABAAAAAAAAACUAAAA=",
+ "pixels": 8,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [],
+ "error": {
+  "step": -1,
+  "message": "the pattern took too long on one frame and was stopped (a loop that never ends?)"
+ }
+}

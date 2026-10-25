@@ -1,0 +1,45 @@
+{
+ "name": "error-lists-grow",
+ "source": "var a\nexport function beforeRender(d) { a = array(300) }\nexport function render(i) { rgb(1, 1, 1) }\n",
+ "program": "U1BBVAEAGgACAAMAAAABAAIA/////wAAAAADAAEBDQABAQEAAAAAAAAAJQAAAAEAAAAAACwBJAAAACMAAAABAAAAAwAAAAEAAAABAAAAAAAAACUAAAABAAAAAAABAAEAAAAAAAEAAQAAAAAAAQAkAAAAIgAAAAMAAAAHAAAAAQAAAAAAAAAlAAAA",
+ "pixels": 8,
+ "seed": 305419896,
+ "steps": [
+  {
+   "frame": 16
+  },
+  {
+   "frame": 16
+  },
+  {
+   "frame": 16
+  },
+  {
+   "frame": 16
+  },
+  {
+   "frame": 16
+  },
+  {
+   "frame": 16
+  },
+  {
+   "frame": 16
+  },
+  {
+   "frame": 16
+  }
+ ],
+ "frames": [
+  "ffffffffffffffffffffffffffffffffffffffffffffffff",
+  "ffffffffffffffffffffffffffffffffffffffffffffffff",
+  "ffffffffffffffffffffffffffffffffffffffffffffffff",
+  "ffffffffffffffffffffffffffffffffffffffffffffffff",
+  "ffffffffffffffffffffffffffffffffffffffffffffffff",
+  "ffffffffffffffffffffffffffffffffffffffffffffffff"
+ ],
+ "error": {
+  "step": 6,
+  "message": "the pattern's lists are too big (at most 2048 values in all: make lists once, at the top of the pattern)"
+ }
+}
