@@ -119,8 +119,19 @@ class PatternVM {
   void endCall();
   void fail(const char* msg);
   void fail(const std::string& msg) { fail(msg.c_str()); }
-  bool num(const PatternVal& x, int32_t& out);
-  bool list(const PatternVal& x, int32_t& at);
+  // the value as a number / a list; false (and the plain message) when it is not one
+  bool num(const PatternVal& x, int32_t& out) {
+    if (x.t == 0) { out = x.v; return true; }
+    notNum(x);
+    return false;
+  }
+  bool list(const PatternVal& x, int32_t& at) {
+    if (x.t == 1) { at = x.v; return true; }
+    notList();
+    return false;
+  }
+  void notNum(const PatternVal& x);
+  void notList();
   bool newList(int32_t len, int32_t& at);
   bool timeUp() const;
   void sortList(int32_t at);

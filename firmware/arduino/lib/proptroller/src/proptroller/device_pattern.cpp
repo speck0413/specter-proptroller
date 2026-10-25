@@ -27,7 +27,14 @@ namespace pt {
 
 namespace {
 const char* const NO_PLAYER = "this board has no pattern player: the Pico W and the Pico have no room for it (an ESP32 or a Pico 2 W has one)";
-const uint32_t PATTERN_FRAME_US = 25000;  // the deadline of one frame (or one button press) on the board
+// The deadline of one frame (or one button press), as Studio's preview's. The step budget (PATTERN_FRAME_STEPS)
+// stops a loop that never ends, the same way everywhere; this catches only what steps do not count (a long sort)
+// and is far above a real frame (a heavy pattern on 600 lights: about 33 ms in QEMU, AB-REPORT.md), so a flash
+// write that stalls the core for a moment never stops a pattern. A long frame is followed by as long a rest.
+#ifndef PT_PATTERN_FRAME_US
+#define PT_PATTERN_FRAME_US 250000
+#endif
+const uint32_t PATTERN_FRAME_US = PT_PATTERN_FRAME_US;
 const uint32_t PRESS_RING = 32;          // presses on their way to the pixel side
 const size_t NOTE_BYTES = 240;
 
@@ -82,7 +89,7 @@ struct PatternSide {
   // ---- pixel side -> loop
   std::atomic<uint8_t> note_ready{0};
   char note[NOTE_BYTES] = {0};
-  std::atomic<uint32_t> frame_us_max{0}, steps_max{0}, frames{0};
+  std::atomic<uint32_t> frame_us_max{0}, frame_us_sum{0}, steps_max{0}, frames{0};
   std::atomic<uint32_t> vm_bytes{0};
   // ---- the pixel side's own
   PatternLoad* own = nullptr;
@@ -408,6 +415,7 @@ int Controller::patternRender(const PixelRequest& f, Millis now) {
   if (!s.vm->frame(delta, out)) { stop(s.vm->error()); return 1; }
   uint32_t took = us ? us() - t0 : 0;
   if (took > s.frame_us_max.load(std::memory_order_relaxed)) s.frame_us_max.store(took, std::memory_order_relaxed);
+  s.frame_us_sum.fetch_add(took, std::memory_order_relaxed);
   uint32_t steps = s.vm->takeMaxSteps();
   if (steps > s.steps_max.load(std::memory_order_relaxed)) s.steps_max.store(steps, std::memory_order_relaxed);
   s.frames.fetch_add(1, std::memory_order_relaxed);
@@ -420,8 +428,9 @@ int Controller::patternRender(const PixelRequest& f, Millis now) {
 std::string Controller::patternReport() {
   if (!pat_ || !pat_->frames.load(std::memory_order_relaxed)) return "";
   char b[200];
-  snprintf(b, sizeof b, "; pattern frames %u, frame max %u us, max %u steps, player %u B",
-           (unsigned)pat_->frames.exchange(0, std::memory_order_relaxed), (unsigned)pat_->frame_us_max.exchange(0, std::memory_order_relaxed),
+  uint32_t n = pat_->frames.exchange(0, std::memory_order_relaxed), sum = pat_->frame_us_sum.exchange(0, std::memory_order_relaxed);
+  snprintf(b, sizeof b, "; pattern frames %u, frame average %u us, max %u us, max %u steps, player %u B", (unsigned)n,
+           (unsigned)(n ? sum / n : 0), (unsigned)pat_->frame_us_max.exchange(0, std::memory_order_relaxed),
            (unsigned)pat_->steps_max.exchange(0, std::memory_order_relaxed), (unsigned)pat_->vm_bytes.load(std::memory_order_relaxed));
   return b;
 }

@@ -25,6 +25,8 @@ inline int32_t fmul(int32_t a, int32_t b) { return mulS(a, b, 16); }
 // rounded toward zero; / 0 gives the largest number of the right sign, 0 / 0 is 0
 inline int32_t fdiv(int32_t a, int32_t b) {
   if (b == 0) return a > 0 ? INT_MAX32 : a < 0 ? INT_MIN32 : 0;
+  // a x 65536 in 32 bits when it fits (the boards divide 32 bits in hardware, 64 bits in software); the same result
+  if (a > -32768 && a < 32768 && b != -1) return (a * ONE) / b;
   return wrap(((int64_t)a * ONE) / b);
 }
 

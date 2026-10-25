@@ -1,4 +1,8 @@
 #include "pattern_vm.h"
+// the interpreter is the strip's hot loop: optimized for speed on the boards (whose default is for size)
+#if defined(__GNUC__) && !defined(__clang__) && (defined(ESP32) || defined(ARDUINO_ARCH_RP2040))
+#pragma GCC optimize("O2")
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm>
@@ -338,10 +342,13 @@ bool PatternVM::frame(uint32_t delta_ms, Rgb* out) {
     r_ = g_ = b_ = 0;
     PatternVal a[4];
     a[0] = numv(i << 16);
-    a[1] = numv((int32_t)(((int64_t)2 * i * ONE + n) / (2 * n)));
     if (p_.render >= 0) exec((uint16_t)p_.render, a, 1);
-    else if (p_.render2d >= 0) exec((uint16_t)p_.render2d, a, 3);
-    else exec((uint16_t)p_.render3d, a, 4);
+    else {
+      // i / n as 16.16, halves up (n is at most 4096, so 32 bits hold it)
+      a[1] = numv((int32_t)(((uint32_t)i * 2 * ONE + (uint32_t)n) / (uint32_t)(2 * n)));
+      if (p_.render2d >= 0) exec((uint16_t)p_.render2d, a, 3);
+      else exec((uint16_t)p_.render3d, a, 4);
+    }
     if (failed()) return false;
     out[i] = Rgb(channel(r_), channel(g_), channel(b_));
   }
@@ -365,17 +372,8 @@ bool PatternVM::setControl(const std::string& name, const int32_t* values, size_
   return callControl(p_.findControl(name), values, n);
 }
 
-bool PatternVM::num(const PatternVal& x, int32_t& out) {
-  if (x.t == 0) { out = x.v; return true; }
-  fail(x.t == 1 ? M_LIST_NUM : M_FUNC_NUM);
-  return false;
-}
-
-bool PatternVM::list(const PatternVal& x, int32_t& at) {
-  if (x.t == 1) { at = x.v; return true; }
-  fail(M_NEEDS_LIST);
-  return false;
-}
+void PatternVM::notNum(const PatternVal& x) { fail(x.t == 1 ? M_LIST_NUM : M_FUNC_NUM); }
+void PatternVM::notList() { fail(M_NEEDS_LIST); }
 
 bool PatternVM::newList(int32_t len, int32_t& at) {
   if (cells_used_ + len + 1 > PATTERN_MAX_CELLS) {
@@ -420,10 +418,11 @@ PatternVal PatternVM::exec(uint16_t fi, const PatternVal* args, int nargs) {
   int sp = sp_;
   const int base = sp;
   uint32_t pc = fn.addr;
+  int32_t left = left_;  // the steps left in this chunk, kept here and handed back around every call
   for (;;) {
-    if (--left_ <= 0) {
+    if (--left <= 0) {
       spent_ += CHUNK;
-      left_ = CHUNK;
+      left = CHUNK;
       if (spent_ >= PATTERN_FRAME_STEPS || timeUp()) { fail(M_TOO_LONG); return PatternVal(); }
     }
     if (sp > PATTERN_MAX_STACK) { fail(M_ROOM); return PatternVal(); }
@@ -475,7 +474,9 @@ PatternVal PatternVM::exec(uint16_t fi, const PatternVal* args, int nargs) {
         int32_t id = code[pc++], n = code[pc++];
         sp -= n;
         sp_ = sp;
+        left_ = left;
         PatternVal r = exec((uint16_t)id, S + sp, n);
+        left = left_;
         if (failed()) return PatternVal();
         S[sp++] = r;
         break;
@@ -489,7 +490,9 @@ PatternVal PatternVM::exec(uint16_t fi, const PatternVal* args, int nargs) {
         for (int32_t i = 0; i < n; i++) S[sp - 1 + i] = S[sp + i];
         sp--;
         sp_ = sp;
+        left_ = left;
         PatternVal r = exec((uint16_t)c.v, S + sp, n);
+        left = left_;
         if (failed()) return PatternVal();
         S[sp++] = r;
         break;
@@ -508,7 +511,9 @@ PatternVal PatternVM::exec(uint16_t fi, const PatternVal* args, int nargs) {
         } else {
           PatternVal a[3];
           for (int32_t i = 0; i < 3 && i < n; i++) a[i] = S[sp + i];
+          left_ = left;
           r = builtin(id, a, n < 3 ? n : 3, at);
+          left = left_;
           if (failed()) return PatternVal();
         }
         S[sp++] = r;
@@ -516,6 +521,7 @@ PatternVal PatternVM::exec(uint16_t fi, const PatternVal* args, int nargs) {
       }
       case RET: {
         PatternVal v = S[sp - 1];
+        left_ = left;
         sp_ = base;
         depth_--;
         locals_used_ -= fn.locals;
@@ -583,8 +589,11 @@ PatternVal PatternVM::builtin(int32_t id, const PatternVal* a, int n, uint32_t p
     case B_TIME: {
       if (!nums(1)) return PatternVal();
       if (x[0] <= 0) return numv(0);
-      int64_t r = (int64_t)(clock_ % (uint64_t)x[0]);
-      return numv((int32_t)((2 * r * ONE + x[0]) / (2 * (int64_t)x[0])) & 0xffff);
+      // the same sums in 32 bits while they fit (a 64-bit division is slow on the boards)
+      uint32_t p = (uint32_t)x[0];
+      uint32_t r = clock_ < 0xFFFFFFFFull ? (uint32_t)clock_ % p : (uint32_t)(clock_ % p);
+      if (r < 16000 && p < 0x40000000u) return numv((int32_t)((r * 2 * (uint32_t)ONE + p) / (2 * p)) & 0xffff);
+      return numv((int32_t)(((int64_t)2 * r * ONE + p) / (2 * (int64_t)p)) & 0xffff);
     }
     case B_WAVE: if (!nums(1)) break; return numv(fwave(x[0]));
     case B_TRIANGLE: { if (!nums(1)) break; int32_t t = x[0] & 0xffff; return numv(t < 0x8000 ? t * 2 : (0x10000 - t) * 2); }
