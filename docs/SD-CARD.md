@@ -1,36 +1,40 @@
 # Setting up the SD card for the DFPlayer
 
-The board's sound module (a DFPlayer Mini) plays sounds from a microSD card **by number**. Sound 1 is the file
-`0001-….mp3` in the card's `mp3` folder, sound 2 is `0002-….mp3`, and so on. A script says `audio_single = 1`,
-the settings say "Trigger sound 1", and a sketch says `playSound(1)`: the same file every time.
+The board's sound module (a DFPlayer Mini) plays sounds from a microSD card **by number**, one sound per folder.
+Sound 1 is the one file in the folder `01`, sound 2 the one in folder `02`, and so on up to `99`. A script says
+`audio_single = 1`, the settings say "Trigger sound 1", and a sketch says `playSound(1)`: the same file every time.
+
+```
+01/001-ambient.mp3     sound 1
+02/001-scream.mp3      sound 2
+03/001-thunder.mp3     sound 3
+```
 
 ## Recommended: Studio's SD card tool
 
-Studio's SD card tool erases, names and copies in the right order for you.
+Studio's SD card tool erases the card, makes the folders and names the files for you.
 
 1. In Specter Studio, open **SD card** (from the board page's Sound tile, or from the library).
-2. Add your sound files (mp3 or wav), or drag them in. Drag them into the order you want (or use the up and
-   down buttons). The list shows the number each one gets: "1 · rain", "2 · elevator".
+2. Add your sound files (mp3 or wav), or drag them in. Put them in the order you want (drag them, or use the up
+   and down buttons). The list shows the number each one gets: "1 · ambient", "2 · scream".
 3. Pick the card. Leave **Erase and format FAT32** ticked, type the card's name to confirm, and press Copy.
 4. Keep the list it shows at the end (**Copy list** or **Save list…**): it tells you which number is which sound.
 5. Take the card out when Studio says it is safe, and put it in the sound module before you power the board.
 
-**Check a card** reads a card that is already filled and tells you, in plain words, if a file is out of order,
-a number is missing, or there are files the player would trip over. **Fix** copies them again in order.
+**Check a card** reads a card that is already filled and tells you, in plain words, if a folder is missing a
+file, a file is not named `001-…`, or there are files the player would trip over. **Fix** sets it right.
 
 ## Doing it by hand
 
-Why the order matters: the player numbers the files **in the order they were written to the card**, not by
-their names. Studio's tool makes sure the two agree. By hand, you do it like this:
-
-1. Delete everything on the card (or format it as FAT32: see below).
-2. Make a folder named `mp3` in the card's top level (the root).
-3. Copy the files into it **one at a time, in the order you want**, named `0001-name.mp3`, `0002-name.mp3`,
-   `0003-name.mp3` … Always four digits, with the leading zeros. The player reads only the four digits; the rest
-   of the name is for you (`0003-scream.mp3` is sound 3).
-4. Keep no other files in the root or in the `mp3` folder.
-5. On a Mac, remove the hidden files the Mac adds (the player would count them as sounds). In Terminal, with the
-   card named CARD:
+1. Start with an empty card (or format it as FAT32: see below).
+2. Make one folder per sound in the card's top level (the root), named with two digits: `01`, `02`, `03` …
+   up to `99`.
+3. Put one file in each folder, named `001-<description>.mp3`: three digits first, then anything you like
+   (`01/001-ambient.mp3`, `02/001-scream.mp3`). The player reads only the digits; the rest of the name is for you.
+   The order you copy them in does not matter.
+4. Keep nothing else in the root.
+5. On a Mac, remove the hidden files the Mac adds (the player can trip over them). In Terminal, with the card
+   named CARD:
 
    ```
    dot_clean -m /Volumes/CARD
@@ -40,16 +44,18 @@ their names. Studio's tool makes sure the two agree. By hand, you do it like thi
 
 6. Eject the card before you take it out.
 
-**Windows:** copy the files one by one (one drag per file, waiting for each to finish), not all at once. To
-format: right-click the card in File Explorer, Format, File system FAT32 (cards of 32 GB or less; Windows does
-not offer FAT32 for bigger cards).
+If a sound does not play on a player that is not a genuine DFPlayer Mini, rename its file to plain `001.mp3`
+(the datasheet allows any text after the three digits, but a few copies of the module may not).
+
+**Windows:** to format, right-click the card in File Explorer, Format, File system FAT32 (cards of 32 GB or less;
+Windows does not offer FAT32 for bigger cards).
 
 **Linux:** format with `mkfs.vfat -F 32 /dev/sdX1` (check the device name first: formatting the wrong disk erases
-it), then copy one file at a time with `cp` and run `sync` before you eject.
+it), and run `sync` before you eject.
 
 ## What the player reads
 
 - A microSD card of 32 GB or less, formatted FAT32 (or FAT16).
 - MP3 or WAV files, 8 to 48 kHz (MP3 up to 320 kbps).
-- Up to 3000 sounds in the `mp3` folder.
+- Up to 99 sounds: folders `01` to `99`, one file each.
 - How loud: Settings → Sound (the trigger and ambient volumes), or `audio_volume = 60%` in a script.

@@ -103,7 +103,7 @@ struct GoldenBoard {
       bool again = false;
       if (c == 0x12)
         for (auto& f : sim.world().df.finished) again |= f.second == prm && fr[df_seen].t >= f.first && fr[df_seen].t - f.first <= 100;
-      if (t >= t0 && !again && (c == 0x12 || c == 0x03 || c == 0x08 || c == 0x16)) sound.push_back({t - t0, {c, prm}});
+      if (t >= t0 && !again && (c == 0x0F || c == 0x17 || c == 0x12 || c == 0x03 || c == 0x08 || c == 0x16)) sound.push_back({t - t0, {c, prm}});
     }
     auto& dm = sim.world().dmx_frames;
     for (; dmx_seen < dm.size(); dmx_seen++) {
@@ -305,10 +305,15 @@ static bool runTrace(const std::string& name, JsonDocument& cs, const std::strin
       std::string kind = want[i][1];
       uint8_t c = got[i].second.first;
       uint16_t p = got[i].second.second;
-      // sound N: 0x12 N in the mp3 folder (0x03 N to play, 0x08 N to loop with SoundMode::Root)
-      bool mp3 = SOUND_MODE == SoundMode::Mp3;
-      bool k = (kind == "play" && c == (mp3 ? 0x12 : 0x03) && p == want[i][2].as<int>()) ||
-               (kind == "loop" && c == (mp3 ? 0x12 : 0x08) && p == want[i][2].as<int>()) || (kind == "stop" && c == 0x16);
+      // sound N in SOUND_MODE: folder N (0x0F (N << 8) | 1, loop 0x17 N), the mp3 folder (0x12 N) or the root
+      // (0x03 N, loop 0x08 N)
+      int n = want[i][2].as<int>();
+      SoundCommand play = soundPlay((uint16_t)n), loop = soundLoop((uint16_t)n);
+      uint8_t pc = 0, lc = 0;
+      uint16_t pp = 0, lp = 0;
+      play.encode(pc, pp);
+      loop.encode(lc, lp);
+      bool k = (kind == "play" && c == pc && p == pp) || (kind == "loop" && c == lc && p == lp) || (kind == "stop" && c == 0x16);
       same = k && got[i].first >= t && got[i].first <= t + SOUND_SLACK_MS;
     }
     if (!same) {

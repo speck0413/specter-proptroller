@@ -118,7 +118,7 @@ of silence, and what it was given ends with it: the remote trigger enable, manua
 | `cue` | `name` | `done` (sends a named cue on this device) |
 | `set_output` | `channel`, `level` (0-1000, or `null` to release), `ms` (optional: a pulse, at most 600000) | `done` (manual test; relays and contacts are on/off). From plain HTTP or MQTT a level above 0 needs `ms` (else `refused`); a level above 0 is `refused` while the board is paused (nothing set during a pause comes on at its release); what a phone page holds is released when its WebSocket closes |
 | `pixel` | `action` (a pixel [action](#actions), or `null`) | `done` |
-| `sound` | `cmd` + fields: `play_mp3` (`track`: the card's `/mp3/NNNN…`, command 0x12), `loop_mp3` (`track`: the same, played again each time it ends; `stop` ends it), `play_index` (`index`: the N-th file written to the card's root, 0x03), `loop_index` (`index`, 0x08), `play_folder` (`folder`, `track`: `/FF/TTT.mp3`), `loop_folder` (`folder`), `volume` (`volume` 0-30), `stop`, `pause`, `resume`, `next`, `reset`, `select_sd` | `done` |
+| `sound` | `cmd` + fields: `play_folder` (`folder`, `track`: `/FF/TTT…`, command 0x0F; sound N is folder N, track 1), `loop_folder` (`folder`, 0x17), `play_mp3` (`track`: the card's `/mp3/NNNN…`, command 0x12), `loop_mp3` (`track`: the same, played again each time it ends; `stop` ends it), `play_index` (`index`: the N-th file written to the card's root, 0x03), `loop_index` (`index`, 0x08), `volume` (`volume` 0-30), `stop`, `pause`, `resume`, `next`, `reset`, `select_sd` | `done` |
 | `get_params` | | `params` |
 | `set_params` | `values`: `[{"key":..,"value":..}]` (all checked, none applied if one fails; an empty secret keeps the old one, except that a change of `wifi_ssid` without a non-empty `wifi_pass` in the same `set_params` clears the stored `wifi_pass`: the new network is joined as an open one. Set a network and its password together, or the network first) | `done`; `internal` (`storage full: ...`) when a text value (a name) would make the settings record too big for the board's 12 KB |
 | `action` | `key` (from `info.actions`, or a control alias) | `done` |
@@ -204,7 +204,7 @@ longest that may take, in seconds; a client waits that long plus the restart bef
  "shows":[{"id":1,"name":"Door","state":"running","elapsed_ms":1200,"length_ms":4000},{"id":2,"name":"Fog","state":"cooldown","remaining_ms":800}],
  "paused":false,
  "runs_since_power_on":12,"runs_lifetime":4810,"last_run_uptime_ms":118300,
- "sound":{"playing":true,"track":"/mp3/0002","source":"ambient","online":true,"ambient_missing":false},
+ "sound":{"playing":true,"track":"/02/001","source":"ambient","online":true,"ambient_missing":false},
  "pattern":"fast_blink",
  "status":[{"key":"run_count","value":3}],
  "net":{"mode":"sta","ip":"192.168.1.50","ssid":"Office","host":"proptroller.local","rssi":-58}}
@@ -373,7 +373,7 @@ a target the show has not reached yet is left to the others.
 |---|---|---|
 | OUT1-4 | `on`, `off`, `pulse`, `blink`, `level`, `ramp` | `pulse`: `ms`; `blink`: `on_ms`, `off_ms`, `count` (0 = until the next cue); `level`: `level`; `ramp`: `to`, `ms` |
 | RLY1-2, CC1-2 | `on`, `off`, `pulse`, `blink` | `blink`: `on_ms` and `off_ms` at least 100 (a relay or contact switches at most every 100 ms; one that went off comes on again no sooner) |
-| SOUND | `play`, `loop_folder`, `volume`, `off` | `play`: `folder` 0 and `track` 1-3000 is sound N (the card's `/mp3/NNNN…`, as in a script), `folder` 1-99 and `track` 1-255 the file `/FF/TTT.mp3`; `loop_folder`: `folder` 1-99; `volume` 0-30 |
+| SOUND | `play`, `loop_folder`, `volume`, `off` | `play`: `folder` 0 and `track` 1-99 is sound N (the card's `NN/001…`, as in a script), `folder` 1-99 and `track` 1-255 the file `/FF/TTT.mp3`; `loop_folder`: `folder` 1-99; `volume` 0-30 |
 | PIXEL | `fill`, `flicker`, `chase`, `flash`, `fade`, `rainbow`, `off` | `color` `"#rrggbb"`, `step_ms`, `width`, `period_ms`, `ms` |
 | NET | `emit` | `cue` (1-24 characters) |
 

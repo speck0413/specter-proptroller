@@ -603,7 +603,7 @@ $('resume').onclick = async () => {
   b.disabled = true;
   try { await call('pause', { on: false }); } catch { /* call() said why (the page lock: Unlock) */ } finally { b.disabled = false; }
 };
-$('snd-play').onclick = () => call('sound', { cmd: 'play_mp3', track: +$('snd-track').value });
+$('snd-play').onclick = () => call('sound', { cmd: 'play_folder', folder: +$('snd-track').value, track: 1 });
 $('snd-stop').onclick = () => call('sound', { cmd: 'stop' });
 $('snd-vol').onchange = () => call('sound', { cmd: 'volume', volume: +$('snd-vol').value });
 $('px-go').onclick = () => {
@@ -649,7 +649,7 @@ const targetIds = () => [...outputIds(), 'PIXEL', 'SOUND', 'NET'];
 const ACTIONS = {
   on: [], off: [], level: [['level', 500]], ramp: [['to', 1000], ['ms', 300]], pulse: [['ms', 500]],
   blink: [['on_ms', 250], ['off_ms', 250], ['count', 0]],
-  // play: folder 0 is sound N (track N: the card's mp3/NNNN-….mp3, as in a script); a folder 1-99 is shown only on
+  // play: folder 0 is sound N (track N: the one file in the card's folder NN, as in a script); a folder 1-99 is shown only on
   // an older cue that has one
   play: [['folder', 0], ['track', 1]], loop_folder: [['folder', 1]], volume: [['volume', 20]],
   fill: [['color', '#ff6000']], chase: [['color', '#ff6000'], ['step_ms', 60], ['width', 3]], rainbow: [['period_ms', 3000]],

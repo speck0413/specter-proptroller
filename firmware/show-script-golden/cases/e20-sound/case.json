@@ -10,7 +10,7 @@
     "errors": [
       {
         "line": 3,
-        "message": "line 3: \"Chime.mp3\" is not a sound number. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3)."
+        "message": "line 3: \"Chime.mp3\" is not a sound number. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3)."
       }
     ],
     "warnings": []

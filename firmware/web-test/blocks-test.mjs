@@ -105,7 +105,7 @@ test('the words of every kind are the words Studio shows', () => {
   assert.deepEqual(fieldsOf('ps_fade'), ['TARGET', 'LEVEL', 'TIME']);
 });
 
-test('sound blocks default to numbers, and no block names a file except the card layout 0001-….mp3', () => {
+test('sound blocks default to numbers, and no block names a file except the card layout NN/001-….mp3', () => {
   assert.match(KINDS.ps_audio_single.fields.SOUND, /^\d+$/);
   assert.match(KINDS.ps_audio_loop.fields.SOUND, /^\d+$/);
   assert.deepEqual(KINDS.ps_audio_volume.slider.VOLUME, [0, 100, '%']);
@@ -113,6 +113,6 @@ test('sound blocks default to numbers, and no block names a file except the card
   assert.equal(blocksToText({ eol: '\n', blocks: [newBlock('ps_audio_volume')] }), 'audio_volume = 60%\n');
   for (const [t, k] of Object.entries(KINDS)) {
     const all = [k.tip, ...k.words, ...Object.values(k.fields)].join(' ');
-    for (const m of all.match(/\S*\.mp3/g) || []) assert.match(m, /^[0-9N]{4}-…\.mp3$/, `${t}: ${m}`);
+    for (const m of all.match(/\S*\.mp3/g) || []) assert.match(m, /^\(?([0-9N]{2}\/)?001-…\.mp3\)?\.?$/, `${t}: ${m}`);
   }
 });

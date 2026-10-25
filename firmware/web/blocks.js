@@ -35,7 +35,7 @@ export const KINDS = {
   ps_limit: { words: ['limit', 'RUNS', 'runs per', 'TIME'], fields: { RUNS: '3', TIME: '3 min' }, colour: '#5b8da6',
     tip: 'At most this many runs in a window that starts at the first run.' },
   ps_audio_single: { words: ['play sound', 'SOUND', 'once'], fields: { SOUND: '1' }, colour: '#a65b80',
-    tip: 'Plays sound N once: the file 000N-….mp3 in the card\'s mp3 folder.' },
+    tip: 'Plays sound N once: the one file in the card\'s folder NN (NN/001-….mp3).' },
   ps_audio_loop: { words: ['play sound', 'SOUND', 'over and over'], fields: { SOUND: '2' }, colour: '#a65b80',
     tip: 'Plays a sound over and over in the background; a sound played once over it comes back to it. off turns it off.' },
   ps_audio_stop: { words: ['stop the sound'], fields: {}, colour: '#a65b80', tip: 'Stops the sound.' },

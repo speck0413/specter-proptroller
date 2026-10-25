@@ -98,11 +98,11 @@ Gen generate(Rng& r) {
           g.lines_of_kind[4]++;
           break;
         case 5:
-          g.text += "  audio_single = " + std::to_string(r.range(1, 3000)) + "\n";
+          g.text += "  audio_single = " + std::to_string(r.range(1, 99)) + "\n";
           g.lines_of_kind[5]++;
           break;
         case 6:
-          g.text += "  audio_loop = " + std::to_string(r.range(1, 3000)) + "\n";
+          g.text += "  audio_loop = " + std::to_string(r.range(1, 99)) + "\n";
           g.lines_of_kind[6]++;
           break;
         case 7:

@@ -1,5 +1,5 @@
 // Guide 4: a speaker and sound files. DFPlayer facts (hardware/README.md): SPK 3 W into 4 ohm, bridge-tied (never
-// ground a speaker wire), LINE OUT for an amplifier; sound N is the card's mp3/NNNN-….mp3, numbered in write order; Studio's SD card
+// ground a speaker wire), LINE OUT for an amplifier; sound N is the one file in the card's folder NN (NN/001-….mp3); Studio's SD card
 // tool fills the card (SHOW-SCRIPT SS-C4, docs/SD-CARD.md). The case's SPK jack has no defined wiring yet (enclosure, owner): the guide stays safe.
 import { view } from '../scene/view.js';
 import { intro, need, before, tug, trouble, next } from './template.js';
@@ -37,11 +37,11 @@ export default {
     tug(view([125, 10, -20], 150, 150, 35)),
     { kind: 'wire', title: 'Amplifiers: LINE OUT', say: 'Both SPK wires carry sound, so joining one to an amplifier’s ground can damage the sound module. For an amplifier or a powered speaker, use the LINE OUT jack on the right edge instead, with an ordinary audio cable.',
       cam: view([130, 15, 20], 260, 110, 40), show: ['lineout'], focus: ['LINE OUT'] },
-    { kind: 'tell', title: 'Sounds on the card: with Studio', say: 'The easy way: in Specter Studio, open the SD card tool, add your sound files and put them in order. It erases the card, names the files and copies them in the right order. The first file is sound one, the second sound two.',
-      text: 'The easy way: in Specter Studio, open the SD card tool, add your sound files and put them in order. It erases the card, names the files and copies them in the right order: the first is sound 1, the second sound 2.',
+    { kind: 'tell', title: 'Sounds on the card: with Studio', say: 'The easy way: in Specter Studio, open the SD card tool, add your sound files and put them in order. It erases the card, makes a folder for each sound and names the files. The first file is sound one, the second sound two.',
+      text: 'The easy way: in Specter Studio, open the SD card tool, add your sound files and put them in order. It erases the card, makes a folder for each sound and names the files: the first is sound 1, the second sound 2.',
       cam: view([128, 25, 28], 160, 70, 35), hide: ['lineout'], focus: ['DFPLAYER'] },
-    { kind: 'tell', title: 'Without Studio: the mp3 folder', say: 'Without Studio, make a folder called M P 3 on an empty card. Copy your sounds into it one at a time, in order, named zero zero zero one dash and a name, then zero zero zero two dash and a name. The player counts the files in the order they were copied.',
-      text: 'Without Studio, make a folder called mp3 on an empty card. Copy your sounds into it one at a time, in order, named 0001-name.mp3, 0002-name.mp3. The player counts the files in the order they were copied (docs/SD-CARD.md).',
+    { kind: 'tell', title: 'Without Studio: one folder per sound', say: 'Without Studio, each sound gets its own folder. Make a folder called zero one, and put your first sound in it, named zero zero one dash and a name. Your second sound goes in folder zero two, also named zero zero one dash and a name. That is sound one and sound two.',
+      text: 'Without Studio, each sound gets its own folder. Make a folder called 01 and put your first sound in it, named 001-name.mp3. Your second sound goes in folder 02, also named 001-name.mp3. That is sound 1 and sound 2 (docs/SD-CARD.md).',
       cam: view([128, 25, 28], 160, 70, 35), inset: { type: 'folders' } },
     { kind: 'wire', title: 'Card in', say: 'With the power off, slide the card into the slot on the sound module, at the right hand edge of the board, contacts first.',
       cam: view([128, 25, 28], 140, 70, 35), show: ['card'], focus: ['DFPLAYER'] },
@@ -55,8 +55,8 @@ export default {
     next(view([110, 15, -10], 280, 150, 40)),
   ],
   trouble: [
-    'No sound: is the card in all the way, contacts first? Without Studio: is there a folder named mp3 with files named 0001-….mp3, 0002-….mp3?',
-    'The wrong sound plays: the files were copied out of order. Studio\'s SD card tool (Check a card, then Fix) copies them again in order. Some computers add hidden files that begin with a dot; the tool removes those.',
+    'No sound: is the card in all the way, contacts first? Without Studio: are the folders named 01, 02 and the files 001-….mp3?',
+    'Still nothing: Studio\'s SD card tool (Check a card) says what is wrong. Some computers add hidden files that begin with a dot; the tool removes those.',
     'Hum or buzz through an amplifier on LINE OUT: use a 3.5 mm ground-loop isolator on the LINE OUT lead.',
     'Quiet: raise the Volume slider on the Live tab, the volumes under Settings > Sound, or use LINE OUT with an amplifier.',
   ],

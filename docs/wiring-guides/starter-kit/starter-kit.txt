@@ -10,7 +10,7 @@
 #   short pixel strip (15 LEDs)      -> PIXEL 5V, DATA, GND, a 1000 uF capacitor at the strip (the pixels run from the three show-*.json shows)
 #   speaker                          -> SPK (neither wire to ground)
 #   SD card: the big sound as sound 1, the spooky sound as sound 2 (Studio's SD card tool; by hand
-#   mp3/0001-big.mp3 then mp3/0002-spooky.mp3)
+#   01/001-big.mp3 and 02/001-spooky.mp3)
 #
 #   [button]--TRIG1   OUT1--[LED strip]   OUT2--[fan]   PIXEL--[strip]
 #   [motion]--TRIG2   SPK--[speaker]

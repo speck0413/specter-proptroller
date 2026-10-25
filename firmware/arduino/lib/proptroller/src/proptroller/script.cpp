@@ -32,7 +32,7 @@ static const char* namedId(int k) { return k < CHANNEL_COUNT ? OUT_NAMES[k] : IN
 // One table of templates and one formatter. {1} {2} {3} are the words, {k} the number; a message about a line
 // gets the "line N: " prefix. The numbers in the texts are the limits below (checked at compile time).
 static_assert(SCRIPT_MAX_EFFECTS == 8 && SCRIPT_MAX_LINES == 256 && SCRIPT_MAX_BYTES == 8192 && SCRIPT_MAX_LINES_PER_EFFECT == 64 &&
-                  SCRIPT_MAX_NAME == 32 && SCRIPT_MAX_TRACK == 3000 && SCRIPT_MAX_TRACK == SOUND_MAX_TRACK && DMX_CHANNELS == 512,
+                  SCRIPT_MAX_NAME == 32 && SCRIPT_MAX_TRACK == 99 && SCRIPT_MAX_TRACK == SOUND_MAX_TRACK && DMX_CHANNELS == 512,
               "the message texts quote these limits");
 enum Msg : uint8_t {
   M_OUTSIDE, M_COLON, M_NONAME, M_LONGNAME, M_DUPNAME, M_UNKNOWN, M_WAITFORM, M_FADEFORM, M_FLICKERFORM, M_NOSOUND,
@@ -52,7 +52,7 @@ static const char* const MSG[] = {
     "write it as \"wait for trig1\".",
     "write a fade as \"fade out1 to 50% over 2\".",
     "write a flicker as \"flicker out1 for 3\".",
-    "say which sound by its number, for example \"audio_single = 1\" (the card's mp3/0001-<name>.mp3).",
+    "say which sound by its number, for example \"audio_single = 1\" (the card's 01/001-<name>.mp3).",
     "there is no {1} on this board. The inputs are trig1, trig2 and user1 to user3.",
     "{1} is a learn-mode button (buttons = learn). Set buttons to triggers to use it in a script.",
     "there is no {1} on this board. The outputs are out1 to out4, rly1, rly2, cc1 and cc2.",
@@ -63,8 +63,8 @@ static const char* const MSG[] = {
     "{1} cannot flicker. Flickering works on out1 to out4.",
     "\"{1}\" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min.",
     "that is longer than 24 hours.",
-    "\"{1}\" is not a sound number. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3).",
-    "sound {k} is out of range. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3).",
+    "\"{1}\" is not a sound number. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3).",
+    "sound {k} is out of range. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3).",
     "{1} needs the DMX add-on, and it is not turned on. Turn it on with the setting dmx_port = s4.",
     "{1} is set to {2} ({3}_role). Set {3}_role to shows to use it in a script.",
     "{1} belongs to the built-in pulse-and-recover effect. Turn the effect off (setting effect = none) or use another terminal.",
@@ -79,7 +79,7 @@ static const char* const MSG[] = {
     "effects \"{1}\" and \"{2}\" both play sound. There is one sound player: a new sound replaces the one playing.",
     "{1} switches again after {k} ms. Relays and contacts switch at most every 100 ms: wait at least 0.1 between its changes.",
     "write it as \"{1} = {2}\".",
-    "to play a sound, write \"audio_single = {1}\" (a sound is its number: the card's mp3/0001-<name>.mp3 is 1).",
+    "to play a sound, write \"audio_single = {1}\" (a sound is its number: the card's 01/001-<name>.mp3 is 1).",
     "write it as three lines: \"out1 = on\", \"wait 2\", \"out1 = off\".",
     "to wait a time, write \"wait {1}\".",
     "the pixel strip is not in scripts yet: make a show for it on the Shows tab, or use a sketch.",

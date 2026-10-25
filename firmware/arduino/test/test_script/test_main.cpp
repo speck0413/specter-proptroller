@@ -105,14 +105,14 @@ void every_error_is_reported_in_line_order() {
 void sounds_are_numbers_and_volume_is_a_percentage() {
   SoundList s = {{"Chime.mp3", 3}};  // a stored sound list is kept, never read
   ScriptProgram p;
-  TEST_ASSERT_TRUE(check("effect a:\nwait for trig1\naudio_single = 3000\naudio_loop = \"7\"\naudio_single = 12\naudio_stop\n", p, board(), s).ok());
-  TEST_ASSERT_EQUAL(3000, p.step[1].value);
+  TEST_ASSERT_TRUE(check("effect a:\nwait for trig1\naudio_single = 99\naudio_loop = \"7\"\naudio_single = 12\naudio_stop\n", p, board(), s).ok());
+  TEST_ASSERT_EQUAL(99, p.step[1].value);
   TEST_ASSERT_EQUAL(7, p.step[2].value);
   TEST_ASSERT_EQUAL(12, p.step[3].value);
-  ScriptCheck c = check("effect a:\nwait for trig1\naudio_single = Chime.mp3\naudio_single = 3001\naudio_loop = 7_wind\n", p, board(), s);
+  ScriptCheck c = check("effect a:\nwait for trig1\naudio_single = Chime.mp3\naudio_single = 100\naudio_loop = 7_wind\n", p, board(), s);
   TEST_ASSERT_EQUAL(3, c.errors.size());
-  TEST_ASSERT_EQUAL_STRING("line 3: \"Chime.mp3\" is not a sound number. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3).", c.errors[0].text.c_str());
-  TEST_ASSERT_EQUAL_STRING("line 4: sound 3001 is out of range. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3).", c.errors[1].text.c_str());
+  TEST_ASSERT_EQUAL_STRING("line 3: \"Chime.mp3\" is not a sound number. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3).", c.errors[0].text.c_str());
+  TEST_ASSERT_EQUAL_STRING("line 4: sound 100 is out of range. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3).", c.errors[1].text.c_str());
   // audio_volume: 0-100 % on the player's 0-30, halves up; off and 0 are mute; a sound line (may come first)
   TEST_ASSERT_TRUE(check("effect a:\naudio_volume = 60%\nwait for trig1\naudio_volume = 50%\naudio_volume = 1.7%\naudio_volume = off\naudio_volume = 0\naudio_volume = 100 %\n", p).ok());
   uint16_t want[] = {18, 15, 1, 0, 0, 30};
@@ -283,16 +283,16 @@ void sound_lines_and_dmx() {
   b.press(0, 150);
   b.step(500);
   TEST_ASSERT_EQUAL(1, b.sound.size());
-  TEST_ASSERT_TRUE(b.sound[0] == SoundCommand::loopMp3(4));  // played again when it finishes (sound.h)
+  TEST_ASSERT_TRUE(b.sound[0] == SoundCommand::loopFolder(4));  // the player loops folder 04 (sound.h)
   uint8_t c;
   uint16_t prm;
   b.sound[0].encode(c, prm);
-  TEST_ASSERT_EQUAL_HEX8(0x12, c);
+  TEST_ASSERT_EQUAL_HEX8(0x17, c);
   TEST_ASSERT_EQUAL(4, prm);
   b.step(1000);
   b.sound[1].encode(c, prm);
-  TEST_ASSERT_EQUAL_HEX8(0x12, c);  // sound 2: mp3/0002
-  TEST_ASSERT_EQUAL(2, prm);
+  TEST_ASSERT_EQUAL_HEX8(0x0F, c);  // sound 2: folder 02, track 1
+  TEST_ASSERT_EQUAL_HEX16(0x0201, prm);
   TEST_ASSERT_EQUAL(128, b.run.dmx()[2]);  // round(50 x 255 / 100), halves up
   b.step(1500);
   b.sound[2].encode(c, prm);

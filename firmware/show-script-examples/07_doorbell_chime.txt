@@ -5,8 +5,8 @@
 #   doorbell button                -> TRIG1 jack
 #   a 12 V light by the door       -> OUT1 + and -
 #   a second button                -> TRIG2 jack
-#   speaker on SPK; the SD card from Studio's SD card tool: the chime as sound 1 (mp3/0001-chime.mp3),
-#   rain as sound 2 (mp3/0002-rain.mp3)
+#   speaker on SPK; the SD card from Studio's SD card tool: the chime as sound 1 (01/001-chime.mp3),
+#   rain as sound 2 (02/001-rain.mp3)
 #
 #        [doorbell]--TRIG1   OUT1--[door light]   [button]--TRIG2   SPK--[speaker]
 

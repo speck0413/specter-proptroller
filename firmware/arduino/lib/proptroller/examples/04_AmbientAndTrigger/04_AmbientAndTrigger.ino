@@ -11,8 +11,8 @@
 //    470-1000 uF capacitor (6.3 V or more) across 5 V and ground where the strip's wires start, and plug or
 //    unplug the strip only with the power off;
 //  * a 12 V lamp on OUT3 (power the board from 12 V; the dim glow is dimming: 2 A or less);
-//  * the microSD card: the scene's sound as sound 1 (mp3/0001-scene.mp3), the ambient loop as sound 2
-//    (mp3/0002-ambient.mp3).
+//  * the microSD card: the scene's sound as sound 1 (01/001-scene.mp3), the ambient loop as sound 2
+//    (02/001-ambient.mp3).
 //
 // priority(0) makes the ambient look give way to the scene (priority 1, the default) on shared outputs.
 

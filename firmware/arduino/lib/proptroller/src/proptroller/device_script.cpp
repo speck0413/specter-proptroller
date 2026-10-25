@@ -335,9 +335,9 @@ void Controller::scriptTick(Millis now) {
   for (int c = 0; c < CHANNEL_COUNT; c++)
     if (script_prog_->channels & (1u << c)) engine_.setScript(ALL_CHANNELS[c], true, script_run_->level(c));
   for (auto& c : snd) {
-    if (c.kind == SoundCommand::Kind::LoopMp3 || c.kind == SoundCommand::Kind::LoopIndex) {
+    if (c.kind == SoundCommand::Kind::LoopFolder || c.kind == SoundCommand::Kind::LoopMp3 || c.kind == SoundCommand::Kind::LoopIndex) {
       // audio_loop: the background loop (0: off), resumed by itself after a sound played over it (SS-R7)
-      for (auto& x : sound_.scriptLoop(c.a, now, c.kind == SoundCommand::Kind::LoopMp3)) df_.command(x);
+      for (auto& x : sound_.scriptLoop(c.a, now, soundLoopMode(c))) df_.command(x);
       continue;
     }
     if (c.kind == SoundCommand::Kind::Volume) {

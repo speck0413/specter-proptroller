@@ -9,7 +9,7 @@
     "errors": [
       {
         "line": 3,
-        "message": "line 3: to play a sound, write \"audio_single = 1\" (a sound is its number: the card's mp3/0001-<name>.mp3 is 1)."
+        "message": "line 3: to play a sound, write \"audio_single = 1\" (a sound is its number: the card's 01/001-<name>.mp3 is 1)."
       },
       {
         "line": 5,

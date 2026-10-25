@@ -15,8 +15,8 @@ ordinary effect script, so afterwards you can change any time, level or sound as
 3. **Outputs to use**: tick the outputs this effect drives. OUT1-OUT4 are marked "dims": they get a level
    slider as well as a Hold button. RLY1, RLY2 (and CC1, CC2 when they are not used for something else) are on
    or off only. Outputs that have another job in Settings, or belong to the built-in effect, are not offered.
-4. **Sounds to use** (boards with a sound player): tick the sounds you want buttons for. Sound N is the file
-   `0001-….mp3`, `0002-….mp3` … in the card's `mp3` folder (Studio's SD card tool fills the card).
+4. **Sounds to use** (boards with a sound player): tick the sounds you want buttons for. Sound N is the one file
+   in the card's folder `NN` (`01/001-….mp3` is sound 1; Studio's SD card tool fills the card).
 5. Leave **Count 3, 2, 1** on if you want a moment to get ready, and press **Start**.
 6. Now do the effect. The board follows you live:
    - **Hold: on** turns the output on for as long as you hold it. Tap it for a short blip.

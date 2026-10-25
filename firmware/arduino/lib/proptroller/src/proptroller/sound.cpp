@@ -2,8 +2,25 @@
 
 namespace pt {
 
-SoundCommand soundPlay(uint16_t n, bool mp3) { return mp3 ? SoundCommand::playMp3(n) : SoundCommand::playIndex(n); }
-SoundCommand soundLoop(uint16_t n, bool mp3) { return mp3 ? SoundCommand::loopMp3(n) : SoundCommand::loopIndex(n); }
+SoundCommand soundPlay(uint16_t n, SoundMode mode) {
+  switch (mode) {
+    case SoundMode::Mp3: return SoundCommand::playMp3(n);
+    case SoundMode::Root: return SoundCommand::playIndex(n);
+    case SoundMode::Folder:
+    default: return SoundCommand::playFolder((uint8_t)n, 1);
+  }
+}
+SoundCommand soundLoop(uint16_t n, SoundMode mode) {
+  switch (mode) {
+    case SoundMode::Mp3: return SoundCommand::loopMp3(n);
+    case SoundMode::Root: return SoundCommand::loopIndex(n);
+    case SoundMode::Folder:
+    default: return SoundCommand::loopFolder((uint8_t)n);
+  }
+}
+SoundMode soundLoopMode(const SoundCommand& c) {
+  return c.kind == SoundCommand::Kind::LoopMp3 ? SoundMode::Mp3 : c.kind == SoundCommand::Kind::LoopIndex ? SoundMode::Root : SoundMode::Folder;
+}
 uint8_t soundVolume(uint16_t permille) { return (uint8_t)(((uint32_t)(permille > 1000 ? 1000 : permille) * 30 + 500) / 1000); }
 
 Commands SoundDirector::setConfig(const SoundConfig& c, Millis now) {
@@ -30,10 +47,10 @@ Commands SoundDirector::loopCmds() {
   playing_ = Playing();
   playing_.kind = Playing::Kind::Loop;
   playing_.track = loop_;
-  return {SoundCommand::volume(script_volume >= 0 ? (uint8_t)script_volume : cfg.ambient_volume), soundLoop(loop_, loop_mp3_)};
+  return {SoundCommand::volume(script_volume >= 0 ? (uint8_t)script_volume : cfg.ambient_volume), soundLoop(loop_, loop_mode_)};
 }
 
-Commands SoundDirector::scriptLoop(uint16_t n, Millis now, bool mp3) {
+Commands SoundDirector::scriptLoop(uint16_t n, Millis now, SoundMode mode) {
   if (n == 0) {
     loop_ = 0;
     if (playing_.kind != Playing::Kind::Loop) return {};
@@ -41,9 +58,9 @@ Commands SoundDirector::scriptLoop(uint16_t n, Millis now, bool mp3) {
     resumeAt(now + RESUME_MS);  // the ambient, when there is one
     return {SoundCommand::simple(SoundCommand::Kind::Stop)};
   }
-  if (loop_ == n && loop_mp3_ == mp3 && playing_.kind == Playing::Kind::Loop) return {};  // already looping that one
+  if (loop_ == n && loop_mode_ == mode && playing_.kind == Playing::Kind::Loop) return {};  // already looping that one
   loop_ = n;
-  loop_mp3_ = mp3;
+  loop_mode_ = mode;
   // a sound playing over it (a script's audio_single, a show's sound, the trigger sound) finishes first
   if (playing_.kind == Playing::Kind::Show || playing_.kind == Playing::Kind::Trigger) return {};
   if (!loopWanted()) { resumeAt(now); return {}; }
@@ -96,8 +113,8 @@ Commands SoundDirector::onEvent(const DfEvent& e, Millis now) {
       break;
     case DfEvent::Kind::Finished:
       if (playing_.kind == Playing::Kind::Loop) {
-        if (loop_mp3_) return {soundLoop(loop_, true)};  // the mp3 folder has no loop command: play it again
-        break;  // the player loops the root file itself
+        if (loop_mode_ == SoundMode::Mp3) return {soundLoop(loop_, SoundMode::Mp3)};  // no loop command: play it again
+        break;  // the player loops a folder or a root file itself
       }
       // ambient loops; anything else returns to the loop or the ambient after a short pause
       resumeAt(playing_.kind == Playing::Kind::Ambient ? now : now + RESUME_MS);

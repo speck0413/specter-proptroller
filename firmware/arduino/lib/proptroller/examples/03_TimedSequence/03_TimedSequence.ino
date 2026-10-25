@@ -11,7 +11,7 @@
 //  * the "try me" button of a battery-powered prop wired to RLY1 COM and NO (a dry contact: it just closes,
 //    like the button). Low voltage only: never a fog machine's wired remote (on many machines it carries
 //    mains); a fog machine with a DMX IN socket goes over DMX (firmware/SHOW-SCRIPT.md section 7);
-//  * sounds: a knock as sound 1 (mp3/0001-knock.mp3) on the microSD card.
+//  * sounds: a knock as sound 1 (01/001-knock.mp3) on the microSD card.
 //
 // Each step starts at the same moment as the one before, unless you write then() (wait until everything so
 // far is finished) or wait(...).

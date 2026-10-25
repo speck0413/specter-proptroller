@@ -125,18 +125,17 @@ over-the-air update, and the IDE does not use the shared flash map unless you se
 
 ## 4. Sound files
 
-The sound player plays files by number: sound N is the file `0001-….mp3`, `0002-….mp3` … in the card's `mp3`
-folder, and the same number means the same file everywhere:
+The sound player plays files by number, one sound per folder: sound N is the one file in the card's folder `NN`
+(`01/001-ambient.mp3` is sound 1), and the same number means the same file everywhere:
 
 | Sound | Played by |
 |---|---|
-| 1, 2, … 3000 | `playSound(1)`, `playSound(2)`, …; a show script's `audio_single = 1`, `audio_loop = 2`, … |
+| 1, 2, … 99 | `playSound(1)`, `playSound(2)`, …; a show script's `audio_single = 1`, `audio_loop = 2`, … |
 | `trigger_track` (1) | the default trigger sound, for a trigger whose effect has no sound of its own (Settings → Sound) |
 | `ambient_track` (2) | the ambient loop between triggers (Settings → Sound); off while a script is stored |
 
-The player numbers the files in the order they were written to the card, so let Studio's SD card tool fill it
-(it erases the card, names the files and copies them in order); by hand, see `docs/SD-CARD.md` in the
-repository ("Setting up the SD card for the DFPlayer"). The card: 32 GB or smaller, FAT32.
+Let Studio's SD card tool fill the card (it erases it, makes the folders and names the files); by hand, see
+`docs/SD-CARD.md` in the repository ("Setting up the SD card for the DFPlayer"). The card: 32 GB or smaller, FAT32.
 
 ## 5. Next
 

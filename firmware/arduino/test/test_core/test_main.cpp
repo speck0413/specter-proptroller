@@ -235,7 +235,7 @@ static Commands online(SoundDirector& d) {
   d.onEvent(dfe(DfEvent::Kind::Online, 2), 1500);
   return d.tick(1500);
 }
-static const Commands AMBIENT = {SoundCommand::volume(15), SoundCommand::playMp3(2)};  // ambient_track 2, the mp3 folder
+static const Commands AMBIENT = {SoundCommand::volume(15), SoundCommand::playFolder(2, 1)};  // ambient_track 2: folder 02
 
 void ambient_trigger_ambient() {
   SoundDirector d;
@@ -244,7 +244,7 @@ void ambient_trigger_ambient() {
   TEST_ASSERT_TRUE(d.playing().kind == Playing::Kind::Ambient);
   d.onEvent(dfe(DfEvent::Kind::Finished, 1), 5000);
   TEST_ASSERT_TRUE(cmdsEq(d.tick(5000), AMBIENT));
-  TEST_ASSERT_TRUE(cmdsEq(d.trigger(), {SoundCommand::volume(25), SoundCommand::playMp3(1)}));
+  TEST_ASSERT_TRUE(cmdsEq(d.trigger(), {SoundCommand::volume(25), SoundCommand::playFolder(1, 1)}));
   TEST_ASSERT_TRUE(d.tick(6000).empty());
   d.onEvent(dfe(DfEvent::Kind::Finished, 1), 8000);
   TEST_ASSERT_TRUE(d.tick(8100).empty());
@@ -272,31 +272,38 @@ void a_missing_trigger_sound_plays_nothing_and_the_ambient_comes_back() {
   TEST_ASSERT_TRUE(cmdsEq(d.tick(2400), AMBIENT));
 }
 
-void an_mp3_loop_is_played_again_when_it_finishes() {
+void a_loop_is_the_players_own_and_an_mp3_loop_is_played_again() {
   SoundConfig c;
   c.ambient = false;
   SoundDirector d(c);
   online(d);
-  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(7, 2000), {SoundCommand::volume(c.ambient_volume), SoundCommand::loopMp3(7)}));
-  TEST_ASSERT_TRUE(cmdsEq(d.onEvent(dfe(DfEvent::Kind::Finished, 7), 5000), {SoundCommand::loopMp3(7)}));
+  // SOUND_MODE Folder: the player loops folder 07 itself, nothing to send when a pass ends
+  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(7, 2000), {SoundCommand::volume(c.ambient_volume), SoundCommand::loopFolder(7)}));
+  TEST_ASSERT_TRUE(d.onEvent(dfe(DfEvent::Kind::Finished, 7), 5000).empty());
   d.script_volume = 12;  // a script's audio_volume: its loop's volume
   TEST_ASSERT_TRUE(d.scriptLoop(0, 6000).size() == 1);
-  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(3, 6100), {SoundCommand::volume(12), SoundCommand::loopMp3(3)}));
-  // the root mode loops with the player's own repeat
-  TEST_ASSERT_TRUE(d.scriptLoop(0, 6200).size() == 1);
-  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(4, 6300, false), {SoundCommand::volume(12), SoundCommand::loopIndex(4)}));
+  // the mp3 folder has no loop command: played again each time it ends
+  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(3, 6100, SoundMode::Mp3), {SoundCommand::volume(12), SoundCommand::loopMp3(3)}));
+  TEST_ASSERT_TRUE(cmdsEq(d.onEvent(dfe(DfEvent::Kind::Finished, 3), 8000), {SoundCommand::loopMp3(3)}));
+  TEST_ASSERT_TRUE(d.scriptLoop(0, 8200).size() == 1);
+  TEST_ASSERT_TRUE(cmdsEq(d.scriptLoop(4, 8300, SoundMode::Root), {SoundCommand::volume(12), SoundCommand::loopIndex(4)}));
   TEST_ASSERT_TRUE(d.onEvent(dfe(DfEvent::Kind::Finished, 4), 9000).empty());
 }
 
 void sound_numbers_volumes_and_modes() {
-  TEST_ASSERT_TRUE(soundPlay(5) == SoundCommand::playMp3(5));  // SOUND_MODE: the mp3 folder
-  TEST_ASSERT_TRUE(soundPlay(5, false) == SoundCommand::playIndex(5));
+  TEST_ASSERT_TRUE(soundPlay(5) == SoundCommand::playFolder(5, 1));  // SOUND_MODE: one sound per folder
+  TEST_ASSERT_TRUE(soundPlay(5, SoundMode::Mp3) == SoundCommand::playMp3(5));
+  TEST_ASSERT_TRUE(soundPlay(5, SoundMode::Root) == SoundCommand::playIndex(5));
+  TEST_ASSERT_EQUAL(99, SOUND_MAX_TRACK);
   TEST_ASSERT_EQUAL(0, soundVolume(0));
   TEST_ASSERT_EQUAL(15, soundVolume(500));
   TEST_ASSERT_EQUAL(18, soundVolume(600));
   TEST_ASSERT_EQUAL(30, soundVolume(1000));
   uint8_t cmd = 0;
   uint16_t p = 0;
+  soundLoop(99).encode(cmd, p);
+  TEST_ASSERT_EQUAL_HEX8(0x17, cmd);
+  TEST_ASSERT_EQUAL(99, p);
   SoundCommand::loopMp3(3000).encode(cmd, p);
   TEST_ASSERT_EQUAL_HEX8(0x12, cmd);
   TEST_ASSERT_EQUAL(3000, p);
@@ -419,7 +426,7 @@ int main() {
   RUN_TEST(ambient_trigger_ambient);
   RUN_TEST(one_file_card);
   RUN_TEST(a_missing_trigger_sound_plays_nothing_and_the_ambient_comes_back);
-  RUN_TEST(an_mp3_loop_is_played_again_when_it_finishes);
+  RUN_TEST(a_loop_is_the_players_own_and_an_mp3_loop_is_played_again);
   RUN_TEST(sound_numbers_volumes_and_modes);
   RUN_TEST(shows_and_suspend);
   RUN_TEST(teach_quantizes_and_clamps);

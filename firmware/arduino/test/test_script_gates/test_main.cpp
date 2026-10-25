@@ -413,7 +413,7 @@ static std::vector<std::string> playsOf(Sim& s, size_t from) {
 
 void the_background_loop_resumes_by_itself() {
   Sim s("loop");
-  s.world().df.setCard({std::make_tuple(DfModel::MP3, 1, 30000), std::make_tuple(DfModel::MP3, 2, 1500)});
+  s.world().df.setCard({std::make_tuple(1, 1, 30000), std::make_tuple(2, 1, 1500)});
   s.powerCycle();
   JsonDocument q;
   q["op"] = "set_script";
@@ -423,7 +423,7 @@ void the_background_loop_resumes_by_itself() {
   serializeJson(q, j);
   TEST_ASSERT_TRUE(s.request(j).doc()["result"]["ok"].as<bool>());
   s.step(3000);
-  TEST_ASSERT_EQUAL_STRING_MESSAGE("/mp3/0001", s.world().df.nowPlaying().c_str(), "the loop from the top of the effect");
+  TEST_ASSERT_EQUAL_STRING_MESSAGE("/01/001", s.world().df.nowPlaying().c_str(), "the loop from the top of the effect");
   size_t n0 = s.world().df.plays.size();
   s.press(Input::Trig1, 150);
   s.step(4000);
@@ -431,18 +431,18 @@ void the_background_loop_resumes_by_itself() {
   std::string all;
   for (auto& x : p) all += x + " ";
   TEST_ASSERT_EQUAL_MESSAGE(2, p.size(), all.c_str());
-  TEST_ASSERT_EQUAL_STRING("/mp3/0002@25", p[0].c_str());
-  TEST_ASSERT_EQUAL_STRING("/mp3/0001@15", p[1].c_str());
+  TEST_ASSERT_EQUAL_STRING("/02/001@25", p[0].c_str());
+  TEST_ASSERT_EQUAL_STRING("/01/001@15", p[1].c_str());
   s.press(Input::Trig2, 150);
   s.step(1000);
   TEST_ASSERT_EQUAL_STRING("", s.world().df.nowPlaying().c_str());
 }
 
-// audio_volume: the script's sounds play at it from that line on; the sound op's loop_mp3 plays /mp3/NNNN again
-// each time it ends (sound.h: the mp3 folder has no loop command), and play_mp3 plays it once.
+// audio_volume: the script's sounds play at it from that line on (sound 2: folder 02); the sound op's loop_mp3
+// plays /mp3/NNNN again each time it ends (the mp3 folder has no loop command), and play_mp3 plays it once.
 void audio_volume_and_the_mp3_folder() {
   Sim s("vol");
-  s.world().df.setCard({std::make_tuple(DfModel::MP3, 2, 1000), std::make_tuple(DfModel::MP3, 3, 800)});
+  s.world().df.setCard({std::make_tuple(2, 1, 1000), std::make_tuple(DfModel::MP3, 3, 800)});
   s.powerCycle();
   JsonDocument q;
   q["op"] = "set_script";
@@ -456,8 +456,8 @@ void audio_volume_and_the_mp3_folder() {
   s.step(4000);
   auto p = playsOf(s, n0);
   TEST_ASSERT_EQUAL(2, p.size());
-  TEST_ASSERT_EQUAL_STRING("/mp3/0002@25", p[0].c_str());  // trigger_volume until a script sets one
-  TEST_ASSERT_EQUAL_STRING("/mp3/0002@12", p[1].c_str());  // round(40 x 30 / 100)
+  TEST_ASSERT_EQUAL_STRING("/02/001@25", p[0].c_str());  // trigger_volume until a script sets one
+  TEST_ASSERT_EQUAL_STRING("/02/001@12", p[1].c_str());  // round(40 x 30 / 100)
   TEST_ASSERT_TRUE(s.request(R"({"op":"set_script","text":""})").isOk());
   n0 = s.world().df.plays.size();
   TEST_ASSERT_TRUE(s.request(R"({"op":"sound","cmd":"loop_mp3","track":3})").isOk());
@@ -478,7 +478,7 @@ void audio_volume_and_the_mp3_folder() {
 // A run that turns the loop off: back at the effect's top, its sound lines run again and the loop is back.
 void the_sound_lines_at_the_top_run_after_each_run() {
   Sim s("loop");
-  s.world().df.setCard({std::make_tuple(DfModel::MP3, 1, 30000), std::make_tuple(DfModel::MP3, 2, 1500)});
+  s.world().df.setCard({std::make_tuple(1, 1, 30000), std::make_tuple(2, 1, 1500)});
   s.powerCycle();
   JsonDocument q;
   q["op"] = "set_script";
@@ -487,12 +487,12 @@ void the_sound_lines_at_the_top_run_after_each_run() {
   serializeJson(q, j);
   TEST_ASSERT_TRUE(s.request(j).doc()["result"]["ok"].as<bool>());
   s.step(3000);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0001", s.world().df.nowPlaying().c_str());
+  TEST_ASSERT_EQUAL_STRING("/01/001", s.world().df.nowPlaying().c_str());
   s.press(Input::Trig1, 150);
   s.step(500);
   TEST_ASSERT_EQUAL_STRING_MESSAGE("", s.world().df.nowPlaying().c_str(), "the run turned the loop off");
   s.step(2000);
-  TEST_ASSERT_EQUAL_STRING_MESSAGE("/mp3/0001", s.world().df.nowPlaying().c_str(), "back at the top, the loop again");
+  TEST_ASSERT_EQUAL_STRING_MESSAGE("/01/001", s.world().df.nowPlaying().c_str(), "back at the top, the loop again");
   // a start that waited for the outputs goes after those sound lines: its sound is not cut by the loop
   q["text"] = "effect run:\n  audio_loop = 1\n  wait for trig1\n  audio_loop = off\n  out1 = on\n  sleep 1\n  out1 = off\n"
               "effect other:\n  wait for trig2\n  audio_single = 2\n  out1 = on\n  sleep 1\n  out1 = off\n";
@@ -506,7 +506,7 @@ void the_sound_lines_at_the_top_run_after_each_run() {
   s.step(1000);
   s.setInput(Input::Trig2, false);
   s.step(300);
-  TEST_ASSERT_EQUAL_STRING_MESSAGE("/mp3/0002", s.world().df.nowPlaying().c_str(), "the remembered start's sound");
+  TEST_ASSERT_EQUAL_STRING_MESSAGE("/02/001", s.world().df.nowPlaying().c_str(), "the remembered start's sound");
 }
 
 // A profile names the page's buttons and status lines (control and status aliases with a label), a time left

@@ -63,10 +63,10 @@ export const chips = (names, lit) => `<div class="wg-ph-chips">${names.map((n) =
 export const outRow = (name, press) => `<div class="wg-ph-out"><b>${name}</b>${['On', 'Off', 'Auto'].map((b) => `<span class="${b === press ? 'pressed' : ''}">${b}</span>`).join('')}</div>`;
 export const setting = (label, value, extra = '') => `<div class="wg-ph-set"><label>${esc(label)}</label><span class="wg-ph-sel">${esc(value)} ▾</span></div>${extra}<div class="wg-ph-save">Save settings</div>`;
 
-// The SD card's mp3 folder, as a tree.
+// The SD card's folders, one sound each, as a tree.
 function folders({ title = 'On the card' }) {
-  const s = `<div class="wg-tree"><div>📁 mp3</div><div class="in">🎵 0001-thunder.mp3 <i>sound 1</i></div><div class="in">🎵 0002-scream.mp3 <i>sound 2</i></div></div>`;
-  return card(title, s, 'Copied in this order, one at a time (Studio\'s SD card tool does it). FAT32, 32 GB or smaller.');
+  const s = `<div class="wg-tree"><div>📁 01</div><div class="in">🎵 001-thunder.mp3 <i>sound 1</i></div><div>📁 02</div><div class="in">🎵 001-scream.mp3 <i>sound 2</i></div></div>`;
+  return card(title, s, 'One folder per sound, each file named 001-….mp3 (Studio\'s SD card tool does it). FAT32, 32 GB or smaller.');
 }
 
 // The bulk capacitor at the strip's input, on a small screw block (no soldering).

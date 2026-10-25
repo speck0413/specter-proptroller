@@ -70,7 +70,7 @@ void example_show_runs_from_trig1_with_sound_and_pixels() {
   TEST_ASSERT_TRUE_MESSAGE(o[0].first - t0 <= 110, "the 100 ms debounce + one tick");
   TEST_ASSERT_EQUAL(2000, o[1].first - o[0].first);
   bool played = false;
-  for (auto& p : sim.world().df.plays) played |= p.what == "/mp3/0001";
+  for (auto& p : sim.world().df.plays) played |= p.what == "/01/001";
   TEST_ASSERT_TRUE_MESSAGE(played, "trigger sound (the example show has no sound of its own)");
   TEST_ASSERT_TRUE(sim.world().pixel_frames > 10);
   TEST_ASSERT_EQUAL(0, sim.world().pixel_errors);
@@ -473,19 +473,19 @@ static std::vector<DfModel::Play>& plays(Sim& s) { return s.world().df.plays; }
 void default_ambient_then_trigger_sound_then_ambient() {
   Sim sim("t");
   sim.addExample();  // a fresh board has no shows
-  sim.world().df.setCard({{DfModel::MP3, 2, 4000}, {DfModel::MP3, 1, 1500}});
+  sim.world().df.setCard({{2, 1, 4000}, {1, 1, 1500}});
   sim.powerCycle(10);
   sim.step(2500);
   TEST_ASSERT_EQUAL(1, plays(sim).size());
-  TEST_ASSERT_EQUAL_STRING("/mp3/0002", plays(sim)[0].what.c_str());  // ambient_track 2
+  TEST_ASSERT_EQUAL_STRING("/02/001", plays(sim)[0].what.c_str());  // ambient_track 2
   TEST_ASSERT_EQUAL(15, plays(sim)[0].volume);
   TEST_ASSERT_EQUAL_STRING("ambient", stateCtl(sim)["sound"]["source"].as<const char*>());
   Millis t0 = sim.now();
   sim.press(Input::Trig1, 150);
   sim.step(100);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0001", plays(sim)[1].what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/01/001", plays(sim)[1].what.c_str());
   TEST_ASSERT_EQUAL(25, plays(sim)[1].volume);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0001", stateCtl(sim)["sound"]["track"].as<const char*>());
+  TEST_ASSERT_EQUAL_STRING("/01/001", stateCtl(sim)["sound"]["track"].as<const char*>());
   sim.step(300);
   auto cc1 = onSpans(sim, Channel::Cc1, t0);
   TEST_ASSERT_EQUAL(1, cc1.size());
@@ -493,7 +493,7 @@ void default_ambient_then_trigger_sound_then_ambient() {
   TEST_ASSERT_EQUAL(200, onSpans(sim, Channel::Cc2, t0)[0].second);
   TEST_ASSERT_TRUE_MESSAGE(cc1[0].first - t0 <= 110, "pulse on the accepted press (after the 100 ms debounce)");
   sim.step(2000);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0002", plays(sim).back().what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/02/001", plays(sim).back().what.c_str());
   Millis t1 = sim.now();
   size_t n = plays(sim).size();
   sim.press(Input::Trig1, 150);
@@ -504,14 +504,14 @@ void default_ambient_then_trigger_sound_then_ambient() {
 
 void one_file_card_plays_it_as_the_trigger_and_skips_ambient() {
   Sim sim("t");
-  sim.world().df.setCard({{DfModel::MP3, 1, 1000}});
+  sim.world().df.setCard({{1, 1, 1000}});
   sim.powerCycle(10);
   sim.step(3000);
   TEST_ASSERT_EQUAL(0, plays(sim).size());
   TEST_ASSERT_TRUE(stateCtl(sim)["sound"]["ambient_missing"].as<bool>());
   sim.press(Input::Trig1, 150);
   sim.step(200);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0001", plays(sim)[0].what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/01/001", plays(sim)[0].what.c_str());
   sim.step(3000);
   TEST_ASSERT_EQUAL(1, plays(sim).size());
 }
@@ -523,12 +523,12 @@ void a_file_outside_the_mp3_folder_does_not_play() {
   sim.step(3000);
   sim.press(Input::Trig1, 150);
   sim.step(300);
-  TEST_ASSERT_EQUAL(0, plays(sim).size());  // sound 1 is mp3/0001 (sound.h SOUND_MODE): no other file is tried
+  TEST_ASSERT_EQUAL(0, plays(sim).size());  // sound 1 is folder 01 (sound.h SOUND_MODE): no other file is tried
 }
 
 void ambient_off_and_settings() {
   Sim sim("t");
-  sim.world().df.setCard({{DfModel::MP3, 2, 4000}, {DfModel::MP3, 5, 4000}, {DfModel::MP3, 3, 1000}});
+  sim.world().df.setCard({{2, 1, 4000}, {5, 1, 4000}, {3, 1, 1000}});
   set(sim, "ambient", "false");
   set(sim, "trigger_track", "3");
   set(sim, "trigger_volume", "30");
@@ -538,13 +538,13 @@ void ambient_off_and_settings() {
   TEST_ASSERT_EQUAL(0, plays(sim).size());
   sim.press(Input::Trig1, 150);
   sim.step(200);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0003", plays(sim)[0].what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/03/001", plays(sim)[0].what.c_str());
   TEST_ASSERT_EQUAL(30, plays(sim)[0].volume);
   set(sim, "ambient_track", "5");
   set(sim, "ambient_volume", "7");
   set(sim, "ambient", "true");
   sim.step(2000);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0005", plays(sim).back().what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/05/001", plays(sim).back().what.c_str());
   TEST_ASSERT_EQUAL(7, plays(sim).back().volume);
 }
 
@@ -606,7 +606,7 @@ void plain_trigger_without_a_show_still_counts() {
   sim.step(300);
   TEST_ASSERT_EQUAL(1, onSpans(sim, Channel::Cc1, t0).size());
   bool found = false;
-  for (auto& p : plays(sim)) found |= p.what == "/mp3/0001";
+  for (auto& p : plays(sim)) found |= p.what == "/01/001";
   TEST_ASSERT_TRUE(found);
 }
 

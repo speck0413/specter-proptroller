@@ -1179,7 +1179,7 @@ Response Controller::handle(Request& r) {
     (void)reqSound(r, c);
     // loop_mp3: /mp3/NNNN over and over (the director plays it again each time it ends); stop ends it too
     if (c.kind == SoundCommand::Kind::LoopMp3) {
-      for (auto& x : sound_.scriptLoop(c.a, now_, true)) df_.command(x);
+      for (auto& x : sound_.scriptLoop(c.a, now_, SoundMode::Mp3)) df_.command(x);
       return Response::done(r);
     }
     if (c.kind == SoundCommand::Kind::Stop)

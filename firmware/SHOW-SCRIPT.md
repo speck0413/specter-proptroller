@@ -18,7 +18,7 @@ board's protections apply to a script without being written.
 effect porch light:
   wait for trig1
   out1 = on
-  audio_single = 1     # plays sound 1: the card's mp3/0001-….mp3
+  audio_single = 1     # plays sound 1: the file in the card's folder 01
   wait 30
   fade out1 to 0% over 2
 
@@ -157,10 +157,10 @@ way (a settings reset) is kept but does not run until the name is back or the sc
 - **SS-C3 Limits** (checked at save, sized for the smallest board, the Pico W): at most 8 effects, 64 lines
   per effect, 256 lines and 8 KB of text in all.
 - **SS-C4 Sounds are numbers.** The sound player plays files by number and cannot read names off the card, so a
-  script says `audio_single = 3`: sound 3 is the file `0003-….mp3` in the card's `mp3` folder (1 to 3000; the
-  rest of the file name is for people). The player numbers files in the order they were written to the card, so
-  Studio's SD card tool fills the card for you; by hand, see `docs/SD-CARD.md` ("Setting up the SD card for the
-  DFPlayer"). The checker refuses a name or a number outside 1-3000 and says how to put the sound on the card.
+  script says `audio_single = 3`: sound 3 is the one file in the card's folder `03`, named `001-….mp3` (1 to 99;
+  the rest of the file name is for people). Studio's SD card tool fills the card for you; by hand, see
+  `docs/SD-CARD.md` ("Setting up the SD card for the DFPlayer"). The checker refuses a name or a number outside
+  1-99 and says how to put the sound on the card.
 - **SS-C5 Same everywhere.** The firmware and any other checker (an editor, an app) give the same answer for
   every script in the shared golden set (§8).
 

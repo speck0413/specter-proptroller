@@ -51,7 +51,7 @@ const maxOn = () => {
   for (const v of params?.values || []) { const k = /^([a-z]+\d)_max_on_ms$/.exec(v.key); if (k) m[k[1]] = Number(v.value) || 0; }
   return m;
 };
-// the sounds: 1 to 3 (sound N is the card's mp3/NNNN-<name>.mp3)
+// the sounds: 1 to 3 (sound N is the one file in the card's folder NN)
 function soundChoices() {
   if (!has('sound')) return [];
   return [1, 2, 3].map((n) => ({ n, label: `Sound ${n}` }));
@@ -126,7 +126,7 @@ function letGoBoard() {
   for (const s of Object.values(rx.sent)) clearTimeout(s.timer);
   rx.sent = {};
 }
-const playSound = (n) => conn.call('sound', { cmd: 'play_mp3', track: n }).catch(() => {});
+const playSound = (n) => conn.call('sound', { cmd: 'play_folder', folder: n, track: 1 }).catch(() => {});
 const later = (ms, f) => rx.timers.push(setTimeout(f, Math.max(0, ms)));
 function stopTimers() { rx.timers.forEach(clearTimeout); rx.timers = []; clearInterval(rx.ticker); rx.ticker = null; }
 

@@ -59,9 +59,9 @@ a newer release. Your settings, shows and script are kept.
 
 ## 3. The sound card
 
-The sound player plays files by **number**: sound 1 is `mp3/0001-….mp3` on the card, sound 2 is
-`mp3/0002-….mp3`, and so on, numbered in the order the files were written to the card. Let Studio's **SD card**
-tool fill the card: it erases it, names the files and copies them in the right order. To do it by hand, follow
+The sound player plays files by **number**, one sound per folder: sound 1 is the one file in the card's folder
+`01` (`01/001-ambient.mp3`), sound 2 the one in folder `02`, and so on up to `99`. Let Studio's **SD card** tool
+fill the card: it erases it, makes the folders and names the files. To do it by hand, follow
 [docs/SD-CARD.md](docs/SD-CARD.md) ("Setting up the SD card for the DFPlayer").
 
 In an effect script, `audio_single = 1` plays sound 1, `= 2` sound 2, and so on. Put the card in the DFPlayer
@@ -111,7 +111,7 @@ Open the **Script** tab, delete what is in the box, and type (or paste):
 effect porch light:
   wait for trig1
   out1 = on
-  audio_single = 1     # plays sound 1 (mp3/0001-….mp3)
+  audio_single = 1     # plays sound 1 (the file in folder 01)
   wait 10
   fade out1 to 0% over 2
   wait 5               # a rest before it can run again

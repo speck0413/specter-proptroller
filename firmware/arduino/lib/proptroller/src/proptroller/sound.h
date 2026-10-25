@@ -7,8 +7,13 @@
 //
 // | SOUND_MODE         | Sound N is                                              | Play / loop          |
 // |--------------------|---------------------------------------------------------|----------------------|
+// | SoundMode::Folder  | the one file in folder NN: /NN/001<anything>.mp3        | 0x0F N,1 / 0x17 N    |
 // | SoundMode::Mp3     | /mp3/NNNN<anything>.mp3 (the player reads 4 digits)     | 0x12, again on finish|
 // | SoundMode::Root    | the N-th file written to the card's root                | 0x03 / 0x08          |
+//
+// Folder is the default (owner): one sound per folder, the order files were copied in does not matter, and the
+// player loops a folder by itself. Datasheet (FN-M16P) 1.4: folders 01-99, files 001-255, and text may follow
+// the digits ("001Yesterday Once More.mp3").
 //
 // A missing file: the ambient stays off until the card is put in again; a missing loop ends the loop.
 #pragma once
@@ -17,14 +22,18 @@
 
 namespace pt {
 
-enum class SoundMode : uint8_t { Mp3, Root };
-static const SoundMode SOUND_MODE = SoundMode::Mp3;
-// DFPlayer Mini datasheet (FN-M16P), 3.6.7: the folder "MP3" holds tracks 0001 to 3000 (0x12 plays one).
-static const uint16_t SOUND_MAX_TRACK = 3000;
-// Sound n, once, in SOUND_MODE (or in /mp3 when mp3 is true).
-SoundCommand soundPlay(uint16_t n, bool mp3 = SOUND_MODE == SoundMode::Mp3);
-// Sound n, over and over: in /mp3 it plays once and the director plays it again when it finishes.
-SoundCommand soundLoop(uint16_t n, bool mp3 = SOUND_MODE == SoundMode::Mp3);
+enum class SoundMode : uint8_t { Folder, Mp3, Root };
+static const SoundMode SOUND_MODE = SoundMode::Folder;
+// The datasheet's limits: folders 01-99 (0x0F / 0x17); the folder "MP3" holds 0001-3000 (3.6.7, 0x12).
+static const uint16_t SOUND_MAX_FOLDER = 99, SOUND_MAX_MP3 = 3000;
+static const uint16_t SOUND_MAX_TRACK = SOUND_MODE == SoundMode::Folder ? SOUND_MAX_FOLDER : SOUND_MAX_MP3;
+// Sound n, once, in SOUND_MODE (or another mode).
+SoundCommand soundPlay(uint16_t n, SoundMode mode = SOUND_MODE);
+// Sound n, over and over: a folder and a root file loop in the player; in /mp3 it plays once and the director
+// plays it again when it finishes. 0: the loop off.
+SoundCommand soundLoop(uint16_t n, SoundMode mode = SOUND_MODE);
+// The mode a loop command belongs to (LoopFolder, LoopMp3 or LoopIndex).
+SoundMode soundLoopMode(const SoundCommand& c);
 // A script's audio_volume = <level>: a percentage (permille 0-1000) on the player's 0-30, halves up.
 uint8_t soundVolume(uint16_t permille);
 
@@ -63,9 +72,8 @@ class SoundDirector {
   Commands tick(Millis now);
   // A show script's background loop (audio_loop, SHOW-SCRIPT.md SS-R7): sound n loops, at the ambient volume (or
   // the script's audio_volume once it set one); a sound played over it (audio_single) takes over and the loop
-  // comes back when that sound ends. 0: no loop. mp3: loop /mp3/NNNN whatever SOUND_MODE is (the sound op's
-  // loop_mp3).
-  Commands scriptLoop(uint16_t n, Millis now, bool mp3 = SOUND_MODE == SoundMode::Mp3);
+  // comes back when that sound ends. 0: no loop. mode: another mode than SOUND_MODE (the sound op's loop_mp3).
+  Commands scriptLoop(uint16_t n, Millis now, SoundMode mode = SOUND_MODE);
   uint16_t loopTrack() const { return loop_; }
   // The last audio_volume a script set (0-30), or -1: kept until it changes or the board restarts.
   int script_volume = -1;
@@ -76,7 +84,7 @@ class SoundDirector {
   bool loopWanted() const { return loop_ && online_ && !suspended_; }
   Commands loopCmds();
   uint16_t loop_ = 0;
-  bool loop_mp3_ = SOUND_MODE == SoundMode::Mp3;
+  SoundMode loop_mode_ = SOUND_MODE;
   Playing playing_;
   bool ambient_missing_ = false, online_ = false, suspended_ = false;
   bool has_resume_ = false;

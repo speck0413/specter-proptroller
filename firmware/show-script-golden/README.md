@@ -81,8 +81,8 @@ exactly (byte for byte).
 - **Time**: a number (whole or decimal) and an optional unit, a space allowed between: `ms`, `s`, `sec`, `secs`,
   `second`, `seconds`, `min`, `mins`, `minute`, `minutes`; no unit means seconds. Rounded to the nearest
   millisecond, halves up. 0 to 24 hours.
-- **Sound**: a whole number, 1 to 3000 (DFPlayer datasheet: the folder "MP3" holds tracks 0001 to 3000). Any other
-  word (a file name included) is M-sound; a number outside 1-3000 is M-soundrange.
+- **Sound**: a whole number, 1 to 99 (one sound per folder; the DFPlayer datasheet's folders are 01-99). Any other
+  word (a file name included) is M-sound; a number outside 1-99 is M-soundrange.
 
 ### Messages
 
@@ -99,11 +99,11 @@ exactly (byte for byte).
 | M-longname | `line {n}: the effect name is longer than 32 characters.` |
 | M-dupname | `line {n}: there is already an effect called "{name}" (line {m}). Give each effect its own name.` |
 | M-unknown | `line {n}: I do not understand "{text}". A line is effect, wait for, an output = on/off/N%, wait, fade, flicker, audio_single, audio_loop, audio_volume or audio_stop.` |
-| M-unknown, hints | instead of the above for the commonest mistakes: a line starting `turn ` gets `line {n}: write it as three lines: "out1 = on", "wait 2", "out1 = off".`; `play {v}` gets `line {n}: to play a sound, write "audio_single = {v}" (a sound is its number: the card's mp3/0001-<name>.mp3 is 1).` (a leading `sound ` is dropped from `{v}`: `play sound 1` gets `"audio_single = 1"`; a `{v}` that is not a whole number becomes `1`); `delay {v}` or `pause {v}` gets `line {n}: to wait a time, write "wait {v}".`; an output name, a space and more (`out1 on`) gets `line {n}: write it as "{x} = {rest}".` |
+| M-unknown, hints | instead of the above for the commonest mistakes: a line starting `turn ` gets `line {n}: write it as three lines: "out1 = on", "wait 2", "out1 = off".`; `play {v}` gets `line {n}: to play a sound, write "audio_single = {v}" (a sound is its number: the card's 01/001-<name>.mp3 is 1).` (a leading `sound ` is dropped from `{v}`: `play sound 1` gets `"audio_single = 1"`; a `{v}` that is not a whole number becomes `1`); `delay {v}` or `pause {v}` gets `line {n}: to wait a time, write "wait {v}".`; an output name, a space and more (`out1 on`) gets `line {n}: write it as "{x} = {rest}".` |
 | M-waitform | `line {n}: write it as "wait for trig1".` (`wait`, `wait for`, or `wait` and an input without the `for`) |
 | M-fadeform | `line {n}: write a fade as "fade out1 to 50% over 2".` |
 | M-flickerform | `line {n}: write a flicker as "flicker out1 for 3".` |
-| M-nosound | `line {n}: say which sound by its number, for example "audio_single = 1" (the card's mp3/0001-<name>.mp3).` |
+| M-nosound | `line {n}: say which sound by its number, for example "audio_single = 1" (the card's 01/001-<name>.mp3).` |
 | M-input | `line {n}: there is no {x} on this board. The inputs are trig1, trig2 and user1 to user3.` |
 | M-learn | `line {n}: {x} is a learn-mode button (buttons = learn). Set buttons to triggers to use it in a script.` |
 | M-output | `line {n}: there is no {x} on this board. The outputs are out1 to out4, rly1, rly2, cc1 and cc2.`; for `pixel` (or `pixels`): `line {n}: the pixel strip is not in scripts yet: make a show for it on the Shows tab, or use a sketch.` |
@@ -114,8 +114,8 @@ exactly (byte for byte).
 | M-noflicker | `line {n}: {x} cannot flicker. Flickering works on out1 to out4.` |
 | M-time | `line {n}: "{v}" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min.` |
 | M-toolong | `line {n}: that is longer than 24 hours.` |
-| M-sound | `line {n}: "{v}" is not a sound number. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3).` |
-| M-soundrange | `line {n}: sound {k} is out of range. Sounds are numbered 1 to 3000: Studio's SD card tool puts them on the card for you (sound 5 is mp3/0005-<name>.mp3).` |
+| M-sound | `line {n}: "{v}" is not a sound number. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3).` |
+| M-soundrange | `line {n}: sound {k} is out of range. Sounds are numbered 1 to 99: Studio's SD card tool puts them on the card for you (sound 5 is 05/001-<name>.mp3).` |
 | M-volume | `line {n}: "{v}" is not a volume. Use a percentage from 0% to 100%, or off.` |
 | M-dmxoff | `line {n}: {x} needs the DMX add-on, and it is not turned on. Turn it on with the setting dmx_port = s4.` |
 | M-role | `line {n}: {x} is set to {role} ({x}_role). Set {x}_role to shows to use it in a script.` with `{role}` = `pulse on every trigger` (trigger_repeat), `pulse when a sound starts` (sound_trigger) or `not used` (none) |
@@ -248,12 +248,11 @@ choices within their tolerances):
   script loads; one generator shared by every flicker. At each change `level = base × (100 + r % 901) / 1000`
   (`base` = the level before the flicker), the next change `30 + r % 91` ms later.
 - Outputs keep their level until a step changes it (SS-R6). Everything is off at power-on.
-- **Sound** (SS-C4, SS-R7): sound N is the card's `/mp3/NNNN…` file (the player reads the four digits:
-  `mp3/0003-scream.mp3` is sound 3). `audio_single` sends DFPlayer command `0x12` with parameter `N`; `audio_loop`
-  sends `0x12` with parameter `N` and stays the background loop: the mp3 folder has no loop command, so each time
-  the track ends the same `0x12` goes again (within 100 ms of the player's "finished"; a trace does not list
-  these); after an `audio_single` ends (the sound's own length, plus 300 ms) the loop starts again (`0x12` once
-  more); `audio_volume` sends `0x06` with its volume at once, and the script's sounds use it from then on
+- **Sound** (SS-C4, SS-R7): sound N is the one file in the card's folder `NN`, its track 1 (`05/001-scream.mp3` is
+  sound 5; the player reads the folder's two digits and the file's three). `audio_single` sends DFPlayer command
+  `0x0F` with parameter `(N << 8) | 1`; `audio_loop` sends `0x17` with parameter `N` (the player loops that folder,
+  its one file) and stays the background loop: after an `audio_single` ends (the sound's own length, plus 300 ms)
+  the loop starts again (`0x17` once more); `audio_volume` sends `0x06` with its volume at once, and the script's sounds use it from then on
   (`audio_single` and the loop send it before they play) until another `audio_volume` or a restart; until a
   script sets one, `audio_single` plays at `trigger_volume` and the loop at `ambient_volume`. `audio_loop =
   off` sends `0x16` when the loop is playing; `audio_stop` sends `0x16` and ends the loop. Setting the loop that
@@ -316,7 +315,6 @@ choices within their tolerances):
   `then`; from `to + 20` on it is at `then` (until its next listed change).
 - **`dmx`**: every change of a channel's value in the frames sent, as `[t, value]`; a change must be in the
   first frame sent at or after `t`, within `[t, t + 30]`.
-- **`sound`**: the DFPlayer frames that play, loop or stop (`play` and `loop` are both command `0x12` with the
-  sound's number, `stop` is `0x16`), in order, each sent within `[t, t + 300]`; a loop's `0x12` sent again when its
-  track ends is not listed. Other frames (volume, queries, ACKs, the start-up reset) are not compared.
+- **`sound`**: the DFPlayer frames that play, loop or stop (`play` N is command `0x0F` with `(N << 8) | 1`, `loop`
+  N is `0x17` with `N`, `stop` is `0x16`), in order, each sent within `[t, t + 300]`. Other frames (volume, queries, ACKs, the start-up reset) are not compared.
 - Every output not listed in `edges`, `samples` or `flicker` must stay off from 0 to `until`.

@@ -703,7 +703,7 @@ void SM_PR1_E12_recover_opens_nothing_pulses_nothing() {
     TEST_ASSERT_EQUAL(0, when(s, OUT1, t, on));
     TEST_ASSERT_TRUE(s.changes(Channel::Cc1, t).empty() && s.changes(Channel::Cc2, t).empty());
     for (size_t i = plays; i < s.world().df.plays.size(); i++)
-      TEST_ASSERT_TRUE_MESSAGE(s.world().df.plays[i].what != "/mp3/0001", "no run sound");
+      TEST_ASSERT_TRUE_MESSAGE(s.world().df.plays[i].what != "/01/001", "no run sound");
     TEST_ASSERT_TRUE(when(s, OUT2, t, on) > 0);
   }
   TEST_ASSERT_EQUAL(3, statusInt(s, "runs_left"));
@@ -724,17 +724,17 @@ void SM_PR2_recover_during_a_cycle_is_remembered_once() {
 // ---------------------------------------------------------------- sound
 void SM_SND1_SND2_ambient_and_the_trigger_sound() {
   FxSim s;
-  s.world().df.setCard({{DfModel::MP3, 2, 60000}, {DfModel::MP3, 1, 1000}});
+  s.world().df.setCard({{2, 1, 60000}, {1, 1, 1000}});
   s.powerCycle(10);
   fast(s);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0002", s.world().df.plays.back().what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/02/001", s.world().df.plays.back().what.c_str());
   s.press(Input::Trig1, 150);
   s.step(100);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0001", s.world().df.plays.back().what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/01/001", s.world().df.plays.back().what.c_str());
   s.step(2000);
-  TEST_ASSERT_EQUAL_STRING("/mp3/0002", s.world().df.plays.back().what.c_str());
+  TEST_ASSERT_EQUAL_STRING("/02/001", s.world().df.plays.back().what.c_str());
   FxSim one;
-  one.world().df.setCard({{DfModel::MP3, 1, 1000}});
+  one.world().df.setCard({{1, 1, 1000}});
   one.powerCycle(10);
   fast(one);
   TEST_ASSERT_TRUE_MESSAGE(one.world().df.plays.empty(), "one track: no ambient");

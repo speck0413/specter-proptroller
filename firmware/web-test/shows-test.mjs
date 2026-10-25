@@ -80,7 +80,7 @@ await page.selectOption('.track .cue select >> nth=0', 'level');
 const lv = await page.$eval('.track .cue .params label', (l) => [l.firstChild.textContent, l.querySelector('input').value]);
 ok(lv[0] === 'level (%)' && lv[1] === '50', 'a level in %: ' + lv.join(' '));
 ok(JSON.parse(await page.inputValue('#ed-json')).tracks[0].cues[0].level === 500, 'stored as 500 (permille)');
-// a sound cue plays sound N (folder 0: the card's mp3/NNNN-….mp3), no folder field
+// a sound cue plays sound N (folder 0: the one file in the card's folder NN), no folder field
 if (await page.$('#ed-new-target option[value="SOUND"]')) {
   await page.selectOption('#ed-new-target', 'SOUND');
   await page.click('#ed-add-track');
