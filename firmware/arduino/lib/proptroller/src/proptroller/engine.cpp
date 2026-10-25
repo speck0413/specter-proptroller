@@ -353,7 +353,7 @@ void Engine::setPaused(bool p) {
 
 // ---------------------------------------------------------------- tick
 
-Frame Engine::tick(Millis now_in) {
+PT_STEP_CODE Frame Engine::tick(Millis now_in) {
   bump(now_in);
   Millis now = last_now_;
 
@@ -548,7 +548,7 @@ bool Engine::ramping(Channel c) const {
   return s.level() > 0 && s.level() < last_req_[index(c)];
 }
 
-void Engine::pixelLayer(Millis now, Frame& f) const {
+PT_STEP_CODE void Engine::pixelLayer(Millis now, Frame& f) const {
   bool have = false;
   uint8_t best_pri = 0;
   uint64_t best_seq = 0;

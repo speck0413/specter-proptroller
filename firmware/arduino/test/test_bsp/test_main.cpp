@@ -437,6 +437,40 @@ void apply_levels_and_inputs() {
   TEST_ASSERT_EQUAL(0, p.duty[1]);
 }
 
+// The step calls apply() and setStatusLed() every tick: the same request again touches no pin, but a relay held
+// off for its dwell still comes on when the dwell is over.
+struct CountingPins : FakePins {
+  int dig_writes[4] = {0, 0, 0, 0}, led_writes = 0;
+  bool setDigital(int i, bool on) override { dig_writes[i]++; dig[i] = on; return true; }
+  bool setStatusLed(bool on) override { led_writes++; led = on; return true; }
+};
+void the_same_request_again_touches_no_pin() {
+  CountingPins p;
+  Board b(p);
+  Level on[8] = {500, 0, 0, 0, FULL, 0, 0, 0};
+  b.apply(0, on);
+  int w0 = p.writes[0], d0 = p.dig_writes[0];
+  for (Millis t = 10; t < 1000; t += 10) b.apply(t, on);
+  TEST_ASSERT_EQUAL(w0, p.writes[0]);
+  TEST_ASSERT_EQUAL(d0, p.dig_writes[0]);
+  // RLY1 off, then on again 20 ms later: held off for the dwell, on once it is over, with the same request each tick
+  Level off[8] = {500, 0, 0, 0, 0, 0, 0, 0};
+  b.apply(1000, off);
+  TEST_ASSERT_FALSE(p.dig[0]);
+  Millis on_at = 0;
+  for (Millis t = 1020; t < 1300 && !on_at; t += 10) {
+    b.apply(t, on);
+    if (p.dig[0]) on_at = t;
+  }
+  TEST_ASSERT_EQUAL(1000 + RELAY_MIN_DWELL_MS, on_at);
+  // the status LED: written when it changes only
+  int l0 = p.led_writes;
+  for (int i = 0; i < 10; i++) b.setStatusLed(true);
+  TEST_ASSERT_EQUAL(l0 + 1, p.led_writes);
+  b.setStatusLed(false);
+  TEST_ASSERT_EQUAL(l0 + 2, p.led_writes);
+}
+
 // ---------------------------------------------------------------- outputs (SM-S3: no current checks)
 void any_out_dims_at_any_level() {
   FakePins p;
@@ -472,5 +506,6 @@ int main() {
   RUN_TEST(stop_clears_queue_and_clamps);
   RUN_TEST(boot_all_off);
   RUN_TEST(apply_levels_and_inputs);
+  RUN_TEST(the_same_request_again_touches_no_pin);
   return UNITY_END();
 }

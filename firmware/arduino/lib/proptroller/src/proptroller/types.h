@@ -22,6 +22,15 @@
 // info.fw_impl of this implementation
 #define PROPTROLLER_FW_IMPL "cpp"
 
+// The code of the 1 ms sample and the 10 ms tick, ESP32: in IRAM (about 47 KB free), so the step does not wait on
+// flash cache misses that Wi-Fi on the other core causes (a miss costs about 4 us at DIO 40 MHz).
+#if defined(ESP32) && defined(ARDUINO)
+#include <esp_attr.h>
+#define PT_STEP_CODE IRAM_ATTR
+#else
+#define PT_STEP_CODE
+#endif
+
 namespace pt {
 
 // An enumerator as a table index.

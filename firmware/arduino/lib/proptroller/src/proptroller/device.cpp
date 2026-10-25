@@ -116,7 +116,7 @@ Controller::Controller(BoardPins& pins, ByteStream& uart, PixelOut& pixels, Stor
 
 // The inputs as the controller sees them: active = pressed. TRIG1 / TRIG2 set to sensor_high are inverted here
 // (XOR with the board support package's own polarity, applied where the pins are read).
-void Controller::readInputs(bool raw[INPUT_COUNT]) {
+PT_STEP_CODE void Controller::readInputs(bool raw[INPUT_COUNT]) {
   board_.readInputs(raw);
   for (int k = 0; k < 2; k++) raw[k] = raw[k] != settings_.trig_sensor_high[k];
   // a test press is a press like a real one (OR'd with the pin) when a remote start is allowed
@@ -158,8 +158,6 @@ void Controller::applySettings() {
   // the effect's confirm and release times are the board's trigger times
   settings_.fx.confirm_ms = s.trig_debounce_ms;
   settings_.fx.release_ms = s.trig_release_ms;
-  pixel_buf_.assign(s.pixel_count, Rgb());
-  pixel_have_last_ = false;
   for (auto& c : sound_.setConfig(soundConfig(), now_)) df_.command(c);
   if (script_run_) script_run_->setTimes(s.trig_debounce_ms, s.trig_release_ms, boot_ms_ + SCRIPT_BOOT_LOCKOUT_MS);
   effectSync();
@@ -198,7 +196,7 @@ void Controller::pulseRole(Millis now, OutputRole role, uint32_t ms) {
 
 // Role pulses and the effect's outputs go into the engine as owned levels (as a script's), so one pass applies
 // the interlock, the maximum on-times and pause to every source; a manual test still wins.
-void Controller::ownedLevels(Millis now) {
+PT_STEP_CODE void Controller::ownedLevels(Millis now) {
   bool o[3] = {false, false, false};
   if (fx_) fx_->outputs(o[0], o[1], o[2]);
   for (int i = 0; i < CHANNEL_COUNT; i++) {
@@ -250,14 +248,14 @@ ShowError Controller::addCodeShow(const Show& s) {
 
 // ---------------------------------------------------------------- tick
 
-void Controller::sampleTriggers(Millis now) {
+PT_STEP_CODE void Controller::sampleTriggers(Millis now) {
   expireTests(now);
   bool raw[INPUT_COUNT];
   readInputs(raw);
   sampleTriggersWith(now, raw);
 }
 
-void Controller::sampleTriggersWith(Millis now, const bool raw[INPUT_COUNT]) {
+PT_STEP_CODE void Controller::sampleTriggersWith(Millis now, const bool raw[INPUT_COUNT]) {
   if (now > sample_now_) sample_now_ = now;
   for (int k = 0; k < INPUT_COUNT; k++) {
     if (raw[k]) {
@@ -285,8 +283,9 @@ void Controller::sampleTriggersWith(Millis now, const bool raw[INPUT_COUNT]) {
   }
 }
 
-void Controller::tick(Millis now) {
+PT_STEP_CODE void Controller::tick(Millis now) {
   StepScope in_step(this);
+  profMark(-1);
   now_ = now;
   updateTick(now);
   if (updating()) {
@@ -303,6 +302,7 @@ void Controller::tick(Millis now) {
 
   // triggers: their 1 ms samples since the last tick, then this one
   sampleTriggersWith(now, raw);
+  profMark(0);
   std::vector<std::pair<uint8_t, TriggerEvent>> evs;
   evs.swap(trig_events_);
   for (auto& te : evs) {
@@ -361,13 +361,17 @@ void Controller::tick(Millis now) {
     EffectEvent e = fx_->safetyOff();
     if (e.kind != EffectEvent::Kind::None) effectEvents(now, {e});
   }
+  profMark(1);
   scriptTick(now);
+  profMark(2);
   for (int i = 0; i < CHANNEL_COUNT; i++)
     if (manual_until_[i] && now >= manual_until_[i]) { engine_.setManual(ALL_CHANNELS[i], false, 0); manual_until_[i] = 0; }
   ownedLevels(now);
   Frame frame = engine_.tick(now);
   scriptPixels(frame);
+  profMark(3);
   board_.apply(now, frame.levels);
+  profMark(4);
   bool show_sound_started = false;
   for (auto& c : frame.sound) {
     sound_.observeShow(c, now);
@@ -385,7 +389,9 @@ void Controller::tick(Millis now) {
     else if (e.kind == DfEvent::Kind::Error) { (void)snprintf(b, sizeof b, "sound player error %u", e.value); log(b); }
     else if (e.kind == DfEvent::Kind::Timeout) { (void)snprintf(b, sizeof b, "sound player did not answer command 0x%02x", e.value); log(b); }
   }
-  renderPixels(now, frame);
+  profMark(5);
+  publishPixels(frame);
+  profMark(6);
   for (auto& n : frame.notices) {
     if (n.kind == Notice::Kind::PausedChanged && n.paused) {
       stopOwned(now);
@@ -410,7 +416,41 @@ void Controller::tick(Millis now) {
   if (dirty_ && now >= save_not_before_ &&
       (now >= dirty_at_ + (quiet ? SAVE_DELAY_MS : SAVE_MAX_DELAY_MS) || now >= dirty_since_ + SAVE_MAX_DELAY_MS))
     save_due_ = true;
+  profMark(7);
+  prof_n_++;
 }
+
+// the profile marks: part k took the time since the last mark (-1: the tick starts)
+void Controller::profMark(int part) {
+#if defined(PROPTROLLER_STEP_PROFILE)
+  if (!us_clock_) return;
+  uint32_t t = us_clock_();
+  if (part >= 0) {
+    uint32_t d = t - prof_at_;
+    prof_sum_[part] += d;
+    if (d > prof_max_[part]) prof_max_[part] = d;
+  }
+  prof_at_ = t;
+#else
+  (void)part;
+#endif
+}
+
+std::string Controller::profileReport() {
+  if (!prof_n_) return "";
+  // inputs and their samples, trigger events and buttons, script tick, engine and owned levels, pin writes, sound,
+  // pixels, notices / runs / status lamp / save
+  static const char* const PART[PROFILE_PARTS] = {"in", "trig", "script", "engine", "pins", "sound", "pixels", "rest"};
+  std::string o = "; step parts avg/max us:";
+  for (int k = 0; k < PROFILE_PARTS; k++) {
+    o += " " + std::string(PART[k]) + " " + std::to_string(prof_sum_[k] / prof_n_) + "/" + std::to_string(prof_max_[k]);
+    prof_sum_[k] = 0;
+    prof_max_[k] = 0;
+  }
+  prof_n_ = 0;
+  return o;
+}
+
 
 void Controller::background() {
   if (self_check_due_) selfCheckVerdict();
@@ -423,7 +463,7 @@ void Controller::background() {
   if (runs_.saveDue(now_, quietNow())) runsSaveNow();
 }
 
-bool Controller::quietNow() const { return !engine_.anyRunning() && !(fx_ && fx_->busy()) && !scriptEffectRunning(); }
+PT_STEP_CODE bool Controller::quietNow() const { return !engine_.anyRunning() && !(fx_ && fx_->busy()) && !scriptEffectRunning(); }
 
 // ---------------------------------------------------------------- run counters
 
@@ -477,7 +517,7 @@ void Controller::runStatus(std::vector<ParamValue>& out, bool aliased) const {
 
 // A show script's pixels line: the strip's effect over the shows' until another pixels line (a pause's off and a
 // manual pixel test still win, as they do for the outputs). Its speed is pixel_speed now.
-void Controller::scriptPixels(Frame& f) const {
+PT_STEP_CODE void Controller::scriptPixels(Frame& f) const {
   const ScriptStep* st = nullptr;
   Millis since = 0;
   if (engine_.isPaused() || engine_.manualPixel() || !script_run_ || !script_prog_ || !script_run_->pixels(st, since)) return;
@@ -486,34 +526,64 @@ void Controller::scriptPixels(Frame& f) const {
   f.pixel_start = since;
 }
 
-void Controller::renderPixels(Millis now, const Frame& f) {
+// same picture: the effect and its look; the start counts only for an animation (a still colour looks the same
+// whenever it started)
+static bool samePicture(bool has_a, const Effect& a, Millis start_a, bool has_b, const Effect& b, Millis start_b) {
+  if (has_a != has_b) return false;
+  return !has_a || (a == b && (!a.animated() || start_a == start_b));
+}
+
+// The step's side: what the strip should show now, handed over only when it changed (never a render, never a wait).
+PT_STEP_CODE void Controller::publishPixels(const Frame& f) {
+  PixelRequest r;
+  r.has = f.has_pixel;
+  if (r.has) { r.effect = f.pixel; r.start = f.pixel_start; }
+  r.brightness = settings_.pixel_brightness;
+  r.count = settings_.pixel_count;
+  if (pixel_published_ && r.brightness == pixel_req_.brightness && r.count == pixel_req_.count &&
+      samePicture(r.has, r.effect, r.start, pixel_req_.has, pixel_req_.effect, pixel_req_.start))
+    return;
+  pixel_req_ = r;
+  pixel_published_ = true;
+  uint32_t q = pixel_seq_.load(std::memory_order_relaxed);
+  pixel_seq_.store(q + 1, std::memory_order_relaxed);
+  std::atomic_thread_fence(std::memory_order_release);
+  pixel_mail_ = r;
+  std::atomic_thread_fence(std::memory_order_release);
+  pixel_seq_.store(q + 2, std::memory_order_release);
+}
+
+void Controller::pixelService(Millis now) {
+  // the step's latest request (a copy the step did not touch meanwhile; else the next call takes it)
+  PixelRequest f;
+  uint32_t a = pixel_seq_.load(std::memory_order_acquire);
+  if (a == 0 || (a & 1)) return;
+  f = pixel_mail_;
+  std::atomic_thread_fence(std::memory_order_acquire);
+  if (pixel_seq_.load(std::memory_order_relaxed) != a) return;
+  if (f.count != pixel_buf_.size()) { pixel_buf_.assign(f.count, Rgb()); pixel_have_last_ = false; }
   if (pixel_buf_.empty()) return;
-  bool animated = f.has_pixel && f.pixel.animated();
-  if (pixel_have_last_) {
-    // a still effect looks the same whenever it started: only an animation's start matters
-    bool same = pixel_last_has_ == f.has_pixel &&
-                (!f.has_pixel || (pixel_last_ == f.pixel && (!animated || pixel_last_start_ == f.pixel_start)));
-    if (same && (!animated || now - pixel_last_at_ < PIXEL_PERIOD_MS)) return;
-  }
-  // the last frame is still on the wire: never wait for it in the step; this frame (or a newer one) goes on a
-  // later tick, as nothing above was marked sent
+  bool animated = f.has && f.effect.animated();
+  if (pixel_have_last_ && f.brightness == pixel_last_.brightness &&
+      samePicture(f.has, f.effect, f.start, pixel_last_.has, pixel_last_.effect, pixel_last_.start) &&
+      (!animated || now - pixel_last_at_ < PIXEL_PERIOD_MS))
+    return;
+  // the last frame is still on the wire: never wait for it; this frame (or a newer one) goes on a later call
   if (pixels_.busy()) { pixel_skipped++; return; }
-  if (f.has_pixel) render(f.pixel, now > f.pixel_start ? now - f.pixel_start : 0, pixel_buf_.data(), pixel_buf_.size());
+  if (f.has) render(f.effect, now > f.start ? now - f.start : 0, pixel_buf_.data(), pixel_buf_.size());
   else for (auto& p : pixel_buf_) p = Rgb();
   // the brightness cap: a plain scale of every channel (the firmware does not estimate current, SM-S3)
-  if (settings_.pixel_brightness < PIXEL_BRIGHTNESS_MAX) {
-    uint8_t scale = (uint8_t)((uint32_t)settings_.pixel_brightness * 255 / PIXEL_BRIGHTNESS_MAX);
+  if (f.brightness < PIXEL_BRIGHTNESS_MAX) {
+    uint8_t scale = (uint8_t)((uint32_t)f.brightness * 255 / PIXEL_BRIGHTNESS_MAX);
     for (auto& p : pixel_buf_) p = p.scale(scale);
   }
   if (!pixels_.write(pixel_buf_.data(), pixel_buf_.size())) pixel_errors++;
   pixel_have_last_ = true;
-  pixel_last_has_ = f.has_pixel;
-  pixel_last_ = f.pixel;
-  pixel_last_start_ = f.pixel_start;
+  pixel_last_ = f;
   pixel_last_at_ = now;
 }
 
-Pattern Controller::pattern() const {
+PT_STEP_CODE Pattern Controller::pattern() const {
   if (fx_) return fx_->pattern(now_);
   if (engine_.isPaused()) return Pattern(Pattern::Kind::Heartbeat);
   for (auto& t : trig_)
@@ -878,7 +948,7 @@ void Controller::stateToJson(JsonObject o) const {
       if (a.kind == AliasEntry::Kind::Status && a.target == k && !a.label.empty()) o["run_labels"][k] = a.label;
   net_.toJson(o["net"].to<JsonObject>());
   soundState(o["sound"].to<JsonObject>());
-  if (pixel_have_last_ && pixel_last_has_) o["pixel"] = pixel_last_.describe();
+  if (pixel_published_ && pixel_req_.count && pixel_req_.has) o["pixel"] = pixel_req_.effect.describe();
   if (fx_) {
     // the state panel: the effect's state machine and its cooldown timer
     JsonObject m = o["machine"].to<JsonObject>();

@@ -4,7 +4,7 @@ namespace pt {
 
 static inline Millis since(Millis now, Millis t) { return now > t ? now - t : 0; }
 
-Edge Debouncer::update(bool raw, Millis now) {
+PT_STEP_CODE Edge Debouncer::update(bool raw, Millis now) {
   if (!started_) { started_ = true; candidate_ = raw; since_ = now; }
   if (raw != candidate_) { candidate_ = raw; since_ = now; }
   if (candidate_ != stable_ && since(now, since_) >= debounce_ms_) {
@@ -14,7 +14,7 @@ Edge Debouncer::update(bool raw, Millis now) {
   return Edge::None;
 }
 
-TriggerEvent Trigger::update(bool raw, Millis now) {
+PT_STEP_CODE TriggerEvent Trigger::update(bool raw, Millis now) {
   Edge edge = deb_.update(raw, now);
   // arming: raw and debounced level both inactive for release_ms; any raw activity restarts it
   if (raw) {
@@ -42,7 +42,7 @@ bool Button::heldMs(Millis now, uint32_t& out) const {
   return true;
 }
 
-ButtonEvent Button::update(bool raw, Millis now) {
+PT_STEP_CODE ButtonEvent Button::update(bool raw, Millis now) {
   ButtonEvent ev;
   Edge e = deb_.update(raw, now);
   if (!armed_) {

@@ -6,6 +6,9 @@
 
 #if defined(ESP32)
 #include <driver/rmt.h>
+#include <esp_ipc.h>
+#include <soc/gpio_reg.h>
+#include <soc/soc.h>
 #include <driver/uart.h>
 #include <esp_mac.h>
 #include <esp_partition.h>
@@ -105,6 +108,26 @@ bool ArduinoPins::readLow(int input, bool& low) {
   return true;
 }
 
+static bool g_latched = false;
+static uint64_t g_latched_in = 0;
+void ArduinoPins::useLatched(bool on, uint64_t gpio_in) {
+  g_latched = on;
+  g_latched_in = gpio_in;
+}
+
+bool ArduinoPins::readAllLow(bool low[INPUT_COUNT]) {
+#if defined(ESP32)
+  const uint64_t in = g_latched ? g_latched_in : (uint64_t)REG_READ(GPIO_IN_REG) | ((uint64_t)(REG_READ(GPIO_IN1_REG) & 0xFF) << 32);  // GPIO0-31, 32-39
+#else
+  const uint64_t in = gpio_get_all();
+#endif
+  for (int k = 0; k < INPUT_COUNT; k++) {
+    const uint8_t p = in_pin_[k];
+    low[k] = p != NO_PIN && (((in >> p) & 1) != 0) == in_high_[k];
+  }
+  return true;
+}
+
 bool ArduinoPins::setStatusLed(bool on) {
   if (led_ >= 0) digitalWrite((uint8_t)led_, on ? HIGH : LOW);
   return true;
@@ -172,15 +195,32 @@ static void IRAM_ATTR toRmt(const void* src, rmt_item32_t* dest, size_t src_size
   *item_num = num;
 }
 
+// The channel takes the memory of channels 0-3 (256 items, RMT RAM, not heap; nothing else here uses the RMT):
+// the refill interrupt comes every 128 items (160 us), so a late one (Wi-Fi's interrupts share core 0) still
+// keeps the wire fed.
+static const uint8_t PIX_MEM_BLOCKS = 4;
+struct RmtInstall {
+  gpio_num_t pin;
+  bool inverted;
+  bool ok;
+};
+// on core 0: the driver's interrupt is allocated on the core that installs it, and core 1 runs the step
+static void rmtInstall(void* arg) {
+  RmtInstall& a = *(RmtInstall*)arg;
+  rmt_config_t c = RMT_DEFAULT_CONFIG_TX(a.pin, PIX_CH);
+  c.clk_div = 2;
+  c.mem_block_num = PIX_MEM_BLOCKS;
+  c.tx_config.idle_output_en = true;
+  c.tx_config.idle_level = a.inverted ? RMT_IDLE_LEVEL_HIGH : RMT_IDLE_LEVEL_LOW;
+  c.tx_config.carrier_en = false;
+  a.ok = rmt_config(&c) == ESP_OK && rmt_driver_install(PIX_CH, 0, 0) == ESP_OK &&
+         rmt_translator_init(PIX_CH, a.inverted ? toRmt : toRmtPlain) == ESP_OK;
+}
+
 bool BoardPixels::begin() {
   if (pin_ == NO_PIN) return false;  // the board profile has no pixel port
-  rmt_config_t c = RMT_DEFAULT_CONFIG_TX((gpio_num_t)pin_, PIX_CH);
-  c.clk_div = 2;
-  c.tx_config.idle_output_en = true;
-  c.tx_config.idle_level = inverted_ ? RMT_IDLE_LEVEL_HIGH : RMT_IDLE_LEVEL_LOW;
-  c.tx_config.carrier_en = false;
-  ok_ = rmt_config(&c) == ESP_OK && rmt_driver_install(PIX_CH, 0, 0) == ESP_OK &&
-        rmt_translator_init(PIX_CH, inverted_ ? toRmt : toRmtPlain) == ESP_OK;
+  RmtInstall a{(gpio_num_t)pin_, inverted_, false};
+  ok_ = esp_ipc_call_blocking(0, rmtInstall, &a) == ESP_OK && a.ok;
   return ok_;
 }
 

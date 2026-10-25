@@ -931,6 +931,39 @@ void pixels_600_step_time_on_the_host() {
   TEST_ASSERT_TRUE_MESSAGE(total / N < 2000, b);
 }
 
+// The strip is rendered outside the step (a core-0 task every 2 ms on the ESP32, loop() on the Pico): calling the
+// service far more often than the step ticks sends no more frames, and the step's hand-over is only a copy.
+void the_pixel_service_paces_itself() {
+  Sim sim("t");
+  set(sim, "pixel_count", "600");
+  sim.world().pixel_wire = true;
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel","action":{"do":"rainbow","period_ms":2000}})").isOk());
+  sim.step(100);
+  uint32_t f0 = sim.world().pixel_frames;
+  for (int i = 0; i < 1000; i++) {
+    sim.tick1();
+    sim.ctl().pixelService(sim.world().now);
+    sim.ctl().pixelService(sim.world().now);
+  }
+  TEST_ASSERT_INT_WITHIN(2, 50, sim.world().pixel_frames - f0);
+  TEST_ASSERT_EQUAL(0, sim.world().pixel_writes_while_busy);
+  TEST_ASSERT_TRUE(sim.request(R"({"op":"pixel","action":{"do":"fill","color":"#00ff00"}})").isOk());
+  sim.step(100);
+  uint32_t f1 = sim.world().pixel_frames;
+  for (int i = 0; i < 500; i++) { sim.tick1(); sim.ctl().pixelService(sim.world().now); }
+  TEST_ASSERT_EQUAL(f1, sim.world().pixel_frames);
+  for (auto& p : sim.world().pixels) TEST_ASSERT_TRUE(p == Rgb(0, 255, 0));
+  // brightness is part of what is handed over: a still colour is sent again at the new brightness
+  set(sim, "pixel_brightness", "50");
+  sim.step(50);
+  TEST_ASSERT_TRUE(sim.world().pixels[0] == Rgb(0, 255, 0).scale(127));
+  // pixel_count 0: nothing is sent
+  set(sim, "pixel_count", "0");
+  uint32_t f2 = sim.world().pixel_frames;
+  sim.step(200);
+  TEST_ASSERT_EQUAL(f2, sim.world().pixel_frames);
+}
+
 int main() {
   UNITY_BEGIN();
   RUN_TEST(boots_with_everything_off_and_arms);
@@ -972,5 +1005,6 @@ int main() {
   RUN_TEST(ab_store_survives_power_cuts);
   RUN_TEST(pixels_600_never_wait_for_the_wire_and_nothing_is_lost);
   RUN_TEST(pixels_600_step_time_on_the_host);
+  RUN_TEST(the_pixel_service_paces_itself);
   return UNITY_END();
 }

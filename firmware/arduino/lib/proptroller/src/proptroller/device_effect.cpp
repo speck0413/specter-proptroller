@@ -225,10 +225,12 @@ int Controller::scriptEffect(const std::string& name) const {
 }
 
 // remote_free_effects as a bit per effect of the stored script
-uint8_t Controller::scriptFreeEffects() const {
+PT_STEP_CODE uint8_t Controller::scriptFreeEffects() const {
   uint8_t m = 0;
   if (!script_run_ || !script_prog_) return m;
   const std::string& list = settings_.remote_free_effects;
+  // asked on every 1 ms sample: worked out again only when the list or the script changed
+  if (free_gen_ == script_gen_ && free_list_ == list) return free_mask_;
   size_t a = 0;
   while (a <= list.size()) {
     size_t b = list.find(',', a);
@@ -237,6 +239,9 @@ uint8_t Controller::scriptFreeEffects() const {
     if (e >= 0) m = (uint8_t)(m | (1u << e));
     a = b + 1;
   }
+  free_gen_ = script_gen_;
+  free_list_ = list;
+  free_mask_ = m;
   return m;
 }
 

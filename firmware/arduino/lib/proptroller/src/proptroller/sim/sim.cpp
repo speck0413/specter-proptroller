@@ -221,6 +221,7 @@ void Sim::tickAt(Millis at) {
   auto bytes = world_.df.tick(up);
   world_.uart_rx.insert(world_.uart_rx.end(), bytes.begin(), bytes.end());
   ctl_->tick(up);
+  ctl_->pixelService(up);  // on a board outside the step (a core-0 task, loop()); here right after it, in step
   ctl_->background();  // the board's loop does this between steps
   // the Wi-Fi scan, as the boards' network loop does it: started when the controller wants one, the fixed
   // sample list SIM_SCAN_MS later

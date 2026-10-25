@@ -231,6 +231,16 @@ done; these are maintenance requests, so do not send them while a show must keep
 Untested: the Pico bootloader on real chips (PICO-BOOTLOADER.md "Bench steps"), the ESP32 rollback, Wi-Fi beyond the ESP32's network scan, 1 ms
 trigger sampling under Wi-Fi load, the DFPlayer, pixels, DMX and MQTT against real devices, any Pico.
 
+Step timing on the bench (no scope needed): `mem` on the serial console reports, since the last `mem`, the
+longest and average 10 ms step and how many took over 1 ms or 10 ms, the 1 ms samples the same way (over
+250 us), the longest gap between two wakes of the step, on the ESP32 how long after its hardware-timer latch a
+sample was handled (and any lost from the 64-entry ring), and the longest wait of the step for the controller
+lock. A build with `PLATFORMIO_BUILD_FLAGS=-DPROPTROLLER_STEP_PROFILE pio run -e esp32dev` adds the tick's
+time per part (inputs, triggers, script, engine, pins, sound, pixels, the rest). ESP32 DevKit at DIO 40 MHz,
+2026-10-25, a script animating 600 LEDs: step max 337-476 us (average 160-180), 0 of 1162 over 1 ms, no sample
+lost; the lock waits (up to 8 ms, while loop() builds the serial or WebSocket state) delay handling, not
+sampling. A QIO 80 MHz flash build runs the step about 3 times faster still (not adopted: the owner's call).
+
 Bench plan. First `tools/hw_check.py --port <port> --env <env>` per image (flash, boot time, `mem`, a smoke test
 with nothing connected). Then `bench/hw_bench` with `tools/hw_bench.py http://<board>/`:
 

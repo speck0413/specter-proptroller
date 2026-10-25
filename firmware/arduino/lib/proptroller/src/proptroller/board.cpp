@@ -17,9 +17,20 @@ void Board::allOff() {
   if (pins_.hasStatusLed()) err += pins_.setStatusLed(false) ? 0 : 1;
   hal_errors += err;
   for (auto& l : levels_) l = 0;
+  settled_ = false;
+  led_ = 0;
 }
 
-void Board::apply(Millis now, const Level requested[CHANNEL_COUNT], Level* applied) {
+PT_STEP_CODE void Board::apply(Millis now, const Level requested[CHANNEL_COUNT], Level* applied) {
+  // every tick: the same request as last time and all of it on the pins is nothing to do (no hooks, no pin calls)
+  bool same = settled_;
+  for (int i = 0; i < CHANNEL_COUNT && same; i++) same = requested[i] == last_req_[i];
+  if (same) {
+    if (applied)
+      for (int i = 0; i < CHANNEL_COUNT; i++) applied[i] = levels_[i];
+    return;
+  }
+  for (int i = 0; i < CHANNEL_COUNT; i++) last_req_[i] = requested[i];
   Level req[CHANNEL_COUNT];
   for (int i = 0; i < CHANNEL_COUNT; i++) {
     req[i] = pins_.hasOutput(i) ? requested[i] : 0;  // an absent terminal stays off, never written
@@ -47,6 +58,10 @@ void Board::apply(Millis now, const Level requested[CHANNEL_COUNT], Level* appli
     }
   }
   hal_errors += err;
+  // settled: every relay and contact is where it was asked to be (one held off for its dwell is not) and no pin call
+  // failed
+  settled_ = err == 0;
+  for (int k = 0; k < 4 && settled_; k++) settled_ = !pins_.hasOutput(4 + k) || (req[4 + k] > 0) == (levels_[4 + k] > 0);
   if (applied)
     for (int i = 0; i < CHANNEL_COUNT; i++) applied[i] = levels_[i];
 }
@@ -59,7 +74,12 @@ Level Board::set(Millis now, Channel c, Level level) {
   return levels_[index(c)];
 }
 
-void Board::readInputs(bool out[INPUT_COUNT]) {
+PT_STEP_CODE void Board::readInputs(bool out[INPUT_COUNT]) {
+  bool all[INPUT_COUNT];
+  if (pins_.readAllLow(all)) {
+    for (int i = 0; i < INPUT_COUNT; i++) out[i] = inputs_[i] = all[i];
+    return;
+  }
   for (int i = 0; i < INPUT_COUNT; i++) {
     bool low = false;
     if (!pins_.hasInput(i)) inputs_[i] = false;  // never read
@@ -69,8 +89,10 @@ void Board::readInputs(bool out[INPUT_COUNT]) {
   }
 }
 
-void Board::setStatusLed(bool on) {
-  if (pins_.hasStatusLed() && !pins_.setStatusLed(on)) hal_errors++;
+PT_STEP_CODE void Board::setStatusLed(bool on) {
+  if (led_ == (on ? 1 : 0)) return;  // every tick: written only when it changes
+  if (pins_.hasStatusLed() && !pins_.setStatusLed(on)) { hal_errors++; return; }
+  led_ = on ? 1 : 0;
 }
 
 BoardReport Board::report() const {

@@ -1092,13 +1092,13 @@ void ScriptRunner::load(const ScriptProgram* p, Millis now) {
   }
 }
 
-void ScriptRunner::setSettings(const uint32_t values[SCRIPT_SETTING_COUNT]) {
+PT_STEP_CODE void ScriptRunner::setSettings(const uint32_t values[SCRIPT_SETTING_COUNT]) {
   for (int k = 0; k < SCRIPT_SETTING_COUNT; k++) values_[k] = values[k];
   if (!p_) return;
   for (int e = 0; e < p_->effects; e++) gate_[e].setMaxRuns(limitRuns(e));  // a changed limit: from the next run (SM-L7)
 }
 
-void ScriptRunner::setRemote(bool enabled, uint8_t free_effects) {
+PT_STEP_CODE void ScriptRunner::setRemote(bool enabled, uint8_t free_effects) {
   remote_enabled_ = enabled;
   remote_free_ = free_effects;
   if (!enabled)  // the enable went off: a queued start that needed it goes (SM-Q5)
@@ -1106,21 +1106,21 @@ void ScriptRunner::setRemote(bool enabled, uint8_t free_effects) {
       if (!(remote_free_ & (1u << e))) queued_[e] = false;
 }
 
-uint32_t ScriptRunner::limitRuns(int e) const {
+PT_STEP_CODE uint32_t ScriptRunner::limitRuns(int e) const {
   if (!p_ || !p_->fx[e].limit) return 1;
   const ScriptEffect& f = p_->fx[e];
   uint32_t n = f.limit_runs_setting ? values_[f.limit_runs_setting - 1] : f.limit_runs;
   return n < 1 ? 1 : n > SCRIPT_LIMIT_MAX_RUNS ? SCRIPT_LIMIT_MAX_RUNS : n;
 }
 
-uint32_t ScriptRunner::limitMs(int e) const {
+PT_STEP_CODE uint32_t ScriptRunner::limitMs(int e) const {
   if (!p_ || !p_->fx[e].limit) return 0;  // no window: nothing is held back
   const ScriptEffect& f = p_->fx[e];
   uint32_t ms = f.limit_ms_setting ? values_[f.limit_ms_setting - 1] : f.limit_ms;
   return ms > SCRIPT_LIMIT_MAX_MS ? SCRIPT_LIMIT_MAX_MS : ms;
 }
 
-uint16_t ScriptRunner::head(int e) const {
+PT_STEP_CODE uint16_t ScriptRunner::head(int e) const {
   const ScriptEffect& f = p_->fx[e];
   uint16_t k = 0;
   while (k < f.count && p_->step[f.first + k].op != ScriptStep::Op::Wait) k++;
@@ -1137,31 +1137,31 @@ int ScriptRunner::effectNamed(const std::string& name) const {
   return -1;
 }
 
-bool ScriptRunner::busy(int e) const {
+PT_STEP_CODE bool ScriptRunner::busy(int e) const {
   for (int f = 0; f < p_->effects; f++)
     if ((conflicts_[e] & (1u << f)) && st_[f].running) return true;
   return false;
 }
 
-bool ScriptRunner::canStart(int e, Millis now) const {
+PT_STEP_CODE bool ScriptRunner::canStart(int e, Millis now) const {
   return atTop(e) && now >= boot_end_ && !paused_ && !windowFull(e, now) && !busy(e);
 }
 
-bool ScriptRunner::ready(int e, Millis now) const { return p_ && e < p_->effects && canStart(e, now); }
+PT_STEP_CODE bool ScriptRunner::ready(int e, Millis now) const { return p_ && e < p_->effects && canStart(e, now); }
 
-bool ScriptRunner::armed(int e, Millis now) const {
+PT_STEP_CODE bool ScriptRunner::armed(int e, Millis now) const {
   if (!ready(e, now)) return false;
   if (readyRule(e)) return gate_[e].released;
   return returnRule(e) ? press_armed_[e] : st_[e].released;
 }
 
 // the first wait for's input follows the "ready" rule (trig1_wait / trig2_wait)
-bool ScriptRunner::readyRule(int e) const {
+PT_STEP_CODE bool ScriptRunner::readyRule(int e) const {
   int k = p_->step[p_->fx[e].first + head(e)].target;
   return k < 2 && ready_rule_[k];
 }
 
-bool ScriptRunner::returnRule(int e) const {
+PT_STEP_CODE bool ScriptRunner::returnRule(int e) const {
   int k = p_->step[p_->fx[e].first + head(e)].target;
   return k < 2 && rule_set_[k] && !ready_rule_[k];
 }
@@ -1200,7 +1200,7 @@ uint16_t ScriptRunner::line(int e) const {
   return f.count ? p_->step[f.first + st_[e].pc].line : f.line;
 }
 
-uint32_t ScriptRunner::rnd() {
+PT_STEP_CODE uint32_t ScriptRunner::rnd() {
   uint32_t x = rng_;
   x ^= x << 13;
   x ^= x >> 17;
@@ -1209,13 +1209,13 @@ uint32_t ScriptRunner::rnd() {
   return x;
 }
 
-uint16_t ScriptRunner::get(uint16_t t) const { return scriptIsDmx(t) ? dmx_[t - SCRIPT_DMX] : level_[t]; }
-void ScriptRunner::put(uint16_t t, uint16_t v) {
+PT_STEP_CODE uint16_t ScriptRunner::get(uint16_t t) const { return scriptIsDmx(t) ? dmx_[t - SCRIPT_DMX] : level_[t]; }
+PT_STEP_CODE void ScriptRunner::put(uint16_t t, uint16_t v) {
   if (scriptIsDmx(t)) dmx_[t - SCRIPT_DMX] = (uint8_t)v;
   else { level_[t] = v; pulse_until_[t] = 0; }  // a line that sets the output ends a pulse on it
 }
 
-void ScriptRunner::enter(int e, Millis now) {
+PT_STEP_CODE void ScriptRunner::enter(int e, Millis now) {
   State& s = st_[e];
   const ScriptStep& st = p_->step[p_->fx[e].first + s.pc];
   s.entered = true;
@@ -1231,7 +1231,7 @@ void ScriptRunner::enter(int e, Millis now) {
   }
 }
 
-void ScriptRunner::advance(int e, Millis now) {
+PT_STEP_CODE void ScriptRunner::advance(int e, Millis now) {
   State& s = st_[e];
   s.pc++;
   if (s.pc >= p_->fx[e].count) { s.pc = 0; s.running = false; }
@@ -1239,7 +1239,7 @@ void ScriptRunner::advance(int e, Millis now) {
 }
 
 // A run starts at the effect's first wait for (its window counts it, SM-L1; a new release is needed, SM-T6).
-void ScriptRunner::start(int e, Millis now) {
+PT_STEP_CODE void ScriptRunner::start(int e, Millis now) {
   gate_[e].started(now, limitMs(e));
   local_go_[e] = false;
   pending_[e] = false;
@@ -1250,7 +1250,7 @@ void ScriptRunner::start(int e, Millis now) {
   advance(e, now);
 }
 
-ScriptInputs ScriptRunner::view(int e, const ScriptInputs& in) const {
+PT_STEP_CODE ScriptInputs ScriptRunner::view(int e, const ScriptInputs& in) const {
   ScriptInputs v = in;
   bool free = (remote_free_ >> e) & 1u;
   for (int k = 0; k < INPUT_COUNT; k++) {
@@ -1267,7 +1267,7 @@ ScriptInputs ScriptRunner::view(int e, const ScriptInputs& in) const {
   return v;
 }
 
-void ScriptRunner::sampleWait(int e, Millis now, const ScriptInputs& in_all) {
+PT_STEP_CODE void ScriptRunner::sampleWait(int e, Millis now, const ScriptInputs& in_all) {
   const ScriptInputs in = view(e, in_all);
   State& s = st_[e];
   const ScriptStep& st = p_->step[p_->fx[e].first + s.pc];
@@ -1280,7 +1280,7 @@ void ScriptRunner::sampleWait(int e, Millis now, const ScriptInputs& in_all) {
   if (now >= from && now - from >= release_ms_) s.released = true;
 }
 
-bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& in_all, std::vector<SoundCommand>& sound) {
+PT_STEP_CODE bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& in_all, std::vector<SoundCommand>& sound) {
   const ScriptInputs in = view(e, in_all);
   State& s = st_[e];
   const ScriptStep& st = p_->step[p_->fx[e].first + s.pc];
@@ -1358,7 +1358,7 @@ bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& in_all, std::
 }
 
 // Every 1 ms: the "ready" rule's gates, then every effect steps (SS-R1).
-void ScriptRunner::sample(Millis now, const ScriptInputs& in) {
+PT_STEP_CODE void ScriptRunner::sample(Millis now, const ScriptInputs& in) {
   if (!p_) return;
   for (int e = 0; e < p_->effects; e++) {
     sampleWait(e, now, in);
@@ -1373,7 +1373,7 @@ void ScriptRunner::sample(Millis now, const ScriptInputs& in) {
   if (!paused_) run(now, in, pending_sound_);
 }
 
-void ScriptRunner::tick(Millis now, const ScriptInputs& in, std::vector<SoundCommand>& sound) {
+PT_STEP_CODE void ScriptRunner::tick(Millis now, const ScriptInputs& in, std::vector<SoundCommand>& sound) {
   (void)in;
   if (!p_) return;
   sound.insert(sound.end(), pending_sound_.begin(), pending_sound_.end());
@@ -1385,7 +1385,7 @@ void ScriptRunner::tick(Millis now, const ScriptInputs& in, std::vector<SoundCom
 // One pass, in script order (an earlier effect goes first when several could start). An effect whose run ends
 // goes again at once: its sound lines run and a waiting start may begin. Then once more for the effects at
 // their top: one whose outputs another effect freed in this pass starts on the same sample.
-void ScriptRunner::run(Millis now, const ScriptInputs& in_all, std::vector<SoundCommand>& sound) {
+PT_STEP_CODE void ScriptRunner::run(Millis now, const ScriptInputs& in_all, std::vector<SoundCommand>& sound) {
   const ScriptInputs& in = in_all;  // each effect looks through view(): stepOnce, sampleWait and gateUpdate
   auto gateUpdate = [&](int e) {
     const ScriptInputs v = view(e, in_all);

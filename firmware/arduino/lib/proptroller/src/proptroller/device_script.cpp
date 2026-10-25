@@ -68,7 +68,7 @@ SoundConfig Controller::soundConfig() const {
   return c;
 }
 
-ScriptInputs Controller::scriptInputs() const {
+PT_STEP_CODE ScriptInputs Controller::scriptInputs() const {
   ScriptInputs in;
   for (int k = 0; k < INPUT_COUNT; k++) {
     in.closed[k] = has_closed_[k];
@@ -84,6 +84,7 @@ ScriptInputs Controller::scriptInputs() const {
 }
 
 void Controller::scriptInstall(std::unique_ptr<ScriptProgram> prog) {
+  script_gen_++;
   for (int c = 0; c < CHANNEL_COUNT; c++) engine_.setScript(ALL_CHANNELS[c], false, 0);
   if (prog && prog->effects) {
     script_prog_ = std::move(prog);
@@ -228,6 +229,7 @@ bool Controller::scriptWrite(const std::string& text, const SoundList& sounds, c
   for (int c = 0; c < CHANNEL_COUNT; c++) engine_.setScript(ALL_CHANNELS[c], false, 0);
   if (script_run_) script_run_->load(nullptr, now_);  // never left pointing at the table freed next
   script_prog_.reset();
+  script_gen_++;
   std::string().swap(script_text_);
   SoundList().swap(script_sounds_);
   if (!script_store_) return true;
@@ -284,7 +286,7 @@ ScriptCheck Controller::saveScript(const std::string& text, const SoundList& sou
   return c;
 }
 
-void Controller::scriptValues() {
+PT_STEP_CODE void Controller::scriptValues() {
   if (!script_run_) return;
   const Settings& st = settings_;
   const uint32_t v[SCRIPT_SETTING_COUNT] = {st.fx.out1_on_ms, st.fx.out2_on_ms, st.fx.out3_on_ms, st.fx.recover_time_ms,
@@ -295,14 +297,14 @@ void Controller::scriptValues() {
   for (int k = 0; k < 2; k++) script_run_->setReadyRule(k, !st.trig_wait_return[k]);
 }
 
-bool Controller::scriptEffectRunning() const {
+PT_STEP_CODE bool Controller::scriptEffectRunning() const {
   if (!script_prog_ || !script_run_) return false;
   for (int e = 0; e < script_prog_->effects; e++)
     if (script_run_->running(e)) return true;
   return false;
 }
 
-void Controller::scriptTick(Millis now) {
+PT_STEP_CODE void Controller::scriptTick(Millis now) {
   if (!booted_) {
     booted_ = true;
     boot_ms_ = now;

@@ -28,6 +28,10 @@ class ArduinoPins : public BoardPins {
   bool setOut(int out, Level level) override;
   bool setDigital(int which, bool on) override;
   bool readLow(int input, bool& low) override;
+  bool readAllLow(bool low[INPUT_COUNT]) override;  // the GPIO input registers, read once
+  // ESP32: the step works from the pin levels the 1 ms sampling interrupt latched (with their millisecond), not
+  // from the pins at the time it runs; false goes back to reading the pins.
+  static void useLatched(bool on, uint64_t gpio_in);
   bool hasOutput(int ch) override { return channelPin(m_, ch) != NO_PIN; }
   bool hasInput(int k) override { return inputPin(m_, k) != NO_PIN; }
   bool hasSound() override { return m_.df_tx != NO_PIN && m_.df_rx != NO_PIN; }

@@ -17,6 +17,8 @@
 #if defined(ESP32)
 #include <esp_ota_ops.h>
 #include <esp_task_wdt.h>
+#include <esp_timer.h>
+#include <soc/gpio_reg.h>
 #endif
 #elif !defined(ARDUINO)
 #define PT_HOST 1
@@ -85,6 +87,15 @@ static const uint32_t STEP_BUDGET_US = 1000;
 static const uint32_t STEP_TICK_US = 10000;
 static volatile uint32_t g_step_us_max = 0, g_step_over_budget = 0, g_step_over_tick = 0, g_steps = 0;
 static volatile uint64_t g_step_us_sum = 0;
+// the 1 ms input samples between ticks, the same way: the longest, the average, and how many took over 250 us
+static const uint32_t SAMPLE_BUDGET_US = 250;
+static volatile uint32_t g_sample_us_max = 0, g_sample_over = 0, g_samples = 0;
+static volatile uint64_t g_sample_us_sum = 0;
+// from one 1 ms wake of the step (a sample or a tick) to the next, waits for the lock and preemption included: the
+// longest, and how many came over 1.5 ms late (a sample held up)
+static const uint32_t WAKE_LATE_US = 1500;
+static volatile uint32_t g_wake_gap_max = 0, g_wake_late = 0, g_wake_at = 0;
+static volatile uint32_t g_lock_wait_max = 0, g_lock_waits = 0;  // the step waiting for another task's lock
 static void stepTimed(uint32_t us) {
   if (us > g_step_us_max) g_step_us_max = us;
   if (us > STEP_BUDGET_US) g_step_over_budget = g_step_over_budget + 1;
@@ -292,6 +303,13 @@ struct Proptroller::Platform {
 // One wake of the step (every 1 ms): a tick every tickPeriodMs, an input sample in between (SM-T1); after a
 // stall, no burst of steps. True when it ticked.
 bool proptrollerStep(Proptroller& p, uint64_t now, uint64_t& next) {
+  uint32_t t = (uint32_t)micros();
+  if (g_wake_at) {
+    uint32_t gap = t - g_wake_at;
+    if (gap > g_wake_gap_max) g_wake_gap_max = gap;
+    if (gap > WAKE_LATE_US) g_wake_late = g_wake_late + 1;
+  }
+  g_wake_at = t;
   if (now < next) {
     p.sample(now);
     return false;
@@ -309,16 +327,67 @@ bool proptrollerStep(Proptroller& p, uint64_t now, uint64_t& next) {
 // QEMU only (QEMU.md "Network"): the time from one step to the next, reported and cleared by `mem`
 static volatile uint32_t g_gap_max = 0, g_gap_over15 = 0;
 #endif
+// The 1 ms sampling (SM-T1) on a hardware timer whose interrupt runs on core 1: it latches every GPIO input level
+// with its time into a ring and wakes the step task at once (a FreeRTOS delay on core 1 woke up to 1.7 ms late).
+// The step task takes the samples in order, each with its own millisecond, so a sample is never lost or late
+// even when the step waits for the lock (a request building the state) or a tick runs long: only its handling
+// waits. Full ring (the step held up 64 ms, a flash write): the newest are dropped and counted.
+struct InputSample {
+  uint64_t us;       // esp_timer microseconds when latched
+  uint64_t gpio_in;  // GPIO_IN (0-31) | GPIO_IN1 (32-39) << 32
+};
+static const uint32_t SAMPLE_RING = 64;
+static const uint32_t SAMPLE_TIMER_DIVIDER = 80;  // 1 MHz from the 80 MHz APB clock
+static const uint32_t SAMPLE_PERIOD_US = 1000;
+static const uint32_t SAMPLE_WAIT_MS = 5;  // no interrupt for this long (never seen): the step reads the pins itself
+static InputSample g_ring[SAMPLE_RING];
+static volatile uint32_t g_ring_head = 0, g_ring_tail = 0, g_ring_lost = 0;
+static volatile uint32_t g_lag_max = 0, g_lag_late = 0;  // from latching a sample to handling it
+static void IRAM_ATTR sampleIsr() {
+  uint32_t h = g_ring_head;
+  if (h - g_ring_tail < SAMPLE_RING) {
+    InputSample& s = g_ring[h % SAMPLE_RING];
+    s.us = (uint64_t)esp_timer_get_time();
+    s.gpio_in = (uint64_t)REG_READ(GPIO_IN_REG) | ((uint64_t)(REG_READ(GPIO_IN1_REG) & 0xFF) << 32);
+    g_ring_head = h + 1;
+  } else {
+    g_ring_lost = g_ring_lost + 1;
+  }
+  BaseType_t woken = pdFALSE;
+  if (g_tick_task) vTaskNotifyGiveFromISR(g_tick_task, &woken);
+  if (woken) portYIELD_FROM_ISR();
+}
+static void startSampleTimer() {
+  hw_timer_t* t = timerBegin(0, SAMPLE_TIMER_DIVIDER, true);
+  timerAttachInterrupt(t, &sampleIsr, true);  // on this core (setup runs on core 1, as the step)
+  timerAlarmWrite(t, SAMPLE_PERIOD_US, true);
+  timerAlarmEnable(t);
+}
+
 static void tickTask(void* arg) {
   Proptroller& p = *(Proptroller*)arg;
-  TickType_t last = xTaskGetTickCount();
-  TickType_t period = pdMS_TO_TICKS(1);
-  if (period < 1) period = 1;
-  Millis next = 0;
+  Millis next = 0, last_ms = 0;
   for (;;) {
-    vTaskDelayUntil(&last, period);
+    bool woke = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(SAMPLE_WAIT_MS)) > 0;
     esp_task_wdt_reset();
-    if (!proptrollerStep(p, millis64(), next)) continue;
+    if (!woke && g_ring_head == g_ring_tail) {
+      ArduinoPins::useLatched(false, 0);
+      Millis now = millis64();
+      if (now != last_ms) { last_ms = now; (void)proptrollerStep(p, now, next); }
+      continue;
+    }
+    while (g_ring_tail != g_ring_head) {
+      const InputSample s = g_ring[g_ring_tail % SAMPLE_RING];
+      g_ring_tail = g_ring_tail + 1;
+      Millis ms = s.us / 1000;
+      if (ms <= last_ms) continue;  // one sample a millisecond
+      last_ms = ms;
+      uint32_t lag = (uint32_t)((uint64_t)esp_timer_get_time() - s.us);
+      if (lag > g_lag_max) g_lag_max = lag;
+      if (lag > 1000) g_lag_late = g_lag_late + 1;
+      ArduinoPins::useLatched(true, s.gpio_in);
+      (void)proptrollerStep(p, ms, next);
+    }
 #if defined(PROPTROLLER_QEMU_ETH)
     static Millis prev = 0;
     Millis t = millis64();
@@ -329,6 +398,20 @@ static void tickTask(void* arg) {
     }
     prev = t;
 #endif
+  }
+}
+#endif
+
+#if PT_BOARD && defined(ESP32)
+// The pixel strip's frames (Controller::pixelService): rendered and sent on core 0, below the network's priority,
+// so the step on core 1 never renders or waits for the wire. Every PIXEL_SERVICE_MS (frames are 20 ms apart).
+static const uint32_t PIXEL_SERVICE_MS = 2;
+static const uint32_t PIXEL_TASK_STACK = 4096;
+static void pixelTask(void* arg) {
+  Controller* c = (Controller*)arg;
+  for (;;) {
+    vTaskDelay(pdMS_TO_TICKS(PIXEL_SERVICE_MS));
+    c->pixelService(millis64());
   }
 }
 #endif
@@ -540,6 +623,8 @@ void Proptroller::start(FirmwareMaker make) {
   {
 #if defined(ESP32)
     xTaskCreatePinnedToCore(tickTask, "proptroller", TICK_TASK_STACK, this, 5, &g_tick_task, 1);
+    if (ctl_) xTaskCreatePinnedToCore(pixelTask, "pixels", PIXEL_TASK_STACK, ctl_, 1, nullptr, 0);
+    startSampleTimer();
     // a hung step restarts the board (task watchdog, 5 s, panic on: sdkconfig CONFIG_ESP_TASK_WDT_PANIC)
     esp_task_wdt_add(g_tick_task);
 #elif !defined(PROPTROLLER_NO_CORE1)
@@ -553,6 +638,7 @@ void Proptroller::start(FirmwareMaker make) {
   if (ctl_) ctl_->board().hook_user = this;
 #if PT_BOARD
   if (ctl_) ctl_->setMemProbe(proptrollerMemoryReport);  // the console's `mem`
+  if (ctl_) ctl_->setUsClock([]() -> uint32_t { return (uint32_t)micros(); });
 #if defined(ESP32)
   if (ctl_) ctl_->setHeapProbe([]() -> size_t { return ESP.getFreeHeap(); });
   if (ctl_) ctl_->setBlockProbe([]() -> size_t { return ESP.getMaxAllocHeap(); });
@@ -580,7 +666,7 @@ void Proptroller::start(FirmwareMaker make) {
 // Free heap and stack high-water marks, for the bench: "free heap 182344 B (min 179020, largest block 110580);
 // stack free: loop 5412 B, step 6120 B; ready after 812 ms".
 std::string Proptroller::memoryReport() {
-  char b[320];
+  char b[480];
 #if PT_BOARD && defined(ESP32)
   unsigned loop_free = (unsigned)uxTaskGetStackHighWaterMark(xTaskGetHandle("loopTask"));
   unsigned step_free = g_tick_task ? (unsigned)uxTaskGetStackHighWaterMark(g_tick_task) : 0;
@@ -614,7 +700,33 @@ std::string Proptroller::memoryReport() {
     g_step_over_tick = 0;
     g_steps = 0;
     g_step_us_sum = 0;
+    k = strlen(b);
+    snprintf(b + k, sizeof b - k, "; sample max %u us (average %u), %u of %u over 250 us", (unsigned)g_sample_us_max,
+             (unsigned)(g_samples ? g_sample_us_sum / g_samples : 0), (unsigned)g_sample_over, (unsigned)g_samples);
+    k = strlen(b);
+    snprintf(b + k, sizeof b - k, "; wake gap max %u us, %u over 1.5 ms", (unsigned)g_wake_gap_max, (unsigned)g_wake_late);
+    g_wake_gap_max = 0;
+    g_wake_late = 0;
+#if defined(ESP32)
+    k = strlen(b);
+    snprintf(b + k, sizeof b - k, "; sample handled max %u us after it was latched, %u over 1 ms, %u lost", (unsigned)g_lag_max,
+             (unsigned)g_lag_late, (unsigned)g_ring_lost);
+    g_lag_max = 0;
+    g_lag_late = 0;
+    g_ring_lost = 0;
+#endif
+    k = strlen(b);
+    snprintf(b + k, sizeof b - k, "; lock wait max %u us, %u over 0.1 ms", (unsigned)g_lock_wait_max, (unsigned)g_lock_waits);
+    g_lock_wait_max = 0;
+    g_lock_waits = 0;
+    g_sample_us_max = 0;
+    g_sample_over = 0;
+    g_samples = 0;
+    g_sample_us_sum = 0;
   }
+#endif
+#if PT_BOARD && defined(PROPTROLLER_STEP_PROFILE)
+  if (ctl_) return std::string(b) + ctl_->profileReport();
 #endif
   return b;
 }
@@ -641,7 +753,15 @@ void Proptroller::lock() {
 // The step's take: it runs while a request has the lock given back (window_lock.h); everything else waits.
 void Proptroller::stepLock() {
 #if PT_BOARD
+#if PT_BOARD
+  uint32_t t0 = (uint32_t)micros();
   plat_->lk.takeStep();
+  uint32_t w = (uint32_t)micros() - t0;
+  if (w > g_lock_wait_max) g_lock_wait_max = w;
+  if (w > 100) g_lock_waits = g_lock_waits + 1;
+#else
+  plat_->lk.takeStep();
+#endif
 #elif PT_HOST
   proptrollerHostMutex().lock();
 #endif
@@ -711,7 +831,13 @@ void Proptroller::sample(uint64_t now) {
   stepLock();
   {
     Controller::StepScope in_step(ctl_);
+    uint32_t t0 = micros();
     fw_->sample(now);
+    uint32_t us = micros() - t0;
+    if (us > g_sample_us_max) g_sample_us_max = us;
+    if (us > SAMPLE_BUDGET_US) g_sample_over = g_sample_over + 1;
+    g_samples = g_samples + 1;
+    g_sample_us_sum = g_sample_us_sum + us;
   }
   unlock();
   g_step_at = millis64();
@@ -745,6 +871,11 @@ void Proptroller::update() {
   // the flash writes the step decided on: here, so the step never waits on the flash (the lock is given back
   // while it is written)
   if (ctl_) { Guard g(plat_->lk); ctl_->background(); }
+#if defined(ARDUINO_ARCH_RP2040)
+  // the pixel strip's frame: rendered and sent here on core 0, without the lock (the step on core 1 only hands
+  // over what to show)
+  if (ctl_) ctl_->pixelService(millis64());
+#endif
 #if PT_WIFI
   plat_->net->poll();
 #endif

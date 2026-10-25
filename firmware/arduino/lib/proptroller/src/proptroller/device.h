@@ -19,6 +19,7 @@
 #include "update.h"
 #include "password.h"
 #include "runs.h"
+#include <atomic>
 #include <deque>
 #include <memory>
 
@@ -196,6 +197,10 @@ class Controller : public Firmware {
   bool hasRequestHook() const { return request_hook_ != nullptr; }
   // The board's memory report for the console's `mem` (Proptroller::memoryReport on the boards; none on the host).
   void setMemProbe(std::string (*probe)()) { mem_probe_ = probe; }
+  // A bench build with -DPROPTROLLER_STEP_PROFILE: the microsecond clock, and the tick's time per part (sum and
+  // longest since the last report, then cleared), for `mem`.
+  void setUsClock(uint32_t (*us)()) { us_clock_ = us; }
+  std::string profileReport();
   // The free heap in all (the boards; none on the host) and the largest block it can give in one piece (the ESP32;
   // the RP2040 has no such count): a big request that would not fit is refused in plain words instead of running
   // out of memory. The whole need is compared with the free heap, the largest single allocation with the block.
@@ -217,6 +222,10 @@ class Controller : public Firmware {
 
   uint32_t store_errors = 0, pixel_errors = 0;
   uint32_t pixel_skipped = 0;  // frames held back a tick because the last one was still on the wire
+  // The strip's frame is rendered and sent here, never in the step: the step only hands over what the strip should
+  // show (publishPixels). Called outside the step, without the controller's lock, from one place only: a task on
+  // core 0 (ESP32), loop() (RP2040), right after each tick (simulator). Wait-free on the step's side.
+  void pixelService(Millis now);
   uint32_t script_checks_at_boot = 0;  // stored scripts checked again from their text at power-on
   // Accepted presses per input since power-on (TRIG: armed presses only; USER: every press). Sketches use
   // these through Proptroller::wasPressed().
@@ -308,7 +317,7 @@ class Controller : public Firmware {
   std::string topicRoot() const;
   void noticeOut(const Notice& n);
   std::string checkReserved(const Show& s, const Settings& roles_from) const;
-  void renderPixels(Millis now, const Frame& f);
+  void publishPixels(const Frame& f);
   void markDirty() {
     if (!dirty_) dirty_since_ = now_;
     dirty_ = true;
@@ -350,10 +359,28 @@ class Controller : public Firmware {
   bool has_opened_[INPUT_COUNT] = {false, false, false, false, false};
   Millis opened_since_[INPUT_COUNT] = {0, 0, 0, 0, 0};
   void sampleTriggersWith(Millis now, const bool raw[INPUT_COUNT]);
+  // what the strip shows: the step's own copy (state "pixel"), and the one handed to pixelService through a
+  // sequence lock (pixel_seq_ odd while the step writes pixel_mail_; the service copies it and checks the count)
+  struct PixelRequest {
+    bool has = false;
+    Effect effect;
+    Millis start = 0;
+    uint8_t brightness = 100;
+    uint16_t count = 0;
+  };
+  PixelRequest pixel_req_, pixel_mail_;
+  // scriptFreeEffects' answer for this script and this list (it runs on every sample)
+  uint32_t script_gen_ = 0;           // counts installed tables (a new one may reuse the old one's address)
+  mutable uint32_t free_gen_ = UINT32_MAX;
+  mutable std::string free_list_;
+  mutable uint8_t free_mask_ = 0;
+  std::atomic<uint32_t> pixel_seq_{0};
+  bool pixel_published_ = false;
+  // pixelService's own
   std::vector<Rgb> pixel_buf_;
-  bool pixel_have_last_ = false, pixel_last_has_ = false;
-  Effect pixel_last_;
-  Millis pixel_last_start_ = 0, pixel_last_at_ = 0;
+  bool pixel_have_last_ = false;
+  PixelRequest pixel_last_;
+  Millis pixel_last_at_ = 0;
   std::vector<std::string> cues_out_;
   SoundDirector sound_;
   bool role_on_[CHANNEL_COUNT] = {false};
@@ -425,6 +452,10 @@ class Controller : public Firmware {
   Millis now_ = 0;
   RequestHook request_hook_ = nullptr;
   std::string (*mem_probe_)() = nullptr;
+  uint32_t (*us_clock_)() = nullptr;
+  static const int PROFILE_PARTS = 8;
+  uint32_t prof_sum_[PROFILE_PARTS] = {0}, prof_max_[PROFILE_PARTS] = {0}, prof_n_ = 0, prof_at_ = 0;
+  void profMark(int part);
   void* request_hook_user_ = nullptr;
   struct MqttTrack {
     std::string last_state;

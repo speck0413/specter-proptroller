@@ -21,6 +21,9 @@ class BoardPins {
   // TRIG1, TRIG2, USER1-3 (input = 0..4): true = active (the pin low, or high for an input the pin map says is
   // active high). Return false if unreadable.
   virtual bool readLow(int input, bool& low) = 0;
+  // All five at once, as readLow gives them (an absent input reads false); false when the board only has readLow.
+  // Called every 1 ms: a board reads its port registers once instead of five calls.
+  virtual bool readAllLow(bool low[INPUT_COUNT]) { (void)low; return false; }
   // Terminals the board has (a board profile may leave some out: NO_PIN): an absent one is never driven or read.
   virtual bool hasOutput(int channel) { (void)channel; return true; }  // 0-7: OUT1-4, RLY1-2, CC1-2
   virtual bool hasInput(int input) { (void)input; return true; }      // 0-4: TRIG1-2, USER1-3
@@ -69,6 +72,10 @@ class Board {
   Millis off_at_[4] = {0, 0, 0, 0};  // RLY1 .. CC2: when each last went off ...
   bool was_on_[4] = {false, false, false, false};  // ... if it ever was on
   bool inputs_[INPUT_COUNT]{};
+  // apply() with the same request as last time, all of it on the pins (no relay waiting out its dwell): nothing to do
+  Level last_req_[CHANNEL_COUNT]{};
+  bool settled_ = false;
+  int led_ = -1;  // the status LED as last written (-1: never)
 };
 
 }  // namespace pt
