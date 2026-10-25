@@ -167,6 +167,24 @@ def boot(b, results, label, timeout, fatal_ok=False):
     return ok
 
 
+def pixel_failure(a, b, results, ready):
+    """QEMU's RMT makes the pixel driver's install fail (esp32 machine; the S3 env has no pixel driver). The failure
+    message once overflowed the IPC task's 1 KB stack into the heap (hal.cpp BoardPixels::begin), and the ready
+    line's heap walk (memoryReport) faulted. With ready: the failure line, then a ready line (which walks the heap)
+    and no fatal line between them; without (stage 1 stops at the Wi-Fi fault first): only that the install ran."""
+    if a.machine != "esp32":
+        return
+    lines = b.all
+    i = next((k for k, l in enumerate(lines) if "pixel driver not available" in l), None)
+    if not ready:
+        check(results, "the pixel driver's failed install ran (QEMU's RMT)", i is not None)
+        return
+    j = next((k for k in range(i + 1, len(lines)) if re.search(r"ready after \d+ ms", lines[k])), None) if i is not None else None
+    clean = j is not None and not any(FATAL.search(l) for l in lines[i:j])
+    check(results, "after the pixel driver's failed install, the ready line's heap walk passes", clean,
+          "" if clean else "no failure line, or no ready line after it without a fault")
+
+
 def run_full(a, b, results):
     """The board's own image: QEMU has no radio, so the Wi-Fi driver faults in the closed PHY code
     (register_chipv7_phy reads a register block QEMU does not map). Everything before it must have worked."""
@@ -179,6 +197,7 @@ def run_full(a, b, results):
         print("     " + s)
     fs_ok = not any("could not open the flash file system" in l for l in b.all)
     check(results, "LittleFS mounted (formatted on the first boot)", fs_ok)
+    pixel_failure(a, b, results, ready=False)
     if fault and "ready after" in fault:
         check(results, "ready (this QEMU emulates the radio?)", True, fault)
     else:
@@ -189,6 +208,7 @@ def run_full(a, b, results):
 def run_smoke(a, b, results):
     if not boot(b, results, "first boot", a.boot_timeout):
         return
+    pixel_failure(a, b, results, ready=True)
     mem0 = b.ask_line("mem", r"free heap", 10)
     check(results, "mem after boot", mem0, mem0 or "")
     r = b.call("info")
