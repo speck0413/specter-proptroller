@@ -117,7 +117,7 @@ of silence, and what it was given ends with it: the remote trigger enable, manua
 | `pause` | `on` | `done` (pause = show stop: outputs off, triggers ignored, as `stop_all` for scripts, the effect and roles; releasing it turns nothing back on) |
 | `cue` | `name` | `done` (sends a named cue on this device) |
 | `set_output` | `channel`, `level` (0-1000, or `null` to release), `ms` (optional: a pulse, at most 600000) | `done` (manual test; relays and contacts are on/off). From plain HTTP or MQTT a level above 0 needs `ms` (else `refused`); a level above 0 is `refused` while the board is paused (nothing set during a pause comes on at its release); what a phone page holds is released when its WebSocket closes |
-| `pixel` | `action` (a pixel [action](#actions), or `null`) | `done` |
+| `pixel` | `action` (a pixel [action](#actions), or `null`) | `done`; with `{"target":"PIXEL","do":"pattern","name":"<pattern>"}` a stored LED pattern plays as the pixel test (`not_found` when the board has none of that name) |
 | `sound` | `cmd` + fields: `play_folder` (`folder`, `track`: `/FF/TTT…`, command 0x0F; sound N is folder N, track 1), `loop_folder` (`folder`, 0x17), `play_mp3` (`track`: the card's `/mp3/NNNN…`, command 0x12), `loop_mp3` (`track`: the same, played again each time it ends; `stop` ends it), `play_index` (`index`: the N-th file written to the card's root, 0x03), `loop_index` (`index`, 0x08), `volume` (`volume` 0-30), `stop`, `pause`, `resume`, `next`, `reset`, `select_sd` | `done` |
 | `get_params` | | `params` |
 | `set_params` | `values`: `[{"key":..,"value":..}]` (all checked, none applied if one fails; an empty secret keeps the old one, except that a change of `wifi_ssid` without a non-empty `wifi_pass` in the same `set_params` clears the stored `wifi_pass`: the new network is joined as an open one. Set a network and its password together, or the network first) | `done`; `internal` (`storage full: ...`) when a text value (a name) would make the settings record too big for the board's 12 KB |
@@ -127,6 +127,9 @@ of silence, and what it was given ends with it: the remote trigger enable, manua
 | `get_script` | | `script`: `text` (exactly as written; empty when none), `sounds` (the list stored with it, as sent; never read: a sound is its number), `check` (its check with the current settings) |
 | `check_script` | `text`, `sounds` (optional; accepted and not read: scripts name sounds by number) | `script_check`: `ok`, `errors`, `warnings` and, when `ok`, `effects` (how many effects; see [Show scripts](#show-scripts)) |
 | `set_script` | `text`, `sounds` (optional; stored with the text, not read), `bytes` (optional: the text's length in UTF-8 bytes as sent; when it differs from what arrived, `bad_request` and nothing is checked or stored) | `script_check`, as `check_script`. Stored only when `ok`; a text with no effects removes the stored script. `refused` (`... factory reset first, then set the script`) while a stored script from a newer firmware, or one that could not be read, is kept, and while a new firmware waits for its self-check (up to 30 s after an update); `internal` when it could not be stored or removed. Needs the page password while the page lock is on |
+| `list_patterns` | | `patterns`: the stored LED patterns, see [LED patterns](#led-patterns). A read: no page password. `unsupported` on a board without the player (no `patterns` capability) |
+| `put_pattern` | `name`, `program` (the program's bytes, base64), `controls` (optional: `{"<control function>": [values]}`, each value 16.16, 65536 is 1) | `pattern_put`, see [LED patterns](#led-patterns); `invalid` (a name, program or control the board cannot take, in plain words), `refused` (8 stored, the store full, or while stored patterns from a newer firmware or that could not be read are kept, or a new image waits for its self-check). Needs the page password while the page lock is on |
+| `delete_pattern` | `name` | `done`, or `not_found`. Needs the page password while the page lock is on |
 | `get_backup` | | `backup` ([Backups](#backups)) |
 | `wifi_scan` | `rescan` (optional, default `false`) | `wifi_scan`: the Wi-Fi networks the board can see, see [Wi-Fi scan](#wi-fi-scan). `unsupported` on a board without Wi-Fi (no `wifi_scan` capability: the plain Pico); `refused` during a firmware update. A read: no page password needed |
 | `put_backup` | `data` (a backup), `keep_name` (optional, default `true`) | `restored` (`skipped`: setting keys this firmware does not have), or `invalid` with the first problem; nothing is changed when anything fails (also when the stored settings are kept, see `store` in `state`). `internal` when everything was applied but the script could not be stored. Needs the page password while the page lock is on |
@@ -175,7 +178,8 @@ Capabilities: `shows`, `outputs` (manual output tests), `outputs_ro` (outputs sh
 driven), `sound`, `pixels`, `params`, `pin` (the page lock is on), `sim`, `test_input` (test presses on the inputs), `update` (over-the-air updates, see `update`), `backup`,
 `wifi_scan` (the board can list the Wi-Fi networks it sees: ESP32, Pico W, Pico 2 W and the simulator),
 `board_package` (the board takes board packages: `get_board`, `set_board`, [BOARD-PACKAGES.md](BOARD-PACKAGES.md)),
-`defaults` (`get_defaults`, `apply_defaults`). A UI shows only what the device has.
+`defaults` (`get_defaults`, `apply_defaults`), `patterns` (the board plays LED patterns: the ESP32 and the Pico 2 W,
+not the Pico W or the plain Pico; [LED patterns](#led-patterns)). A UI shows only what the device has.
 
 `actions` are buttons for the firmware's own controls (`key`, `label`, `confirm`: ask first, `momentary`: a
 press-and-hold button that sends `action` with `down: true`, repeated while held, and `down: false` on release;
@@ -277,6 +281,7 @@ On the WebSocket the device pushes, besides responses:
 {"v":1,"seq":15,"event":"update","data":{"phase":"failed","done":4096,"total":1442560,"message":"not an image for esp32-devkit"}}
 {"v":1,"seq":15,"event":"params_changed"}
 {"v":1,"seq":16,"event":"script_changed"}
+{"v":1,"seq":16,"event":"patterns_changed"}
 {"v":1,"seq":16,"event":"log","data":"sound player online"}
 {"v":1,"seq":17,"event":"run","data":{"source":"input","kind":"show","show":1,"name":"Door","detail":"TRIG1","runs_since_power_on":12,"runs_lifetime":4810,"uptime_ms":118300}}
 ```
@@ -470,8 +475,8 @@ and `cooldown_remaining_ms` of the first; `pulsing`, `recovering` as OUT1 / OUT2
 `remote_trigger_enable`, `remote_trigger_by`: SS-R13), so a profile's status aliases apply, and `out4_ready_lamp`
 makes OUT4 the first effect's ready lamp. `trig1_wait` / `trig2_wait` (`ready`, the default, or `return`) choose
 how a first `wait for` on that input starts its effect (SS-R4). Lines may name a setting for a time
-(`wait out1_on_ms`), read when they run. The stored table's format is 2; a table stored by an earlier firmware is
-checked again at power-on.
+(`wait out1_on_ms`), read when they run. The stored table's format is 3 (the names of the LED patterns and buttons
+the script names follow the steps); a table stored by an earlier firmware is checked again at power-on.
 
 The step table the checker makes stays on the board: a `script_check` (the answer of `check_script` and
 `set_script`, `get_script`'s `check`, MQTT `script/result`) carries `ok`, `errors`, `warnings` and, when `ok`,
@@ -479,6 +484,66 @@ The step table the checker makes stays on the board: a `script_check` (the answe
 carried the whole table as `table`, which made the answer to the largest script about 20 KB of JSON; the
 table's form is still the golden set's (`firmware/show-script-golden/README.md`), for checkers that want to
 compare.
+
+## LED patterns
+
+Specter Studio compiles an LED pattern (its pattern language, `src/patterns/compile.ts`) to a small program of
+numbers and sends the program's bytes; the board never sees source and never compiles. The board's interpreter
+does exactly what Studio's preview does, bit for bit (`firmware/pattern-golden`, the shared vectors). A board
+keeps at most 8 patterns by name (1-32 characters: letters, digits, spaces and `- _ ( )`; case and extra spaces do
+not matter, so `Clue  Puzzle` replaces `clue puzzle`), all of them in one record of their own (FLASH-MAP.md), with
+the control values each was sent with. A changed list is written to flash when nothing runs, at the latest a
+minute after the change (a flash write holds up both cores for a moment); `reboot` writes it first, a factory
+reset removes every pattern. Show scripts play them with `pixels = pattern <name>` and press their buttons with
+`pixels press <button>` (SHOW-SCRIPT.md SS-X7, SS-X8); the pixel test plays one with the action `do: "pattern"`.
+
+```json
+{"v":1,"op":"put_pattern","name":"clue puzzle","program":"U1BBVAEA...","controls":{"sliderSpeed":[32768],"hsvPickerColor":[21845,65536,65536]}}
+{"v":1,"ok":true,"result":{"kind":"pattern_put","name":"clue puzzle","bytes":1208,"patterns":2,"store_bytes":1530,"store_capacity":8192,"buttons":["clue1","clue2","clue3","clue4","clue5","clue6","reset"]}}
+{"v":1,"op":"list_patterns"}
+{"v":1,"ok":true,"result":{"kind":"patterns","patterns":[{"name":"clue puzzle","bytes":1208,"controls":[{"kind":"trigger","name":"triggerClue1","label":"Clue1"}],"buttons":["clue1"]}],"max":8,"store_capacity":8192,"saved":true,"playing":"clue puzzle"}}
+```
+
+`pattern_put`: the stored name, the program's size, how many patterns the board now keeps, the record's packed
+size and its capacity, and the pattern's buttons (its `trigger` controls, by label, lower case: what `pixels press`
+takes). `patterns`: each stored pattern with its controls (`kind`: `slider`, `hsvPicker`, `rgbPicker`, `toggle`,
+`trigger`, `inputNumber`; `name` the function, `label` Studio's label for it) and buttons; `saved` false while a
+change is not yet on flash; `playing` the pattern the strip shows, when it shows one. Sending a pattern under a
+name already stored replaces it; whatever plays it starts the new one.
+
+Limits, the same in Studio's preview (`BOARD_LIMITS`) and checked when the bytes arrive: 4096 code words, 256
+variables, 128 functions, 16 controls, 64 values per function; while it runs, 256 values being worked on, 12
+functions calling each other, 512 values of the running functions, 2048 list values (a list takes one more), and
+98,304 steps in one frame (or one control); a frame that takes 250 ms stops the pattern too. The programs of every
+stored pattern take at most 24 KB, the packed record 8 KB.
+
+The pixel side plays the pattern (a task on core 0 on the ESP32, `loop()` on the Pico 2 W), never the 10 ms
+step, with up to 50 frames a second; a frame that took long is followed by as long without one. A pattern that
+fails (an error, or more than its budget) stops, the strip goes dark, and the event log says why:
+`pattern clue puzzle stopped: the pattern took too long on one frame and was stopped (a loop that never ends?).
+The strip is dark until the pattern starts again`. `mem` adds the frames since the last report, their average and
+longest time, the most steps one took and the player's memory.
+
+The program's bytes (little endian; Studio's `src/patterns/encode.ts` writes them):
+
+| Offset | Bytes | What |
+|---|---|---|
+| 0 | 4 | `SPAT` |
+| 4 | 1 | format, 1 (a board refuses another: `the pattern was made by a newer Studio`) |
+| 5 | 1 | 0 |
+| 6 | 2 | code words |
+| 8 | 2 | variables (globals; the first is `pixelCount`, which the board sets) |
+| 10 | 2 | functions |
+| 12 | 1 | controls |
+| 13 | 1 | 0 |
+| 14 | 8 | the functions `beforeRender`, `render`, `render2D`, `render3D` (0xFFFF: none; one of the render functions is needed) |
+| 22 | 4 each | per function: its first code word (2), parameters (1), values (1, parameters included); function 0 is the top-level code |
+| | | per control: kind (1, in the order above), function (2), name length (1) and name, label length (1) and label (printable ASCII, at most 63 each) |
+| | 4 each | the code: opcodes and their arguments as 32-bit words (numbers 16.16) |
+
+A program that does not read exactly so, or whose code jumps outside its function, uses an index out of range,
+could take more values off its stack than it put on, or does not end each function with a return, is refused
+(`the pattern's program is damaged: send it again from Studio`).
 
 ## Serial console
 

@@ -1,0 +1,37 @@
+# 09 Clue puzzle: the pixel strip is red until the puzzle is solved. Each clue a visitor finds lights its own
+# stretch of the strip yellow, in any order; when every clue is found the whole strip turns green. USER3 starts
+# the puzzle again.
+#
+# The strip plays an LED pattern from Specter Studio: open the example pattern "clue puzzle" in Studio (LED
+# patterns), set the first and last light of each clue, and send it to this board with the name "clue puzzle".
+# Its buttons (triggerClue1 ... triggerClue6, triggerReset) are what `pixels press` presses.
+#
+# Wiring:
+#   WS2812 pixel strip (5 V)      -> PIXEL terminal; set pixel_count to the number of pixels
+#   clue 1: a hidden switch       -> TRIG1 jack
+#   clue 5: a magnet sensor       -> TRIG2 jack
+#   clue 2: the USER1 button, clues 3, 4 and 6 together: the USER2 button (or another board, or the phone page)
+#
+#        [switch]--TRIG1   [magnet sensor]--TRIG2        PIXEL--[pixel strip]
+
+effect puzzle:
+  pixels = pattern clue puzzle  # at power-on, and again each time the effect comes back to its top
+  wait for user3                # then it runs the pattern line again: a fresh puzzle
+
+effect clue1:
+  wait for trig1
+  pixels press clue1
+
+effect clue5:
+  wait for trig2
+  pixels press clue5
+
+effect clue2:
+  wait for user1
+  pixels press clue2
+
+effect the rest:
+  wait for user2
+  pixels press clue3
+  pixels press clue4
+  pixels press clue6

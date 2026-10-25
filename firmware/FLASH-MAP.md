@@ -105,6 +105,19 @@ Records (LittleFS, each an A/B file pair with a sequence number and CRC):
   `firmware/arduino/test/fixtures/records/board-record.bin` (the whole file, A/B frame included) with its package
   `board-record.json` (`test_board_package`).
 
+* `/patterns-a.bin` / `/patterns-b.bin` (boards with the LED pattern player: the ESP32 and the Pico 2 W): the stored
+  LED patterns (`pattern_store.h`, `PATTERN_RECORD_VERSION`): a 12-byte header ("PTPN", the format, the body's
+  unpacked length), then each pattern's name, program bytes and control values packed together (`lz.h`). At most
+  8 patterns, 24 KB of programs unpacked and 8,192 bytes packed (`PATTERN_STORE_CAPACITY`: two 4 KB blocks a
+  file); `put_pattern` refuses what would not fit. Written when nothing runs (or a minute after the change), never
+  while a new image waits for its self-check; a newer or unreadable record is kept (and fails a new image's
+  self-check) until a factory reset, which removes it. A stored program a newer firmware cannot run is dropped
+  from the list at power-on and said in the event log. Not in backups.
+
+  ESP32 LittleFS budget (128 KB, 32 blocks of 4 KB), every record at its largest: settings 2 x 3 blocks,
+  script 2 x 6, board package 2 x 1, patterns 2 x 2, the run count and the directory 2 to 4: 26 to 28 blocks,
+  leaving 4 to 6 for LittleFS's copy-on-write while a file is replaced. The Pico 2 W's 188 KB has room to spare.
+
 A factory reset of a file system that could not be opened formats it: the board package goes with everything else,
 and the board starts on the image's own board until a package is sent again.
 

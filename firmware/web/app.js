@@ -286,6 +286,7 @@ async function onConnected() {
     if (has('params')) { try { remoteAlias = ((await conn.call('get_profile')).aliases || []).find((a) => a.key === REMOTE)?.alias || null; } catch { /* no profiles */ } }
     if (has('params')) { if (params && paramsDirty()) paramsChanged('Reconnected: your changes are not saved yet. '); else await loadParams(); }
     if (has('script')) await loadScript();
+    if (has('patterns')) loadPatterns();
     // a remote trigger enable given from this page ended with the old connection: read its value again
     if (remoteWanted && params) {
       const key = remoteKey();
@@ -408,6 +409,7 @@ function onEvent(msg) {
     case 'params_changed': if (has('params')) paramsChanged(); conn.call('info').then((i) => { info = i; applyInfo(); }).catch(() => {}); break;
     case 'log': log(msg.data); break;
     case 'script_changed': if (has('script')) loadScript(); break;
+    case 'patterns_changed': loadPatterns(); break;
     case 'update': fwEvent(msg.data); break;
   }
 }
@@ -606,8 +608,15 @@ $('resume').onclick = async () => {
 $('snd-play').onclick = () => call('sound', { cmd: 'play_folder', folder: +$('snd-track').value, track: 1 });
 $('snd-stop').onclick = () => call('sound', { cmd: 'stop' });
 $('snd-vol').onchange = () => call('sound', { cmd: 'volume', volume: +$('snd-vol').value });
+// the LED patterns stored on the board, as pixel tests after the effects
+async function loadPatterns() {
+  const sel = $('px-effect');
+  sel.querySelectorAll('[data-p]').forEach((o) => o.remove());
+  try { for (const p of (await conn.call('list_patterns')).patterns) sel.append(el('option', { value: 'p:' + p.name, text: 'pattern ' + p.name, 'data-p': 1 })); } catch { /* none */ }
+}
 $('px-go').onclick = () => {
   const color = $('px-color').value, e = $('px-effect').value;
+  if (e.startsWith('p:')) return call('pixel', { action: { target: 'PIXEL', do: 'pattern', name: e.slice(2) } });
   const a = { fill: { do: 'fill', color }, flicker: { do: 'flicker', color }, chase: { do: 'chase', color, step_ms: 60, width: 3 },
     flash: { do: 'flash', color, period_ms: 400 }, rainbow: { do: 'rainbow', period_ms: 3000 }, fade: { do: 'fade', color, ms: 1500 } }[e];
   call('pixel', { action: a });

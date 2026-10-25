@@ -88,6 +88,28 @@ mean:
 | soak, 300 s guest | 200 rounds of 7 requests (state, list_shows, get_params, put_show, run, check_script 7 KB, get_backup) with a show firing every 1.5 s: 0 unanswered, no panic, watchdog or reset. Free heap after the warm-up 267,288 B (60 s), 266,660-267,304 B after, 266,884 B at 300 s: no leak. Min free heap 211,112 B |
 | state request round trip (soak) | median 0 ms, max 11 ms guest over 80 rounds: the loop answers within a tick; QEMU's UART moves the 2 KB answer in no guest time (no baud pacing either way), so on the board add about 0.2 s at 115200 baud |
 
+### LED patterns (QEMU, esp32dev_qemu, icount shift 2, 600 lights)
+
+QEMU has no RMT, and the image as built does not boot there: `rmt_translator_init` fails ("RMT translator buffer
+create fail"), and the heap check in the first `mem` report then panics (seen at af9ab35 too, before the pattern
+player). These numbers come from the same image with `BoardPixels::begin()` returning false at once (a local
+build only, `-DPT_QEMU_NO_RMT`, not in the tree): the strip's frames are rendered and not sent.
+
+| | no pattern (strip off) | the heavy golden pattern (`pattern-golden/cases/heavy-600`) |
+|---|---|---|
+| step | max 33-39 us (average 16), 0 of about 1,030 over 1 ms | max 40-45 us (average 33), 0 of about 1,020 over 1 ms |
+| 1 ms sample | max 7-14 us (average 2) | max 17-24 us (average 15) |
+| pattern frame | | average 32.5 ms, max 36.6 ms, 42,021 steps of the 98,304 budget; about 150 frames in 10 s (the rest after a long frame) |
+| free heap | 258 KB | 228 KB (the player 23 KB, the stored list and the hand-over copy) |
+
+Per piece, 600 lights, average frame: an empty `render` 1.6 ms, `rgb()` 4.4 ms, `hsv()` 6.2 ms, `sin()` 7.6 ms,
+some arithmetic (12,600 steps) 10.7 ms. A runaway pattern (`while (1) {}` in `render`) stops on its step budget
+after 153 ms with the event-log line, no watchdog and no panic.
+
+In QEMU both cores run on one host thread, so while core 0 renders, core 1's timer interrupt and wakes come late
+(the step's wake gap reaches 6 ms there, and the 1 ms samples are taken once per step): an emulator artifact,
+not seen as late steps (0 over 1 ms). Board timing is a bench item: run `mem` with a heavy pattern on 600 lights.
+
 The heap peaks are about 3.5 times (check) and 2.6 times (put_backup) the old host estimates (30 KB and
 53 KB, 64-bit host); they include the serial path's line buffer and answer strings. With Wi-Fi up the board
 starts with less.

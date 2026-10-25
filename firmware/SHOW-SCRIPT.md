@@ -61,9 +61,10 @@ Two effects, each with its own trigger. They run at the same time and never wait
 | `audio_loop = <N>` | Plays sound N over and over in the background (SS-R7); `audio_loop = off` (or `false`, or `""`) turns it off. |
 | `audio_volume = <level>` | How loud the script's sounds play from this line on: `audio_volume = 60%` (0% to 100%, or `off`). |
 | `audio_stop` | Stops the sound. |
-| `pixels = <effect> <colour>` | Lights the pixel strip until another `pixels` line: `pixels = chase red`, `pixels = rainbow`, `pixels = warm white` (§10). |
+| `pixels = <effect> <colour>` | Lights the pixel strip until another `pixels` line: `pixels = chase red`, `pixels = rainbow`, `pixels = warm white`, or an LED pattern sent from Studio: `pixels = pattern ghost` (§10). |
+| `pixels press <button>` | Presses a button of the LED pattern the strip shows: `pixels press clue1` (§10, SS-X8). |
 
-That is the whole beginner language: eleven kinds of line.
+That is the whole beginner language: twelve kinds of line.
 
 **SS-N Names you gave the terminals** (owner approved 2026-10-22). Where a line takes an output or an
 input, it also takes the name the board knows that terminal by: the wiring name (setting `out1_name` …
@@ -333,3 +334,34 @@ effect graveyard:
   wins while it is on.
 - **SS-X6 Never waits:** the strip's frames go out in the background (50 a second at most), so a long strip never
   holds up the inputs or the outputs.
+- **SS-X7 LED patterns:** `pixels = pattern <name>` plays an LED pattern that Specter Studio sent to the board
+  under that name (PROTOCOL.md "LED patterns"): a small program that colours every light, frame by frame, with
+  its sliders and colours set as they were when it was sent. The name is the rest of the line (letters, digits,
+  spaces and `- _ ( )`, at most 32 characters; case and extra spaces do not matter). Every time the line runs
+  the pattern starts afresh, from its first frame. A pattern the board does not have leaves the strip dark and
+  says so in the event log, once each time the line runs; the show goes on. The board plays a pattern with a
+  budget per frame: one that never finishes a frame (a loop that never ends) is stopped, the strip goes dark and
+  the event log says why, until the line runs again. The Pico W and the plain Pico have no pattern player (the
+  checker says so); `pixel_speed` does not apply (a pattern keeps its own time), `pixel_brightness` does.
+
+  ```
+  effect puzzle:
+    pixels = pattern clue puzzle   # at power-on, and again each time the effect comes back to its top
+    wait for user3                 # USER3: the pattern line runs again, the puzzle starts fresh
+  effect clue1:
+    wait for trig1
+    pixels press clue1
+  effect clue5:
+    wait for trig2
+    pixels press clue5
+  ```
+
+- **SS-X8 Pressing a pattern's button:** `pixels press <button>` presses a button of the pattern the strip shows
+  (in the pattern, an `export function trigger...`; the button's name is Studio's label for it, `triggerClue1`
+  is `clue1`). It takes no time and does not use the strip, so effects that only press never wait for each
+  other; the presses of one moment reach the pattern in the order the lines ran, between two frames. A press
+  while the strip shows something else (a built-in effect, nothing, or a pattern without that button) does
+  nothing and says so in the event log; the show goes on. When the board has every pattern the script names,
+  the checker also knows their buttons and says which there are. Starting an effect from the phone page, MQTT or
+  another board presses its buttons as its input would. `pixels press` lines may come before the first
+  `wait for`, as a `pixels` line may.
