@@ -4,7 +4,10 @@
 // that are used and not saved, challenges, replays, groups and keys.
 #include <unity.h>
 #include <algorithm>
+#include <fstream>
 #include <memory>
+#include <regex>
+#include <sstream>
 #include <string>
 #include <vector>
 #include "proptroller/link.h"
@@ -539,8 +542,38 @@ void over_mqtt_a_broker_that_was_away_starts_nothing_late() {
   for (auto& m : a.ctl().mqttPoll()) TEST_ASSERT_TRUE_MESSAGE(m.topic.find("/control/") == std::string::npos, m.topic.c_str());
 }
 
+// The boards' own NetApp (PropApp in Proptroller.cpp, Arduino only, so it is read here as text) forwards every
+// NetApp call to the controller: a call it leaves out answers with NetApp's default, as the link calls did until
+// the hardware bench of 2026-10-25 (no tell was sent or taken on a board while every test here passed).
+static std::string readFile(const char* p) {
+  std::ifstream f(p, std::ios::binary);
+  std::stringstream s;
+  s << f.rdbuf();
+  return s.str();
+}
+void the_board_forwards_every_netapp_call() {
+  std::string h = readFile("lib/proptroller/src/proptroller/netapp.h");
+  std::string c = readFile("lib/proptroller/src/Proptroller.cpp");
+  TEST_ASSERT_FALSE_MESSAGE(h.empty() || c.empty(), "run from firmware/arduino");
+  size_t a = h.find("class NetApp {"), b = h.find("\n};", a);
+  size_t pa = c.find("class PropApp : public NetApp {"), pb = c.find("\n};", pa);
+  TEST_ASSERT_TRUE(a != std::string::npos && b != std::string::npos && pa != std::string::npos && pb != std::string::npos);
+  std::string iface = h.substr(a, b - a), prop = c.substr(pa, pb - pa);
+  std::regex virt(R"(virtual [^;{]*?\b(\w+)\()");
+  int n = 0;
+  for (std::sregex_iterator it(iface.begin(), iface.end(), virt), end; it != end; ++it) {
+    std::string name = (*it)[1];
+    if (name == "NetApp") continue;  // the destructor
+    n++;
+    std::regex over("\\b" + name + R"(\([^)]*\)( const)? override)");
+    TEST_ASSERT_TRUE_MESSAGE(std::regex_search(prop, over), ("PropApp does not forward " + name).c_str());
+  }
+  TEST_ASSERT_TRUE(n > 30);  // the list was read
+}
+
 int main() {
   UNITY_BEGIN();
+  RUN_TEST(the_board_forwards_every_netapp_call);
   RUN_TEST(hmac_sha256_matches_rfc_4231);
   RUN_TEST(the_frame_round_trip_its_tag_and_its_limits);
   RUN_TEST(numbers_seen_run_once_and_late_ones_still_run);

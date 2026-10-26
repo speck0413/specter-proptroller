@@ -190,6 +190,14 @@ class PropApp : public NetApp {
   bool updateWrite(const uint8_t* d, size_t n, std::string& a) override { return c_->updateWrite(d, n, a); }
   std::string updateFinish() override { return c_->updateFinish(); }
   void updateAbort() override { c_->updateAbort(); }
+  // the board link (tell lines, other boards' tells): without these the network loop saw the NetApp defaults, so
+  // a board sent no tells and took none peer to peer (hardware bench 2026-10-25; test_link checks the list)
+  uint32_t linkEpoch() override { return c_->linkEpoch(); }
+  bool linkWork() override { return c_->linkWork(); }
+  bool linkConfig(LinkConfig& c) override { return c_->linkConfig(c); }
+  std::vector<LinkOut> linkTake() override { return c_->linkTake(); }
+  LinkReply linkIn(const LinkIn& in) override { return c_->linkIn(in); }
+  void linkAnswer(uint32_t s, const std::string& f, bool ok, const std::string& t) override { c_->linkAnswer(s, f, ok, t); }
 
  private:
   NetApp* c_;
