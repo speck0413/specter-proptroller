@@ -333,6 +333,17 @@ void an_effect_with_no_wait_for_gives_way() {
   TEST_ASSERT_EQUAL(300, b.run.level(0));  // scare done: glow goes round again
 }
 
+// Two effects with no wait for that share an output take turns, round by round (SS-R8).
+void two_effects_with_no_wait_for_take_turns() {
+  Bench b("effect a:\n  out1 = 30%\n  sleep 1\neffect b:\n  out1 = 70%\n  sleep 1\n");
+  b.step(4500);
+  std::vector<Level> seen;
+  for (auto& x : b.changes) seen.push_back(x.second.second);
+  TEST_ASSERT_TRUE_MESSAGE(seen.size() >= 4, std::to_string(seen.size()).c_str());
+  for (size_t i = 0; i < 4; i++) TEST_ASSERT_EQUAL(i % 2 ? 700 : 300, seen[i]);
+  TEST_ASSERT_EQUAL(1010, b.changes[1].first);  // b's round begins as a's ends
+}
+
 void fade_and_flicker_take_their_time() {
   Bench b("effect a:\nwait for trig1\nout1 = 100%\nfade out1 to 0% over 1\nout2 = on\nflicker out1 for 0.5\nout2 = off\n");
   b.step(2500);
@@ -747,6 +758,7 @@ int main() {
   RUN_TEST(a_round_of_no_time_waits_for_the_next_tick);
   RUN_TEST(lines_above_the_wait_for_take_turns);
   RUN_TEST(an_effect_with_no_wait_for_gives_way);
+  RUN_TEST(two_effects_with_no_wait_for_take_turns);
   RUN_TEST(fade_and_flicker_take_their_time);
   RUN_TEST(sound_lines_and_dmx);
   RUN_TEST(random_presses_never_break_the_rules);

@@ -1,0 +1,6 @@
+effect a:
+  out1 = 30%
+  wait 1
+effect b:
+  out1 = 70%
+  wait 1

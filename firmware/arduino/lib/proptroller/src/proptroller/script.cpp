@@ -1723,11 +1723,13 @@ PT_STEP_CODE void ScriptRunner::run(Millis now, const ScriptInputs& in_all, std:
       if (st_[e].runs != runs) started = (uint8_t)(started | (1u << e));
       if (was && !st_[e].running) {
         // its run ended and its outputs are free: the starts that waited go first, a queued remote start before a
-        // remembered one, in script order (STATE-MACHINE.md §13); then the effect itself goes on at its top
-        for (int kind = 0; kind < 2; kind++)
+        // remembered one, in script order (STATE-MACHINE.md §13), then the effects waiting to begin their first line
+        // (an effect with no wait for, the lines above a first wait for), so two that share an output take turns;
+        // then the effect itself goes on at its top
+        for (int kind = 0; kind < 3; kind++)
           for (int j = 0; j < p_->effects; j++) {
             const int f = order_[j];
-            if (!(kind == 0 ? queued_[f] : pending_[f]) || !canStart(f, now)) continue;
+            if (kind == 2 ? (f == e || st_[f].running || atTop(f)) : (!(kind == 0 ? queued_[f] : pending_[f]) || !canStart(f, now))) continue;
             uint32_t r0 = st_[f].runs;
             steps(f);
             if (st_[f].runs != r0) started = (uint8_t)(started | (1u << f));

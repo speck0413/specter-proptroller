@@ -1,0 +1,51 @@
+{
+  "spec": [
+    "SS-R1",
+    "SS-R8"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": []
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 0,
+        "power_on": true
+      }
+    ],
+    "until": 4500,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            0,
+            300
+          ],
+          [
+            1000,
+            700
+          ],
+          [
+            2000,
+            300
+          ],
+          [
+            3000,
+            700
+          ],
+          [
+            4000,
+            300
+          ]
+        ]
+      }
+    }
+  }
+}

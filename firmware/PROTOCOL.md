@@ -236,7 +236,8 @@ redelivered, `remote_trigger_enable`) writes nothing, and the `save` action writ
 `runs_since_power_on`, `runs_lifetime` and `last_run_uptime_ms` are the [run counters](#run-counters)
 (`last_run_uptime_ms` only once a run started since power-on; the time since it is `uptime_ms - last_run_uptime_ms`).
 While a show script is stored, `"script":{"effects":[{"name":"porch light","running":true,"line":5}]}`:
-`line` is the script line each effect is at; when the stored script failed its check at power-on it does
+`line` is the script line each effect is at, `running` false only while it sits at its first `wait for`
+(true in a run, in the lines above its first `wait for` and, nearly always, for an effect with no `wait for`); when the stored script failed its check at power-on it does
 not run and `"error"` holds the first message. An output a script sets has the driver `script`.
 During a firmware update `"update":{"phase":"writing","done":204800,"total":1442560}` (then
 `{"phase":"restarting","done":0,"total":0}` until the restart); absent otherwise.

@@ -153,10 +153,13 @@ way (a settings reset) is kept but does not run until the name is back or the sc
   trigger (its input or its name), and the same effect may run again and again. The lines above an effect's first
   `wait for` and an effect with no `wait for` hold their outputs like a run, and start when those are free. An
   effect with no `wait for` gives way: at the end of a time round it waits while an effect it shares an output
-  with is being started (pressed, remembered or started by name), and goes round again after that run.
-- **SS-R9 The protections still apply.** The safety rules at power-on (SM-B) still apply, and an output's
-  maximum on-time still turns it off if you set one (Settings; off by default: set one for heaters, pumps and
-  solenoids). The board never measures load current (SM-S3): keep each load within its terminal's rating.
+  with is being started (pressed, remembered or started by name), and goes round again after that run; two
+  effects with no `wait for` that share an output take turns, a time round each.
+- **SS-R9 The protections still apply.** At power-on everything is off (SM-B1), an input held at power-on
+  never starts a run (SM-B3), and no `wait for` passes in the 2 s boot lockout (SM-B2); the lines above an
+  effect's first `wait for`, and an effect with no `wait for`, start straight away (a pump in such an effect
+  runs from power-on). An output's maximum on-time still turns it off if you set one (Settings; off by default:
+  set one for heaters, pumps and solenoids). The board never measures load current (SM-S3): keep each load within its terminal's rating.
 - **SS-R10 Starting from the phone, MQTT or serial.** Every effect can be started by its name (spaces as `_`):
   the web page's button, MQTT `<prefix>/<name>/control/<effect>`, the serial console's `<effect>`, op `action`
   with `key` the name. A remote start needs `remote_trigger_enable`, under the pulse-and-recover effect's rules

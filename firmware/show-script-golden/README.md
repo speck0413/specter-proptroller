@@ -336,7 +336,9 @@ choices within their tolerances):
   USER1 ...; the script's order for the same input): an effect that shares outputs with one that started on that
   sample is remembered. A remembered press starts only if its input is still held when the effect could start,
   otherwise it is dropped (memory with check). When outputs come free, a waiting remote start (no hold needed)
-  goes before a remembered press.
+  goes before a remembered press, and then an effect waiting to begin its first line (with no `wait for`, or
+  the steps above its first `wait for` at power-on): two effects with no `wait for` that share an output take
+  turns, a time round each.
 - **Remote starts** (SS-R10): a start by name (the trace's `control` event with the effect's name, spaces as `_`)
   begins on the next sample when the effect could start, otherwise one waits; `cancel` empties them. An effect
   with no `wait for` is never started: the start is refused and changes nothing.

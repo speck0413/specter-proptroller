@@ -144,3 +144,16 @@ test('a tell line is a tell block (a board, then an effect or a setting), writte
   assert.equal(blocksToText(m), 'effect a:\n  wait for trig1\n  tell porch bright   # lights out\n');
   assert.equal(blocksToText({ eol: '\n', blocks: [newBlock('ps_tell')] }), 'tell porch blackout\n');
 });
+
+test('an effect needs no wait for block: built from blocks, and with its lines above the wait for', () => {
+  const e = newBlock('ps_effect', { NAME: 'candle' });
+  e.lines.push(newBlock('ps_set', { TARGET: 'out2', LEVEL: '40%' }), newBlock('ps_flicker', { TARGET: 'out2' }));
+  assert.equal(blocksToText({ eol: '\n', blocks: [e] }), 'effect candle:\n  out2 = 40%\n  flicker out2 for 3\n');
+  // a wait for block moved below a line: that line runs at power-on and after every run
+  const m = textToBlocks('effect haunt:\n  wait for trig1\n  audio_loop = 1\n');
+  m.blocks[0].lines.reverse();
+  assert.equal(blocksToText(m), 'effect haunt:\n  audio_loop = 1\n  wait for trig1\n');
+  // and removed: an effect of the loop line alone
+  m.blocks[0].lines = m.blocks[0].lines.filter((b) => b.type !== 'ps_wait');
+  assert.equal(blocksToText(m), 'effect haunt:\n  audio_loop = 1\n');
+});
