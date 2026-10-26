@@ -155,6 +155,7 @@ exactly (byte for byte).
 | M-notatime | `line {n}: {v} is a number of runs, not a time.` (a count setting where a time goes, in `wait`, `pulse` or `limit`) |
 | M-limitlong | `line {n}: a limit's time is at most 60 minutes.` |
 | M-twolimits | `line {n}: effect "{name}" already has a limit (line {m}). An effect has one.` |
+| M-limitnowait | `line {n}: a limit counts runs, and effect "{name}" has no "wait for" to start one. Add a "wait for trig1", or remove the limit.` (on the limit line of an effect with no `wait for` line, after the per-effect checks on its header; a limit line with an error of its own gets only that) |
 | M-pulseform | `line {n}: write a pulse as "pulse cc1 for 200 ms".` |
 | M-nopulse | `line {n}: {x} cannot pulse. Pulses work on out1 to out4, rly1, rly2, cc1 and cc2.` (a DMX channel; then M-time, M-notatime, M-toolong) |
 | M-pulseshort | `line {n}: {x} is a relay or a contact: pulse it for at least 0.1 s.` (a literal time under 100 ms; a setting is held to 100 ms when it runs) |

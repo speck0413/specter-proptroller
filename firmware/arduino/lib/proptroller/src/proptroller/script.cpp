@@ -76,7 +76,7 @@ enum Msg : uint8_t {
   M_LIMITFORM, M_LIMITRUNS, M_LIMITLONG, M_TWOLIMITS, M_NOTATIME, M_PULSEFORM, M_NOPULSE, M_PULSESHORT, M_LAMP, M_VOLUME,
   M_PIXEMPTY, M_PIXEFFECT, M_PIXCOLOR, M_PIXNOCOLOR, M_PIXHASH, M_PIXLINE,
   M_TELLFORM, M_TELLBOARD, M_TELLNAME, M_TELLKEY, M_TELLREFUSED, M_TELLVALUE, M_TELLLONG, M_TELLSPACE,
-  M_PATEMPTY, M_PATNAME, M_PRESSFORM, M_PRESSNAME, M_PRESSEQ, M_NAMES, M_NOBUTTON, M_NOBUTTONS, M_NOBUTTONANY, M_NOPLAYER
+  M_PATEMPTY, M_PATNAME, M_PRESSFORM, M_PRESSNAME, M_PRESSEQ, M_NAMES, M_NOBUTTON, M_NOBUTTONS, M_NOBUTTONANY, M_NOPLAYER, M_LIMITNOWAIT
 };
 static const char* const MSG[] = {
     "this line is not inside an effect. Start one first with \"effect <name>:\".",
@@ -157,8 +157,9 @@ static const char* const MSG[] = {
     "pattern \"{1}\" has no buttons to press (a button is an export function trigger... in the pattern).",
     "no pattern this script shows has a button \"{1}\".",
     "this board has no pattern player (an ESP32, an ESP32-S3 or a Pico 2 W has one; the Pico W, the Pico and the ESP32-C3 do not).",
+    "a limit counts runs, and effect \"{1}\" has no \"wait for\" to start one. Add a \"wait for trig1\", or remove the limit.",
 };
-static_assert(sizeof MSG / sizeof MSG[0] == M_NOPLAYER + 1, "one text per message");
+static_assert(sizeof MSG / sizeof MSG[0] == M_LIMITNOWAIT + 1, "one text per message");
 static_assert(SCRIPT_TELL_BYTES == 512 && SCRIPT_TELL_VALUE_MAX == 64, "the message texts quote these limits");
 static_assert(SCRIPT_LIMIT_MAX_RUNS == 20 && SCRIPT_LIMIT_MAX_MS == 60UL * 60000UL && RELAY_MIN_DWELL_MS == 100,
               "the message texts quote these limits");
@@ -1086,6 +1087,8 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
     } else if (f.lines == 0) r.errors.push_back({f.line, msg(M_EMPTY, f.line, f.name.c_str())});
     else if (!f.has_wait && !f.takes_time) r.errors.push_back({f.line, msg(M_NOPAUSE, f.line, f.name.c_str())});
     else if (f.lines > SCRIPT_MAX_LINES_PER_EFFECT) r.errors.push_back({f.line, msg(M_EFFECTLINES, f.line, f.name.c_str(), "", "", f.lines)});
+    // a limit counts the runs that start at the first wait for: an effect with none has nothing to count
+    if (f.limit_line && !f.has_wait) r.errors.push_back({f.limit_line, msg(M_LIMITNOWAIT, f.limit_line, f.name.c_str())});
     // the lines in the order they run: from the first wait for to the last line, then on through the lines above
     // it; an effect with no wait for goes round and round (its second time round is the one that counts)
     size_t top = 0;

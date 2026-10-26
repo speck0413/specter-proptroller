@@ -92,7 +92,8 @@ way (a settings reset) is kept but does not run until the name is back or the sc
   take time each time round: the checker refuses one without a `wait <time>`, `fade` or `flicker` line (a time of
   0 does not count), saying `line 1: effect "candle" never waits, so it would repeat without a pause. Add a
   "wait 5" or a "wait for trig1".` Nothing starts such an effect from outside (SS-R10), and its times round are
-  not runs (they are not counted, and a `limit` in it has nothing to count).
+  not runs: they are not counted, and the checker refuses a `limit` in such an effect (`line 2: a limit counts
+  runs, and effect "candle" has no "wait for" to start one. Add a "wait for trig1", or remove the limit.`).
 
   ```
   effect haunt:
@@ -321,7 +322,8 @@ effect refill:                        # shares out2 with run: they take turns (S
 - **SS-G3 `limit <N> runs per <time>`** (or `limit 1 run per …`): up to N runs (1-20) in a window that opens at
   the first run and lasts the time (up to 60 minutes; 0: no window). While the window is used up the effect does
   not start: presses are ignored, a release does not count (a press held across the window's end starts nothing),
-  and a remote start is refused with the time left (SM-L). One limit per effect.
+  and a remote start is refused with the time left (SM-L). One limit per effect, and only in an effect with a
+  `wait for` (its runs start there).
 - **SS-G5 `pulse <output> for <time>`**: the output (out1-out4, rly1, rly2, cc1, cc2) goes on now and off after the
   time, while the effect goes straight to its next line; a later line that sets the output ends the pulse. A
   relay or contact pulses for at least 0.1 s.

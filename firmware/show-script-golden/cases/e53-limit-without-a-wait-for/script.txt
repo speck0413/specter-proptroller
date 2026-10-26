@@ -1,0 +1,16 @@
+effect candle:
+  limit 3 runs per 1 min
+  out2 = 40%
+  flicker out2 for 3
+effect door:
+  limit 3 runs per 1 min
+  out1 = on
+  wait for trig1
+  out1 = off
+  wait 1
+effect blink:
+  limit soon
+  out3 = on
+  wait 1
+  out3 = off
+  wait 1

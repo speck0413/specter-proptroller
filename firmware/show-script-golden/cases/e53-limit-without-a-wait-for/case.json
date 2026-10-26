@@ -1,0 +1,22 @@
+{
+  "spec": [
+    "SS-G3",
+    "SS-R1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 2,
+        "message": "line 2: a limit counts runs, and effect \"candle\" has no \"wait for\" to start one. Add a \"wait for trig1\", or remove the limit."
+      },
+      {
+        "line": 12,
+        "message": "line 12: write it as \"limit 3 runs per 3 min\"."
+      }
+    ],
+    "warnings": []
+  }
+}
