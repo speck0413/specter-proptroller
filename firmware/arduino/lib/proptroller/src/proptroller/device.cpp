@@ -1761,8 +1761,14 @@ Response Controller::setParams(const Request& r, const std::vector<ParamValue>& 
   }
   bool df_changed = next.df_ack != settings_.df_ack || next.df_checksum != settings_.df_checksum;
   // flash wear: the same values again (a retained MQTT config/set redelivered at every reconnect, a value not
-  // stored such as remote_trigger_enable) mark nothing to save
-  bool stored_changed = !(next == settings_);
+  // stored such as remote_trigger_enable) mark nothing to save. The comparison writes both as JSON, 9 ms on an
+  // ESP32 (bench 2026-10-25: the step stalled that long on every change): with the lock given back (the settings
+  // never change in a window), and not at all for another board's change, which is never saved
+  bool stored_changed = false;
+  if (save) {
+    Unlocked u(*this);
+    stored_changed = !(next == settings_);
+  }
   // another board's change is used, not saved: the value the flash keeps is remembered for every save until a
   // change here, a restored backup or a restart; a change here is saved and ends it
   for (auto& pv : values) {

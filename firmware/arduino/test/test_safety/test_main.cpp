@@ -776,6 +776,43 @@ void the_mqtt_hello_is_built_without_the_lock() {
   TEST_ASSERT_EQUAL(2, g_hello_releases);  // the settings, then the state's JSON, each in a window
 }
 
+// a setting change compares the new settings with the stored ones (both written as JSON: 9 ms on an ESP32, a step
+// stall on every change on the bench of 2026-10-25) with the lock given back; another board's change, never saved,
+// does not compare them at all. The comparison still decides the save.
+static int g_cmp_releases = 0;
+void a_setting_change_compares_without_the_lock() {
+  Sim sim("t");
+  sim.step(2500);
+  sim.ctl().setLockHooks([](void*) { g_cmp_releases++; return 1; }, [](void*, int) {}, nullptr);
+  sim.serial("pixel_speed=120");
+  int local = g_cmp_releases;
+  g_cmp_releases = 0;
+  LinkIn in;
+  in.set = true;
+  in.from = "front-door";
+  in.what = "pixel_speed";
+  in.value = "130";
+  in.via = "Wi-Fi";
+  LinkReply r = sim.ctl().linkIn(in);
+  int tell = g_cmp_releases;
+  sim.ctl().setLockHooks(nullptr, nullptr, nullptr);
+  TEST_ASSERT_EQUAL(1, local);
+  TEST_ASSERT_TRUE_MESSAGE(r.ok, r.text.c_str());
+  TEST_ASSERT_EQUAL(0, tell);
+  // a change here is saved; the same value again is not
+  sim.step(70000);
+  sim.ctl().background();
+  int saves = sim.flash().saves;
+  sim.serial("pixel_speed=120");
+  sim.step(70000);
+  sim.ctl().background();
+  TEST_ASSERT_EQUAL(saves, sim.flash().saves);
+  sim.serial("pixel_speed=125");
+  sim.step(70000);
+  sim.ctl().background();
+  TEST_ASSERT_EQUAL(saves + 1, sim.flash().saves);
+}
+
 // the state's JSON (a page, the serial port, MQTT) is written in a window: only the copy of what the step changes
 // is made with the lock
 static int g_state_releases = 0;
@@ -968,6 +1005,7 @@ int main() {
   RUN_TEST(finishing_an_update_does_not_hold_the_lock);
   RUN_TEST(the_step_never_writes_the_flash);
   RUN_TEST(the_mqtt_hello_is_built_without_the_lock);
+  RUN_TEST(a_setting_change_compares_without_the_lock);
   RUN_TEST(the_state_is_written_without_the_lock);
   RUN_TEST(the_state_comes_from_the_steps_copy);
   RUN_TEST(the_step_never_waits_on_a_script_write);
