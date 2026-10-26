@@ -19,7 +19,7 @@ const TRAIL = /[ \t  ]+$/;
 /** Block kinds: the words shown, the fields, the colour (Studio's Blockly hues as colours), a tooltip. */
 export const KINDS = {
   ps_effect: { words: ['effect', 'NAME', ':'], fields: { NAME: 'my effect' }, colour: '#a6805b',
-    tip: 'An effect: its lines run top to bottom, then it starts again at its first "wait for".' },
+    tip: 'An effect: its lines run top to bottom, then again from the top. The lines above its first "wait for" run at power-on.' },
   ps_wait: { words: ['wait for', 'INPUT'], fields: { INPUT: 'trig1' }, colour: '#5b8da6',
     tip: 'Waits until the input is pressed (held for the debounce time), after it was released.' },
   ps_set: { words: ['TARGET', '=', 'LEVEL'], fields: { TARGET: 'out1', LEVEL: 'on' }, colour: '#5ba65b',

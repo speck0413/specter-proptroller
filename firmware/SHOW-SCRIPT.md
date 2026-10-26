@@ -2,8 +2,8 @@
 
 Implemented by the firmware (`arduino/lib/proptroller/src/proptroller/script.cpp`).
 
-A show script is a short text file that reads like a config file. Each effect waits for an input, then turns
-outputs on and off, waits, and plays sounds. The board stores the text, checks it when it is saved, and runs it.
+A show script is a short text file that reads like a config file. Each effect turns outputs on and off, waits
+for an input or a time, and plays sounds, top to bottom and round again. The board stores the text, checks it when it is saved, and runs it.
 Nobody compiles anything. You can write it in the board's web page, in the desktop app as text, or in the desktop
 app with drag-and-drop blocks.
 
@@ -51,7 +51,7 @@ Two effects, each with its own trigger. They run at the same time and never wait
 | Line | Meaning |
 |---|---|
 | `effect <name>:` | Starts an effect. The name is anything after `effect` (`effect1`, `effect porch light`). Every line below belongs to it until the next `effect …:`. |
-| `wait for <input>` | Waits until that input is pressed (rules SS-R3, SS-R4). Inputs: `trig1`, `trig2`, `user1`–`user3`. |
+| `wait for <input>` | Waits until that input is pressed (rules SS-R3, SS-R4). Inputs: `trig1`, `trig2`, `user1`–`user3`. It may stand anywhere in an effect, any number of times. |
 | `<output> = on` / `off` / `N%` | Sets an output. Outputs: `out1`–`out4` (the board's supply voltage, dimmable up to 2 A at 12 V), `rly1`, `rly2`, `cc1`, `cc2` (button presses, on or off only; §7). |
 | `dmx<N> = on` / `off` / `N%` | Sets DMX channel N (1–512) through the DMX add-on (§7.4). |
 | `wait <time>` | Waits that long: `wait 2`, `wait 200 ms`, `wait 3 min`, `wait out1_on_ms` (SS-G6). `wait for 2 s` is the same line. A time starts with a digit or is a time setting; anything else after `wait for` is an input. A name that is both an input's name and a time setting means the input, with a warning. `sleep <time>` is an older spelling of the same line and still works. |
@@ -82,12 +82,35 @@ way (a settings reset) is kept but does not run until the name is back or the sc
 
 ## 4. How it runs (SS-R)
 
-- **SS-R1 Each effect is its own loop.** At power-on, every effect sits at its top: its sound lines (if it starts
-  with any), then its first `wait for`. When it starts it runs its lines top to bottom, and after the last line it
-  goes back to the top. Sound lines before the first `wait for` (`audio_loop`, `audio_single`, `audio_volume`, `audio_stop`) run
-  at power-on and every time the effect comes back to its top, and so does a `pixels` line there (the strip's
-  look while the prop waits); any other line before it is an error.
-- **SS-R2 Busy until the last line finishes.** While an effect is running it never starts again; a press of its
+- **SS-R1 Each effect is its own loop.** An effect runs its lines top to bottom, and after the last line it goes
+  back to the top. At power-on every effect is at its first line: one that starts with a `wait for` sits there
+  until its input is pressed; any other starts straight away. So the lines above an effect's first `wait for` run
+  at power-on and again every time the effect comes back to its top: that is how an effect plays a background
+  sound, keeps a lamp glowing or sets the pixel strip's look while the prop waits. An effect may have any number
+  of `wait for` lines, anywhere (SS-R5). A run is from leaving the first `wait for` until the effect is back
+  there, the lines above it included. An effect with no `wait for` goes round and round from power-on, so it must
+  take time each time round: the checker refuses one without a `wait <time>`, `fade` or `flicker` line (a time of
+  0 does not count), saying `line 1: effect "candle" never waits, so it would repeat without a pause. Add a
+  "wait 5" or a "wait for trig1".` Nothing starts such an effect from outside (SS-R10), and its times round are
+  not runs (they are not counted, and a `limit` in it has nothing to count).
+
+  ```
+  effect haunt:
+    audio_loop = 1      # rain: at power-on, and again after every scare (it carries on, SS-R7)
+    out1 = 15%          # the porch lamp glows while it waits
+    wait for trig1
+    audio_single = 2    # a scream over the rain
+    out1 = on
+    wait 5
+
+  effect candle:        # no wait for: round and round from power-on
+    out2 = 40%
+    flicker out2 for 3
+    wait 1
+  ```
+
+- **SS-R2 Busy until it is back at its first `wait for`.** A run goes through the last line and on through the
+  lines above the first `wait for`. While an effect is running it never starts again; a press of its
   trigger is ignored (with `trig1_wait` / `trig2_wait` = `return`: remembered, and it starts the next run when
   this one ends only if the input is still held then, SS-R4). A `wait` at the end of an effect therefore works
   as a rest time: nothing restarts it until the wait is over.
@@ -108,11 +131,14 @@ way (a settings reset) is kept but does not run until the name is back or the sc
 - **SS-R5 A `wait for` in the middle** of an effect follows the same rules (pressed and held, released since the
   last time this line was passed).
 - **SS-R6 Outputs keep their level** until a line changes it. Everything is off at power-on (SM-B). The checker
-  warns when an effect ends with an output still on, because the output stays on while it waits.
+  warns when an effect comes back to its first `wait for` with an output still on, because the output stays on
+  while it waits; an output that a line above that `wait for` sets is set on purpose and gets no warning, nor
+  does an effect with no `wait for`.
 - **SS-R7 One sound player, one background loop.** `audio_loop = <N>` sets the background loop: it plays over
   and over, also after its effect goes back to its top. `audio_single = <N>` plays once over it, and the loop
-  comes back by itself when that sound ends. `audio_loop = off` (or `false`, or `""`) turns the loop off; setting
-  the same loop again while it plays changes nothing. `audio_stop` stops whatever plays and turns the loop off. The
+  comes back by itself when that sound ends. `audio_loop = off` (or `false`, or `""`) turns the loop off; an
+  `audio_loop` of the sound that is already looping carries on without starting over, so a looping background
+  sound does not stutter when its effect comes back to its top. Any other sound line replaces what plays. `audio_stop` stops whatever plays and turns the loop off. The
   loop plays at `ambient_volume`, a sound once at `trigger_volume`, until a line `audio_volume = <level>` sets the
   volume for the script's sounds (its percentage on the player's 0-30, kept until the next `audio_volume` or a
   restart; the board's ambient and trigger volume settings stay as they are). The checker warns when two effects both play
@@ -124,7 +150,10 @@ way (a settings reset) is kept but does not run until the name is back or the sc
   sample, the one on the lower input starts (TRIG1, TRIG2, USER1 ...; for the same input the first in the script)
   and the other is remembered (one deep). A remembered press runs when the outputs come free only if its input is
   still held at that moment; let go earlier, it is dropped (memory with check). Each effect starts only on its own
-  trigger (its input or its name), and the same effect may run again and again.
+  trigger (its input or its name), and the same effect may run again and again. The lines above an effect's first
+  `wait for` and an effect with no `wait for` hold their outputs like a run, and start when those are free. An
+  effect with no `wait for` gives way: at the end of a time round it waits while an effect it shares an output
+  with is being started (pressed, remembered or started by name), and goes round again after that run.
 - **SS-R9 The protections still apply.** The safety rules at power-on (SM-B) still apply, and an output's
   maximum on-time still turns it off if you set one (Settings; off by default: set one for heaters, pumps and
   solenoids). The board never measures load current (SM-S3): keep each load within its terminal's rating.
@@ -133,19 +162,21 @@ way (a settings reset) is kept but does not run until the name is back or the sc
   with `key` the name. A remote start needs `remote_trigger_enable`, under the pulse-and-recover effect's rules
   (SM-Q, SM-R): it starts now when the effect can start, otherwise one start waits (a second is "already queued");
   `cancel` empties the waiting starts, and the enable going off (an enable from a phone page ends with that page)
-  drops those that need it. The effects named in the setting `remote_free_effects` start without the enable. A
+  drops those that need it. An effect with no `wait for` is never started this way: the start is refused and
+  ignored (`effect "candle" has no "wait for", so nothing starts it: it runs round and round by itself`). The effects named in the setting `remote_free_effects` start without the enable. A
   name wins over a profile's control alias. When several starts wait for the same outputs, a waiting remote start
   goes before a remembered press.
 - **SS-R11 Scripts and the advanced effects share terminals.** The checker refuses a script that uses a
   terminal an advanced effect owns (for example the pulse-and-recover effect's TRIG1, OUT1, OUT2).
 - **SS-R12 Timing.** Every effect steps on the 1 ms input samples (its outputs reach the pins on the 10 ms tick).
+  An effect with no `wait for` goes round at most every 10 ms (a time setting of 0 takes no time).
 - **SS-R13 Status.** With a script stored (and the built-in effect off), the board gives the pulse-and-recover
   effect's status values from it: `run_count` (every effect's runs), `ready`, `runs_left` and
-  `cooldown_remaining_ms` (the first effect's; the last two with a limit), `pulsing` (OUT1 on, or a run that turns
+  `cooldown_remaining_ms` (the first effect's that has a `wait for`; the last two with a limit), `pulsing` (OUT1 on, or a run that turns
   OUT2 on has not reached that line yet: a refill's wait before its OUT2 counts), `recovering` (OUT2 on), `queued`
   (a remote start waits), `remote_trigger_enable` and `remote_trigger_by`; a profile's status aliases name them
   (and their `label`s name them on the phone page; a time left shows as m:ss under any name). Over MQTT a status
-  value goes out when it changes, at most every 0.1 s; a time left once a second. With `out4_ready_lamp` on, OUT4 is the first effect's ready lamp (on while a press would start
+  value goes out when it changes, at most every 0.1 s; a time left once a second. With `out4_ready_lamp` on, OUT4 is that effect's ready lamp (on while a press would start
   it) and the checker refuses `out4` in the script.
 
 ## 5. Checking and storing (SS-C)
@@ -256,7 +287,8 @@ uses a `dmx` line.
 - **SS-T2** Required cases include: case and spacing variants giving the same table (SS-W1–W4); every error
   message; two effects at once; a trigger held down through the end of an effect (no restart, SS-R4);
   press–release–press during a run (one run, SS-R2); `audio_loop` surviving the return to `wait for` and coming
-  back after a sound (SS-R7); two effects writing one output (they take turns, SS-R8); remote starts by name
+  back after a sound, and the same loop carrying on (SS-R7); lines above the first `wait for`, several `wait for`
+  lines, and an effect with no `wait for` going round, giving way, and refused without a time (SS-R1); two effects writing one output (they take turns, SS-R8); remote starts by name
   (SS-R10); the limits (SS-C3); text → blocks → text (SS-E3).
 - **SS-T3** A randomized test presses inputs at random against random valid scripts and checks SS-R2 and SS-R4
   (the `return` rule) never break.
@@ -363,8 +395,7 @@ effect graveyard:
   while the strip shows something else (a built-in effect, nothing, or a pattern without that button) does
   nothing and says so in the event log; the show goes on. When the board has every pattern the script names,
   the checker also knows their buttons and says which there are. Starting an effect from the phone page, MQTT or
-  another board presses its buttons as its input would. `pixels press` lines may come before the first
-  `wait for`, as a `pixels` line may.
+  another board presses its buttons as its input would.
 
 ## 11. Telling other boards (SS-B)
 

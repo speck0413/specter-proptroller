@@ -70,7 +70,7 @@ static_assert(SCRIPT_MAX_EFFECTS == 8 && SCRIPT_MAX_LINES == 256 && SCRIPT_MAX_B
 enum Msg : uint8_t {
   M_OUTSIDE, M_COLON, M_NONAME, M_LONGNAME, M_DUPNAME, M_UNKNOWN, M_WAITFORM, M_FADEFORM, M_FLICKERFORM, M_NOSOUND,
   M_INPUT, M_LEARN, M_OUTPUT, M_DMXCH, M_LEVEL, M_ONOFF, M_NOFADE, M_NOFLICKER, M_TIME, M_TOOLONG, M_SOUND,
-  M_SOUNDRANGE, M_DMXOFF, M_ROLE, M_OWNED, M_SHARED, M_EMPTY, M_FIRST, M_EFFECTLINES, M_EFFECTS, M_LINES, M_BYTES,
+  M_SOUNDRANGE, M_DMXOFF, M_ROLE, M_OWNED, M_SHARED, M_EMPTY, M_NOPAUSE, M_EFFECTLINES, M_EFFECTS, M_LINES, M_BYTES,
   W_STILLON, W_TWOSOUND, M_RELAYFAST, M_HINTSET, M_HINTPLAY, M_HINTTURN, M_HINTSLEEP, M_PIXEL,
   M_TWONAMES, M_BADNAME, W_NAMEIS, W_WAITNAME,
   M_LIMITFORM, M_LIMITRUNS, M_LIMITLONG, M_TWOLIMITS, M_NOTATIME, M_PULSEFORM, M_NOPULSE, M_PULSESHORT, M_LAMP, M_VOLUME,
@@ -106,7 +106,7 @@ static const char* const MSG[] = {
     "{1} belongs to the built-in pulse-and-recover effect. Turn the effect off (setting effect = none) or use another terminal.",
     "{1} is already used by effect \"{2}\" (line {k}). Each {3} belongs to one effect.",
     "effect \"{1}\" has no lines.",
-    "effect \"{1}\" must start with \"wait for\", for example \"wait for trig1\".",
+    "effect \"{1}\" never waits, so it would repeat without a pause. Add a \"wait 5\" or a \"wait for trig1\".",
     "effect \"{1}\" has {k} lines. An effect can have at most 64.",
     "the script has {k} effects. A board runs at most 8.",
     "the script has {k} lines. A board takes at most 256.",
@@ -423,8 +423,8 @@ struct FxWork {
   std::string name;
   uint16_t line = 0;
   size_t lines = 0;  // non-blank lines under the header
-  bool first_is_wait = false;
-  bool head = true;  // only sound lines so far (they may come before the first wait for, SS-R1)
+  bool has_wait = false;    // a wait for line (with or without an error)
+  bool takes_time = false;  // a wait <time>, fade or flicker line whose time is not 0 (or has an error)
   bool plays_sound = false;
   std::vector<ScriptStep> steps;
   std::vector<std::pair<uint16_t, uint16_t>> last;  // (target, level after its last step), first appearance order
@@ -739,8 +739,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
     ScriptStep st;
     st.line = n;
     bool is_wait = false, good = false, declared = false;  // declared: a limit or turns line (no step)
-    bool is_sound = false;  // an audio_single, audio_loop or audio_stop line (with or without an error)
-    bool is_pixels = false; // a pixels line (it may come before the first wait for, as a sound line may)
+    bool timed = false;     // a wait <time>, fade or flicker line (with or without an error)
     std::string via;  // the name this line used for its terminal ("": the terminal's own name)
     // a word that is not a terminal's own name: 1 and the terminal (in [lo, hi)) it is the name of; 0 when it
     // is nobody's name; -1 with the message when two terminals have it or a script cannot use it
@@ -872,6 +871,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         else if (board.effect_inputs & (1u << k)) err(M_OWNED, x.c_str());
         else { st.op = ScriptStep::Op::Wait; st.target = (uint16_t)k; good = true; }
       } else {
+        timed = true;
         std::string v_raw = trim(raw.substr(raw.size() - tm.size()));
         uint8_t set = 0;
         int pt = parseTimeOrSetting(tm, board, st.ms, set);
@@ -915,6 +915,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         }
       }
     } else if (startsWith(l, "fade") && (l.size() == 4 || l[4] == ' ')) {
+      timed = true;
       std::string rest = " " + collapse(l.substr(4)) + " ";
       std::string rcol = " " + collapse(raw.substr(4)) + " ";  // the same, as written
       size_t to = rest.find(" to "), over = rest.find(" over ");
@@ -935,6 +936,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         }
       }
     } else if (startsWith(l, "flicker") && (l.size() == 7 || l[7] == ' ')) {
+      timed = true;
       std::string rest = " " + collapse(l.substr(7)) + " ";
       std::string rcol = " " + collapse(raw.substr(7)) + " ";
       size_t fo = rest.find(" for ");
@@ -953,6 +955,7 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
       }
     } else if (startsWith(l, "sleep") && (l.size() == 5 || l[5] == ' ' || isDigit(l[5]))) {
       // sleep <time>: the older spelling of wait <time>, read the same
+      timed = true;
       std::string v_raw = trim(raw.substr(5));
       uint8_t set = 0;
       int pt = parseTimeOrSetting(lower(v_raw), board, st.ms, set);
@@ -963,7 +966,6 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
     } else if (l == "audio_stop") {
       st.op = ScriptStep::Op::Stop;
       good = true;
-      is_sound = true;
     } else {
       size_t eq = l.find_first_of("=:");
       std::string key = eq == std::string::npos ? std::string() : trim(l.substr(0, eq));
@@ -978,7 +980,6 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         std::string press = collapse(l);
         if (startsWith(press, "pixels press") && (press.size() == 12 || press[12] == ' ')) {
           // pixels press <button>: a trigger button of the pattern the strip shows
-          is_pixels = true;
           std::string b = trim(press.substr(12));
           uint16_t at = 0;
           if (!board.pattern_player) err(M_NOPLAYER);
@@ -1001,7 +1002,6 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         else if ((w0 == "pixels" || w0 == "pixel") && !w1.empty()) err(M_HINTSET, "pixels", w1.c_str());
         else err(M_UNKNOWN, raw.c_str());
       } else if (key == "audio_single" || key == "audio_loop") {
-        is_sound = true;
         std::string file = v_raw;
         bool quoted = file.size() >= 2 && (file[0] == '"' || file[0] == '\'') && file.back() == file[0];
         if (quoted) file = trim(file.substr(1, file.size() - 2));
@@ -1027,7 +1027,6 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         }
       } else if (key == "audio_volume") {
         // audio_volume = N% / off: the player's volume from here on (0-30, halves up), until it changes or a restart
-        is_sound = true;
         uint16_t pm = 0;
         std::string lv = lower(v_raw);
         if (lv == "0") lv = "off";
@@ -1036,7 +1035,6 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
       } else if (key == "pixel") {
         err(M_PIXEL, v_raw.empty() ? "rainbow" : collapse(lower(v_raw)).c_str());  // the strip's line is "pixels"
       } else if (key == "pixels") {
-        is_pixels = true;
         PixelLine px;
         readPixels(v_raw, comment, px);
         uint16_t at = 0;
@@ -1060,10 +1058,8 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
         }
       }
     }
-    if (f.head && !is_sound && !is_pixels) {
-      f.first_is_wait = is_wait;
-      f.head = false;
-    }
+    f.has_wait |= is_wait;
+    if (timed && (!good || st.ms > 0 || st.setting)) f.takes_time = true;  // a time setting may take time
     if (!good || declared) continue;
     if (!via.empty() && st.op != ScriptStep::Op::Wait && !scriptIsDmx(st.target) && called[st.target].empty()) called[st.target] = via;
     f.steps.push_back(st);
@@ -1088,26 +1084,42 @@ ScriptCheck scriptCompile(const std::string& text, const SoundList& sounds, cons
     for (auto& m : r.errors) header_has |= m.line == f.line;
     if (header_has) {
     } else if (f.lines == 0) r.errors.push_back({f.line, msg(M_EMPTY, f.line, f.name.c_str())});
-    else if (!f.first_is_wait) r.errors.push_back({f.line, msg(M_FIRST, f.line, f.name.c_str())});
+    else if (!f.has_wait && !f.takes_time) r.errors.push_back({f.line, msg(M_NOPAUSE, f.line, f.name.c_str())});
     else if (f.lines > SCRIPT_MAX_LINES_PER_EFFECT) r.errors.push_back({f.line, msg(M_EFFECTLINES, f.line, f.name.c_str(), "", "", f.lines)});
+    // the lines in the order they run: from the first wait for to the last line, then on through the lines above
+    // it; an effect with no wait for goes round and round (its second time round is the one that counts)
+    size_t top = 0;
+    while (top < f.steps.size() && f.steps[top].op != ScriptStep::Op::Wait) top++;
+    const bool waits = top < f.steps.size();
+    if (!waits) top = 0;
+    const size_t laps = waits ? 1 : 2, count = f.steps.size();
     // a relay or contact switched again sooner than RELAY_MIN_DWELL_MS after its last change (a wait for resets it;
     // two lines with no time between them never reach the pin)
     long since[4] = {-1, -1, -1, -1};
     uint16_t was[4] = {0, 0, 0, 0};
-    for (auto& st : f.steps) {
+    for (size_t i = 0; i < laps * count; i++) {
+      const ScriptStep& st = f.steps[(top + i) % count];
+      const bool told = i + count >= laps * count;  // the last time round
       if (st.op == ScriptStep::Op::Wait) { for (auto& x : since) x = -1; continue; }
       if (st.op == ScriptStep::Op::Sleep || st.op == ScriptStep::Op::Fade || st.op == ScriptStep::Op::Flicker)
         for (auto& x : since) if (x >= 0) x = std::min<long>(x + (long)std::min<uint32_t>(st.ms, RELAY_MIN_DWELL_MS), RELAY_MIN_DWELL_MS);
       if (st.op == ScriptStep::Op::Pulse && st.target >= 4) { since[st.target - 4] = 0; was[st.target - 4] = 0; continue; }
       if (st.op != ScriptStep::Op::Set || scriptIsDmx(st.target) || st.target < 4) continue;
       int k = st.target - 4;
-      if (since[k] > 0 && since[k] < (long)RELAY_MIN_DWELL_MS && st.value != was[k])
+      if (told && since[k] > 0 && since[k] < (long)RELAY_MIN_DWELL_MS && st.value != was[k])
         r.errors.push_back({st.line, msg(M_RELAYFAST, st.line, full(st.target).c_str(), "", "", (unsigned long)since[k])});
       if (since[k] != 0 || st.value != was[k]) since[k] = 0;
       was[k] = st.value;
     }
-    for (auto& x : f.last)
-      if (x.second > 0) r.warnings.push_back({f.line, msg(W_STILLON, f.line, f.name.c_str(), full(x.first).c_str())});
+    // an output left on when the effect is back at its first wait for: after its last line and the lines above
+    // that wait for, which set the outputs they set on purpose; an effect with no wait for never sits and waits
+    for (auto& x : f.last) {
+      bool set_above = !waits;
+      for (size_t i = 0; i < top && !set_above; i++)
+        set_above = f.steps[i].target == x.first && (f.steps[i].op == ScriptStep::Op::Set || f.steps[i].op == ScriptStep::Op::Fade ||
+                                                     f.steps[i].op == ScriptStep::Op::Pulse);
+      if (x.second > 0 && !set_above) r.warnings.push_back({f.line, msg(W_STILLON, f.line, f.name.c_str(), full(x.first).c_str())});
+    }
     if (f.plays_sound) {
       if (sound_first < 0) sound_first = (int)e;
       else r.warnings.push_back({f.line, msg(W_TWOSOUND, f.line, fx[sound_first].name.c_str(), f.name.c_str())});
@@ -1266,19 +1278,27 @@ void ScriptRunner::load(const ScriptProgram* p, Millis now) {
   press_n_ = 0;
   pixel_step_ = -1;  // the strip keeps no effect from an earlier script
   rng_ = FLICKER_SEED;
+  waits_ = want_ = 0;
   if (!p_) return;
   for (int e = 0; e < p_->effects; e++) {
     order_[e] = (uint8_t)e;
     recovery_[e] = 0;
-    for (uint16_t i = 0; i < p_->fx[e].count && !recovery_[e]; i++) {
+    const ScriptEffect& f = p_->fx[e];
+    top_[e] = 0;
+    while (top_[e] < f.count && p_->step[f.first + top_[e]].op != ScriptStep::Op::Wait) top_[e]++;
+    if (top_[e] < f.count) waits_ = (uint8_t)(waits_ | (1u << e));
+    else top_[e] = 0;
+    if (!waits(e)) continue;
+    for (uint16_t i = (uint16_t)(top_[e] + 1); i < f.count && !recovery_[e]; i++) {
       const ScriptStep& x = p_->step[p_->fx[e].first + i];
       if ((x.op == ScriptStep::Op::Set || x.op == ScriptStep::Op::Fade || x.op == ScriptStep::Op::Pulse) && x.target == 1 && x.value > 0)
         recovery_[e] = (uint16_t)(i + 1);
     }
   }
-  for (int i = 1; i < p_->effects; i++)  // stable: by the first wait for's input, then the script's order
-    for (int j = i; j > 0 && p_->step[p_->fx[order_[j]].first + head(order_[j])].target <
-                                 p_->step[p_->fx[order_[j - 1]].first + head(order_[j - 1])].target; j--) {
+  // stable: by the first wait for's input (an effect with no wait for after them), then the script's order
+  auto key = [&](int e) -> int { return waits(e) ? p_->step[p_->fx[e].first + top_[e]].target : INPUT_COUNT; };
+  for (int i = 1; i < p_->effects; i++)
+    for (int j = i; j > 0 && key(order_[j]) < key(order_[j - 1]); j--) {
       uint8_t t = order_[j]; order_[j] = order_[j - 1]; order_[j - 1] = t;
     }
   // the outputs each effect uses (its lines that set, fade, flicker or pulse one, and the pixel strip for a pixels
@@ -1334,11 +1354,11 @@ PT_STEP_CODE uint32_t ScriptRunner::limitMs(int e) const {
   return ms > SCRIPT_LIMIT_MAX_MS ? SCRIPT_LIMIT_MAX_MS : ms;
 }
 
-PT_STEP_CODE uint16_t ScriptRunner::head(int e) const {
-  const ScriptEffect& f = p_->fx[e];
-  uint16_t k = 0;
-  while (k < f.count && p_->step[f.first + k].op != ScriptStep::Op::Wait) k++;
-  return k < f.count ? k : 0;
+int ScriptRunner::lead() const {
+  if (p_)
+    for (int e = 0; e < p_->effects; e++)
+      if (waits(e)) return e;
+  return 0;
 }
 
 int ScriptRunner::effectNamed(const std::string& name) const {
@@ -1371,11 +1391,13 @@ PT_STEP_CODE bool ScriptRunner::armed(int e, Millis now) const {
 
 // the first wait for's input follows the "ready" rule (trig1_wait / trig2_wait)
 PT_STEP_CODE bool ScriptRunner::readyRule(int e) const {
+  if (!waits(e)) return false;
   int k = p_->step[p_->fx[e].first + head(e)].target;
   return k < 2 && ready_rule_[k];
 }
 
 PT_STEP_CODE bool ScriptRunner::returnRule(int e) const {
+  if (!waits(e)) return false;
   int k = p_->step[p_->fx[e].first + head(e)].target;
   return k < 2 && rule_set_[k] && !ready_rule_[k];
 }
@@ -1394,6 +1416,7 @@ uint32_t ScriptRunner::totalRuns() const {
 
 ScriptRunner::Answer ScriptRunner::remoteStart(int e, Millis now, bool allowed) {
   if (!p_ || e < 0 || e >= p_->effects) return Answer::NoEffect;
+  if (!waits(e)) return Answer::NeverWaits;                   // nothing starts it: it goes round by itself
   if (!allowed) return Answer::Disabled;                      // SM-Q4
   if (windowFull(e, now)) return Answer::CooldownFull;        // SM-L5
   if (canStart(e, now)) { queued_[e] = true; return Answer::Starts; }  // on the next sample
@@ -1455,10 +1478,13 @@ PT_STEP_CODE void ScriptRunner::enter(int e, Millis now) {
   }
 }
 
+// The next line; after the last one the effect goes back to its first. Back at its first wait for (an effect with
+// no wait for: at its first line) it is no longer running.
 PT_STEP_CODE void ScriptRunner::advance(int e, Millis now) {
   State& s = st_[e];
   s.pc++;
-  if (s.pc >= p_->fx[e].count) { s.pc = 0; s.running = false; }
+  if (s.pc >= p_->fx[e].count) s.pc = 0;
+  if (s.pc == top_[e]) s.running = s.in_run = false;
   enter(e, now);
 }
 
@@ -1469,7 +1495,7 @@ PT_STEP_CODE void ScriptRunner::start(int e, Millis now) {
   pending_[e] = false;
   queued_[e] = false;
   State& s = st_[e];
-  s.running = true;
+  s.running = s.in_run = true;
   s.runs++;
   advance(e, now);
 }
@@ -1507,11 +1533,22 @@ PT_STEP_CODE void ScriptRunner::sampleWait(int e, Millis now, const ScriptInputs
 PT_STEP_CODE bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& in_all, std::vector<SoundCommand>& sound) {
   const ScriptInputs in = view(e, in_all);
   State& s = st_[e];
+  if (!s.running && !atTop(e)) {
+    // the lines above the first wait for at power-on (or after a pause), or an effect with no wait for at its first
+    // line: they begin straight away (the boot lockout holds back inputs, not these) once the outputs they use are
+    // free (SS-R8). An effect with no wait for gives way to an effect it shares outputs with that is being started,
+    // and begins its first line at most every SCRIPT_MIN_ROUND_MS.
+    if (paused_ || busy(e)) return false;
+    if (!waits(e) && ((conflicts_[e] & want_) || (s.rounded && now - s.round < SCRIPT_MIN_ROUND_MS))) return false;
+    s.running = true;
+    if (!waits(e)) { s.round = now; s.rounded = true; }
+    enter(e, now);
+  }
   const ScriptStep& st = p_->step[p_->fx[e].first + s.pc];
+  const bool was_running = s.running;
   switch (st.op) {
     case ScriptStep::Op::Wait: {
-      const uint16_t top = head(e);
-      const bool at_top = s.pc == top;
+      const bool at_top = atTop(e);
       const bool can = at_top && canStart(e, now);
       if (at_top) {
         // at the top: a queued remote start first, then a remembered start, then the input (STATE-MACHINE.md §13).
@@ -1528,7 +1565,7 @@ PT_STEP_CODE bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& 
       if (!s.released || !in.closed[k] || now < boot_end_) return false;
       Millis from = in.since[k] > boot_end_ ? in.since[k] : boot_end_;
       if (now - from < debounce_ms_) return false;
-      if (!at_top) { advance(e, now); return true; }
+      if (!at_top) { advance(e, now); return s.running; }  // false: that was its last line
       if (can) { start(e, now); return true; }
       // its outputs are busy: the start is remembered (one deep) and runs when they are free if the input is
       // still held then (SS-R8)
@@ -1590,9 +1627,8 @@ PT_STEP_CODE bool ScriptRunner::stepOnce(int e, Millis now, const ScriptInputs& 
       else presses_lost++;
       break;
   }
-  bool back_to_top = s.pc + 1 >= p_->fx[e].count;
   advance(e, now);
-  return !back_to_top;  // a run that ended: the caller decides what starts next
+  return !(was_running && !s.running);  // back at its top: the caller decides what starts next
 }
 
 // Every 1 ms: the "ready" rule's gates, then every effect steps (SS-R1).
@@ -1620,9 +1656,19 @@ PT_STEP_CODE void ScriptRunner::tick(Millis now, const ScriptInputs& in, std::ve
     if (pulse_until_[c] && now >= pulse_until_[c]) { level_[c] = 0; pulse_until_[c] = 0; }
 }
 
-// One pass, in script order (an earlier effect goes first when several could start). An effect whose run ends
-// goes again at once: its sound lines run and a waiting start may begin. Then once more for the effects at
-// their top: one whose outputs another effect freed in this pass starts on the same sample.
+// An effect at its first wait for that is being started (wants): an effect with no wait for that shares an output
+// with it does not begin its next time round until it has.
+PT_STEP_CODE bool ScriptRunner::wants(int e, Millis now, const ScriptInputs& in) const {
+  if (!atTop(e) || now < boot_end_ || windowFull(e, now)) return false;
+  if (queued_[e] || pending_[e] || local_go_[e]) return true;
+  const int k = p_->step[p_->fx[e].first + top_[e]].target;
+  if (!view(e, in).closed[k]) return false;
+  return readyRule(e) ? gate_[e].released : !returnRule(e) && st_[e].released;
+}
+
+// One pass, in the order of the effects' inputs (an earlier effect goes first when several could start). An
+// effect whose run ends goes again at once: a waiting start may begin. Then once more for the effects at their
+// top: one whose outputs another effect freed in this pass starts on the same sample.
 PT_STEP_CODE void ScriptRunner::run(Millis now, const ScriptInputs& in_all, std::vector<SoundCommand>& sound) {
   const ScriptInputs& in = in_all;  // each effect looks through view(): stepOnce, sampleWait and gateUpdate
   auto gateUpdate = [&](int e) {
@@ -1655,6 +1701,10 @@ PT_STEP_CODE void ScriptRunner::run(Millis now, const ScriptInputs& in_all, std:
   // the "ready" rule's holds are confirmed for every effect first, so effects whose presses are confirmed on the
   // same sample all count: those that share outputs with one that starts are remembered and run right after it
   for (int e = 0; e < p_->effects; e++) gateUpdate(e);
+  want_ = 0;
+  if (waits_ != (uint8_t)((1u << p_->effects) - 1))  // an effect with no wait for gives way to these
+    for (int e = 0; e < p_->effects; e++)
+      if (wants(e, now, in_all)) want_ = (uint8_t)(want_ | (1u << e));
   uint8_t started = 0;
   // effects in the order of their inputs (TRIG1, TRIG2, USER1 ...; the script's order for the same input): of
   // starts on the same sample that share outputs, the lowest input goes first
@@ -1672,8 +1722,6 @@ PT_STEP_CODE void ScriptRunner::run(Millis now, const ScriptInputs& in_all, std:
       steps(e);
       if (st_[e].runs != runs) started = (uint8_t)(started | (1u << e));
       if (was && !st_[e].running) {
-        // back at its top: its sound lines first (they take no time and start nothing)
-        while (st_[e].pc < head(e) && !st_[e].running) stepOnce(e, now, in, sound);
         // its run ended and its outputs are free: the starts that waited go first, a queued remote start before a
         // remembered one, in script order (STATE-MACHINE.md §13); then the effect itself goes on at its top
         for (int kind = 0; kind < 2; kind++)

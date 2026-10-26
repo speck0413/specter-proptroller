@@ -192,7 +192,8 @@
       <p class="hint">One effect per block: <code>effect porch light:</code>, then its lines: <code>wait for trig1</code>,
         <code>out1 = on</code>, <code>wait 2</code>, <code>fade out1 to 0% over 3</code>, <code>flicker out2 for 5</code>,
         <code>audio_single = 1</code> (plays the card's <code>01/001-….mp3</code>), <code>audio_loop = 2</code>, <code>audio_volume = 60%</code>, <code>audio_stop</code>, <code>pixels = chase red</code>.
-        Times are seconds (or <code>200 ms</code>, <code>3 min</code>); <code>#</code> starts a comment.</p>
+        Times are seconds (or <code>200 ms</code>, <code>3 min</code>); <code>#</code> starts a comment. Lines above an effect's first
+        <code>wait for</code> run at power-on and after every run (a background sound).</p>
       <div class="seg3" id="script-view" role="radiogroup" aria-label="How to show the script">
         <label class="check"><input type="radio" name="script-view" value="both"> Script and blocks</label>
         <label class="check"><input type="radio" name="script-view" value="text"> Script only</label>

@@ -1,0 +1,10 @@
+effect porch:
+  out1 = 20%             # dim while it waits: set on purpose, no warning
+  wait for trig1
+  out1 = on
+  wait 5
+effect fog:
+  audio_loop = 1
+  wait for trig2
+  out2 = 50%
+  wait 1

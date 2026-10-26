@@ -1,0 +1,10 @@
+effect g:
+  rly1 = on
+  wait 1
+  rly1 = off
+  wait 50 ms
+effect h:
+  rly2 = off
+  wait for trig1
+  rly2 = on
+  wait 50 ms

@@ -48,8 +48,9 @@ exactly (byte for byte).
 5. Everything is lower case except the value of an `audio_single` / `audio_loop` line (a file name keeps its
    case) and the value of a `tell` line's setting. Spaces between words do not matter: `out1=on`, `out1 = on`, `OUT1 =ON` are the same line.
 6. A header with an error still starts an effect, so the lines under it are checked as its lines. A line with
-   an error still counts as its kind (a `wait for trig7` first line gives M-input, not also M-first), but it
-   adds no step: W-stillon and W-twosound look only at lines without errors.
+   an error still counts as its kind (a `wait for trig7` line gives M-input and still is a `wait for`, and
+   `wait soon` gives M-time and still takes time: neither adds M-nopause), but it adds no step: M-relayfast,
+   W-stillon and W-twosound look only at lines without errors.
 
 ### The lines
 
@@ -58,7 +59,7 @@ exactly (byte for byte).
 | `effect <name>:` | A line that starts with `effect` is always a header. When the character after `effect` is a space, a `:` or the end of the line, the name is the text after `effect` up to the `:`, with the spaces around it trimmed (`effect:` has no name: M-noname); otherwise the whole word is the name (`effect1:` names `effect1`). 1-32 characters. In the table the name is lower case with runs of spaces made one. |
 | `wait for <input>` | `trig1`, `trig2`, `user1`, `user2`, `user3`. `waitfor trig1` and `wait fortrig1` are the same. `user1`-`user3` only with `buttons = triggers` (the default). `buttons` is a setting of the checker's board: a firmware without learn mode (this C++ firmware since the Record effect) always has `triggers`; the `learn` case (e34) stays for checkers of boards that still have it. |
 | `<target> = <level>` | `=` or `:` (the first one splits). Targets `out1`-`out4` (dimmable), `rly1`, `rly2`, `cc1`, `cc2` (on / off only), `dmx1`-`dmx512` (dimmable). |
-| `wait <time>` / `wait for <time>` | SS-L: after `wait` (or `wait for`), a word that starts with a digit or `.`, or is a time setting (SS-G6), is a time: the step `sleep`, as for `sleep <time>` (the older spelling, still read the same). After `wait for`, an input or an input's name (SS-N) comes first: when it is also a time setting the line waits for the input, with W-waitname. A bare `wait` and an input or an input's name (`wait trig1`) is M-waitform; any other word after a bare `wait` is read as a time (`wait soon` is M-time). A first line `wait 2` is M-first (it is not a `wait for <input>`). |
+| `wait <time>` / `wait for <time>` | SS-L: after `wait` (or `wait for`), a word that starts with a digit or `.`, or is a time setting (SS-G6), is a time: the step `sleep`, as for `sleep <time>` (the older spelling, still read the same). After `wait for`, an input or an input's name (SS-N) comes first: when it is also a time setting the line waits for the input, with W-waitname. A bare `wait` and an input or an input's name (`wait trig1`) is M-waitform; any other word after a bare `wait` is read as a time (`wait soon` is M-time). |
 | `fade <target> to <level> over <time>` | dimmable targets only; the level must be a percentage, `on` or `off` |
 | `flicker <target> for <time>` | dimmable targets only |
 | `audio_single = <sound>` / `audio_loop = <sound>` | `=` or `:`; surrounding `'` or `"` are removed from the sound |
@@ -67,11 +68,11 @@ exactly (byte for byte).
 | `limit <N> run(s) per <time>` | SS-G3: N is 1-20 or a count setting; the time is a time or a time setting, at most 60 min; no step (an effect field) |
 | `pulse <target> for <time>` | SS-G5: targets `out1`-`out4`, `rly1`, `rly2`, `cc1`, `cc2`; the time a time or a time setting |
 | `audio_loop = off` / `false` / `""` | SS-R7: the background loop off (the step `audio_loop_off`); a bare `audio_loop =` is still M-nosound |
-| `pixels = <effect> [<colour>]` / `pixels = <colour>` | SS-X: `=` or `:`. Effects `off`, `fill`, `chase`, `rainbow`, `flash`, `fade`, `flicker`, `comet`, `sparkle`, `breathe`, `fire`; colours `red` (#ff0000), `orange` (#ff6000), `yellow` (#ffc000), `green` (#00ff00), `cyan` (#00ffff), `blue` (#0000ff), `purple` (#8000ff), `pink` (#ff40a0), `white` (#ffffff), `warm white` (#ffa040), or `0x` and six hex digits. Words compared lower case with runs of spaces made one. A colour alone is `fill` in that colour; an effect that takes a colour and has none is white; `off`, `rainbow` and `fire` take none. The step `{ "line", "op": "pixels", "effect", "color" }` (`"color"` as `"#rrggbb"`, only for an effect that takes one). A pixels line may come before the first `wait for`, as a sound line may |
-| `tell <board> <effect>` / `tell <board> <setting> = <value>` | SS-B (SHOW-SCRIPT.md §11): checked before the other lines (a tell line may hold `=` or `wait`). `<board>` is the first word after `tell` (up to a space, `=` or `:`): `all`, or a network name of 1-40 letters, digits and `-`, not starting or ending with `-`, not `broadcast`. The rest is a setting when it holds `=` or `:` (the first one splits), else an effect's name: lower case, runs of spaces made one `_` (as a remote start takes it), at most 32 characters, no `/` or `+`. A setting's name is `[a-z][a-z0-9_]*`, at most 32 characters, not one a board never takes from another (`name`, `page_lock`, `pin`, `wifi_ssid`, `wifi_pass`, `ap_pass`, `mqtt_broker`, `mqtt_port`, `board_link`, `link_group`, `link_key`, `remote_trigger_enable`, `remote_free_effects`, `effect`); its value is as written (case kept, surrounding `'` or `"` removed), 1-64 characters. The other board's effects and settings are not checked. The step `{ "line", "op": "tell", "board", "effect" }` or `{ "line", "op": "tell", "board", "setting", "value" }`. Not a sound line: a tell line first in an effect is M-first |
+| `pixels = <effect> [<colour>]` / `pixels = <colour>` | SS-X: `=` or `:`. Effects `off`, `fill`, `chase`, `rainbow`, `flash`, `fade`, `flicker`, `comet`, `sparkle`, `breathe`, `fire`; colours `red` (#ff0000), `orange` (#ff6000), `yellow` (#ffc000), `green` (#00ff00), `cyan` (#00ffff), `blue` (#0000ff), `purple` (#8000ff), `pink` (#ff40a0), `white` (#ffffff), `warm white` (#ffa040), or `0x` and six hex digits. Words compared lower case with runs of spaces made one. A colour alone is `fill` in that colour; an effect that takes a colour and has none is white; `off`, `rainbow` and `fire` take none. The step `{ "line", "op": "pixels", "effect", "color" }` (`"color"` as `"#rrggbb"`, only for an effect that takes one) |
+| `tell <board> <effect>` / `tell <board> <setting> = <value>` | SS-B (SHOW-SCRIPT.md §11): checked before the other lines (a tell line may hold `=` or `wait`). `<board>` is the first word after `tell` (up to a space, `=` or `:`): `all`, or a network name of 1-40 letters, digits and `-`, not starting or ending with `-`, not `broadcast`. The rest is a setting when it holds `=` or `:` (the first one splits), else an effect's name: lower case, runs of spaces made one `_` (as a remote start takes it), at most 32 characters, no `/` or `+`. A setting's name is `[a-z][a-z0-9_]*`, at most 32 characters, not one a board never takes from another (`name`, `page_lock`, `pin`, `wifi_ssid`, `wifi_pass`, `ap_pass`, `mqtt_broker`, `mqtt_port`, `board_link`, `link_group`, `link_key`, `remote_trigger_enable`, `remote_free_effects`, `effect`); its value is as written (case kept, surrounding `'` or `"` removed), 1-64 characters. The other board's effects and settings are not checked. The step `{ "line", "op": "tell", "board", "effect" }` or `{ "line", "op": "tell", "board", "setting", "value" }` |
 | `pixels = pattern <name>` | SS-X7: a stored LED pattern. The name is the rest of the value, lower case with runs of spaces made one: 1-32 letters, digits, spaces and `- _ ( )` (else M-patname; none: M-patempty). Whether the board has it is not checked (a missing one is told when the line runs). The step `{ "line", "op": "pixels", "effect": "pattern", "pattern" }` |
-| `pixels press <button>` | SS-X8: presses a trigger button of the pattern the strip shows. No `=` (`pixels = press x` is M-presseq). The button's name follows the pattern name's rules (M-pressname; none: M-pressform); `pixels`, `press` and the name compared lower case with runs of spaces made one. May come before the first `wait for`, as a `pixels` line may. When the checker's board has every pattern the script's `pixels = pattern` lines name, a button none of them has is M-nobutton (one pattern; M-nobuttons when it has none) or M-nobuttonany (several), on a press line with no other error; the golden board stores no patterns. The step `{ "line", "op": "pixels_press", "button" }` |
-| sound lines before the first `wait for` | SS-R1: `audio_single`, `audio_loop`, `audio_volume`, `audio_stop` (and `pixels`) may come first; M-first applies to the first other line |
+| `pixels press <button>` | SS-X8: presses a trigger button of the pattern the strip shows. No `=` (`pixels = press x` is M-presseq). The button's name follows the pattern name's rules (M-pressname; none: M-pressform); `pixels`, `press` and the name compared lower case with runs of spaces made one. When the checker's board has every pattern the script's `pixels = pattern` lines name, a button none of them has is M-nobutton (one pattern; M-nobuttons when it has none) or M-nobuttonany (several), on a press line with no other error; the golden board stores no patterns. The step `{ "line", "op": "pixels_press", "button" }` |
+| lines before the first `wait for` | SS-R1: any line may come first, and an effect may have any number of `wait for` lines or none (then it needs a time: M-nopause) |
 
 - **Settings as times and counts** (SS-G6): where `wait`, `sleep`, `pulse` or `limit` take a time, a word that is not a time
   may be one of `out1_on_ms`, `out2_on_ms`, `out3_on_ms`, `recover_time_ms`, `cooldown_ms`, `trigger_out_pulse_ms`,
@@ -174,21 +175,26 @@ for M-tellboard as written):
 | M-telllong | `line {n}: the value is longer than 64 characters.` |
 | M-tellspace | `line {n}: the tell lines hold more than 512 characters of board names, effects, settings and values in all.` (each line counts its board, its effect or setting, its value and 2; the first line past the limit, and every one after it that does not fit) |
 
-Then, per effect, on its header line: **M-empty** `line {n}: effect "{name}" has no lines.`, **M-first**
-`line {n}: effect "{name}" must start with "wait for", for example "wait for trig1".`, **M-effectlines**
+Then, per effect, on its header line: **M-empty** `line {n}: effect "{name}" has no lines.`, **M-nopause**
+`line {n}: effect "{name}" never waits, so it would repeat without a pause. Add a "wait 5" or a "wait for trig1".`
+(no `wait for` line, and no `wait <time>` / `sleep`, `fade` or `flicker` line whose time is more than 0 or a
+time setting), **M-effectlines**
 `line {n}: effect "{name}" has {k} lines. An effect can have at most 64.` (blank and comment lines do not
 count). Then for the whole script (line 0): **M-effects** `the script has {k} effects. A board runs at most 8.`,
 **M-lines** `the script has {k} lines. A board takes at most 256.` (every line counts, blank and comment
 lines too), **M-bytes** `the script is {k} bytes. A board takes at most 8192.` (the raw text). After the per-effect checks, on the line that
 switches it: **M-relayfast** `line {n}: {x} switches again after {k} ms. Relays and contacts switch at most every 100 ms: wait at least 0.1 between its changes.`
 (rly1, rly2, cc1, cc2 set to another level less than 100 ms of wait, fade and flicker time after its previous
-change; a `wait for` in between resets it, and two lines with no time between them do not count).
+change; a `wait for` in between resets it, and two lines with no time between them do not count). The lines are
+taken in the order they run: from the first `wait for` to the last line, then on through the lines above that
+`wait for`; an effect with no `wait for` round and round (its second time round is the one checked, so a line
+is told once).
 
 **Warnings** (never block a save), after the errors of the same line:
 
 | Id | Message |
 |---|---|
-| W-stillon | `line {n}: effect "{name}" ends with {x} still on. It may stay on until the next trigger.` on the header line, one per target left above 0 % after the last line (in the order the targets first appear in the effect) |
+| W-stillon | `line {n}: effect "{name}" ends with {x} still on. It may stay on until the next trigger.` on the header line, one per target above 0 % when the effect is back at its first `wait for` (after its last line and the lines above that `wait for`), in the order the targets first appear in the effect. A target that a line above the first `wait for` sets (`=`, `fade`, `pulse`) is set on purpose for the wait and gets none; an effect with no `wait for` gets none |
 | W-twosound | `line {n}: effects "{a}" and "{name}" both play sound. There is one sound player: a new sound replaces the one playing.` on the header line of every effect that plays sound after the first such effect `{a}` |
 
 An empty script (no lines, or only blank and comment lines) is valid and removes the stored script.
@@ -257,8 +263,12 @@ on a `sleep` or a `pulse` whose time is a setting, `"setting": "<name>"` instead
 
 ## Running (what the traces check)
 
-- Each effect is its own loop (SS-R1): at power-on it is at its first step (a `wait for`); after the last step
-  it goes back to the first.
+- Each effect is its own loop (SS-R1): at power-on it is at its first step; one that is a `wait for` sits
+  there, any other runs at once (the boot lockout holds back only the `wait for` lines). After the last step it
+  goes back to the first. An effect is *running* whenever it is not sitting at its first `wait for`: in a run
+  (from leaving that `wait for` until it is back there, through the steps above it), in the steps above it at
+  power-on, or, with no `wait for`, always but for the moment between two times round. A sound line at power-on
+  reaches the player once it has started (1.5 s after power-on).
 - **`wait for`** (SS-R3-R5): arriving at a `wait for` (power-on counts as arriving) clears *released*.
   *Released* becomes true once the input has read open without a break for `trig_release_ms`, counted from
   the later of the arrival and the moment it opened. The line passes once the input has read closed without a
@@ -277,8 +287,12 @@ choices within their tolerances):
 - Every effect steps on the 1 ms input samples (the outputs reach the pins on the engine's 10 ms tick); *released*
   updates on every sample. A `wait for` passes once released and `now - max(closed_since, boot_end) >=
   trig_debounce_ms`.
-- Each step runs at most once per sample pass. After its last step the effect is back at its top; its sound lines
-  run and a start that waited may begin on the same sample. `sleep`, `fade` and `flicker` count from the sample
+- Each step runs at most once per sample pass. After its last step the effect goes on with the steps above its
+  first `wait for`; back at that `wait for`, a start that waited may begin on the same sample. An effect with no
+  `wait for` begins its next time round when its outputs are free, at least 10 ms after it began the last one
+  (a time setting of 0), and not while an effect it shares an output with is being started: at its first
+  `wait for`, with a remote start or a remembered press waiting, its "ready" hold confirmed, or its input
+  closed after the release its rule needs (the "ready" rule's, or for USER1-3 the release since arriving). `sleep`, `fade` and `flicker` count from the sample
   their line is reached.
 - Fade: `level = from + (to - from) × (now - start) / ms` with integer division toward zero, each tick; the
   exact target at the end.
@@ -314,15 +328,18 @@ choices within their tolerances):
   the boot lockout (the input must be let go and pressed again), while paused and in a used-up window; otherwise
   it is remembered (one) and starts the effect when it could start, its own run included, if the input is still
   held then. USER1-3 (and a runner given no rule) follow the rule above (released after arrival).
-- **Turns** (SS-R8): an effect could start when it is at its top, the boot lockout is over, it is not paused, its
-  limit is not used up and no running effect sets one of the outputs it sets. A press while it could not start
+- **Turns** (SS-R8): an effect could start when it is at its first `wait for`, the boot lockout is over, it is not paused, its
+  limit is not used up and no running effect sets one of the outputs it sets. The steps above the first
+  `wait for` at power-on, and an effect with no `wait for`, begin only when no running effect sets one of
+  their outputs. A press while it could not start
   only because of that is remembered (one). Starts on one sample go in the order of the inputs (TRIG1, TRIG2,
   USER1 ...; the script's order for the same input): an effect that shares outputs with one that started on that
   sample is remembered. A remembered press starts only if its input is still held when the effect could start,
   otherwise it is dropped (memory with check). When outputs come free, a waiting remote start (no hold needed)
   goes before a remembered press.
 - **Remote starts** (SS-R10): a start by name (the trace's `control` event with the effect's name, spaces as `_`)
-  begins on the next sample when the effect could start, otherwise one waits; `cancel` empties them.
+  begins on the next sample when the effect could start, otherwise one waits; `cancel` empties them. An effect
+  with no `wait for` is never started: the start is refused and changes nothing.
 - A pulse ends on the first tick at or after its time.
 - A script output always wins over a show using the same output (a new board has no shows; the example show
   is added only on request). A script is refused when it uses a terminal the pulse-and-recover effect owns.

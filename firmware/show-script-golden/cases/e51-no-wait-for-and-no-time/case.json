@@ -1,0 +1,38 @@
+{
+  "spec": [
+    "SS-R1",
+    "SS-C1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 1,
+        "message": "line 1: effect \"a\" never waits, so it would repeat without a pause. Add a \"wait 5\" or a \"wait for trig1\"."
+      },
+      {
+        "line": 4,
+        "message": "line 4: effect \"b\" never waits, so it would repeat without a pause. Add a \"wait 5\" or a \"wait for trig1\"."
+      },
+      {
+        "line": 7,
+        "message": "line 7: effect \"c\" never waits, so it would repeat without a pause. Add a \"wait 5\" or a \"wait for trig1\"."
+      },
+      {
+        "line": 10,
+        "message": "line 10: effect \"d\" never waits, so it would repeat without a pause. Add a \"wait 5\" or a \"wait for trig1\"."
+      },
+      {
+        "line": 13,
+        "message": "line 13: \"soon\" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min."
+      },
+      {
+        "line": 14,
+        "message": "line 14: put a colon after the effect name: \"effect f:\"."
+      }
+    ],
+    "warnings": []
+  }
+}

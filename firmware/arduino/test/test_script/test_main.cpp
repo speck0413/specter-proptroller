@@ -259,6 +259,80 @@ void a_wait_in_the_middle() {
   TEST_ASSERT_EQUAL(0, b.run.level(0));
 }
 
+// Any line may come before the first wait for (SS-R1): those lines run at power-on, straight away, and again every
+// time the effect comes back to its top; a run is from the wait for on.
+void lines_above_the_wait_for_run_at_power_on_and_after_each_run() {
+  Bench b("effect haunt:\n  audio_loop = 1\n  out1 = 20%\n  wait for trig1\n  audio_single = 2\n  out1 = on\n  sleep 5\n");
+  b.step(10);
+  TEST_ASSERT_EQUAL(200, b.run.level(0));  // in the boot lockout too: only inputs wait for it
+  TEST_ASSERT_FALSE(b.run.running(0));     // sitting at its wait for
+  TEST_ASSERT_EQUAL(1, b.sound.size());
+  b.step(2490);
+  b.press(0, 150);
+  b.step(200);
+  TEST_ASSERT_EQUAL(FULL, b.run.level(0));
+  TEST_ASSERT_TRUE(b.run.running(0));
+  b.step(5000);
+  TEST_ASSERT_EQUAL(200, b.run.level(0));  // back at the top: the dim glow again
+  TEST_ASSERT_FALSE(b.run.running(0));
+  TEST_ASSERT_EQUAL(1u, b.run.runs(0));
+  // the loop line ran again (the sound director carries on a loop that already plays)
+  TEST_ASSERT_EQUAL(3, b.sound.size());
+}
+
+// An effect with no wait for goes round and round from power-on; nothing starts it, its rounds are not runs.
+void an_effect_with_no_wait_for_goes_round() {
+  Bench b("effect blink:\n  out1 = on\n  sleep 1\n  out1 = off\n  sleep 1\neffect scare:\n  wait for trig1\n  out2 = on\n  sleep 1\n  out2 = off\n");
+  b.step(4500);
+  TEST_ASSERT_EQUAL(5, (int)b.changes.size());  // on 10, off 1010, on 2010, off 3010, on 4010
+  TEST_ASSERT_EQUAL(10, b.changes[0].first);
+  TEST_ASSERT_EQUAL(4010, b.changes[4].first);
+  TEST_ASSERT_TRUE(b.run.running(0));
+  TEST_ASSERT_EQUAL(0u, b.run.runs(0));
+  TEST_ASSERT_FALSE(b.run.waits(0));
+  TEST_ASSERT_EQUAL(1, b.run.lead());  // the status values follow the first effect with a wait for
+  TEST_ASSERT_FALSE(b.run.ready(0, b.t));
+  TEST_ASSERT_TRUE(b.run.ready(1, b.t));
+  TEST_ASSERT_TRUE(ScriptRunner::Answer::NeverWaits == b.run.remoteStart(0, b.t, true));
+  TEST_ASSERT_FALSE(b.run.anyQueued());
+  b.press(0, 150);  // the other effect runs beside it
+  b.step(500);
+  TEST_ASSERT_EQUAL(FULL, b.run.level(1));
+}
+
+// A time setting of 0 takes no time: the effect still goes round at most every SCRIPT_MIN_ROUND_MS.
+void a_round_of_no_time_waits_for_the_next_tick() {
+  Bench b("effect a:\n  audio_single = 1\n  wait out1_on_ms\n");  // the settings are 0 until set
+  b.step(1000);
+  TEST_ASSERT_TRUE_MESSAGE(b.sound.size() >= 99 && b.sound.size() <= 101, std::to_string(b.sound.size()).c_str());
+}
+
+// The lines above the first wait for hold their outputs like a run (SS-R8): an effect that shares one waits.
+void lines_above_the_wait_for_take_turns() {
+  Bench b("effect a:\n  out1 = 50%\n  sleep 3\n  out1 = off\n  wait for trig1\n  out1 = on\n  sleep 1\n  out1 = off\n"
+          "effect b:\n  wait for trig2\n  out1 = 80%\n  sleep 1\n  out1 = off\n");
+  b.step(2500);
+  b.press(1, 150);  // outputs busy: remembered, starts when a is at its wait for (if still held then)
+  b.step(100);
+  TEST_ASSERT_EQUAL(500, b.run.level(0));
+  b.set(1, true);
+  b.step(500);
+  TEST_ASSERT_EQUAL(800, b.run.level(0));
+}
+
+// An effect with no wait for gives way, at the end of its round, to an effect it shares outputs with that is
+// being started.
+void an_effect_with_no_wait_for_gives_way() {
+  Bench b("effect glow:\n  out1 = 30%\n  sleep 2\n  out1 = 10%\n  sleep 2\neffect scare:\n  wait for trig1\n  out1 = on\n  sleep 1\n  out1 = off\n");
+  b.step(2500);
+  b.set(0, true);  // held through the rest of glow's round
+  b.step(1600);
+  TEST_ASSERT_EQUAL(FULL, b.run.level(0));
+  b.set(0, false);
+  b.step(1000);
+  TEST_ASSERT_EQUAL(300, b.run.level(0));  // scare done: glow goes round again
+}
+
 void fade_and_flicker_take_their_time() {
   Bench b("effect a:\nwait for trig1\nout1 = 100%\nfade out1 to 0% over 1\nout2 = on\nflicker out1 for 0.5\nout2 = off\n");
   b.step(2500);
@@ -355,7 +429,7 @@ void every_example_script_checks_and_runs() {
     ScriptProgram* p = new ScriptProgram();
     ScriptCheck c = scriptCompile(text, {}, b, *p);
     TEST_ASSERT_TRUE_MESSAGE(c.ok(), (n + ": " + (c.ok() ? std::string() : c.errors[0].text)).c_str());
-    // the first wait for (sound and pixels lines may come before it)
+    // the first effect's first wait for (any line may come before it)
     uint16_t w = p->fx[0].first;
     while (w < p->fx[0].first + p->fx[0].count && p->step[w].op != ScriptStep::Op::Wait) w++;
     const ScriptStep& first = p->step[w];
@@ -384,7 +458,7 @@ void every_example_script_checks_and_runs() {
     TEST_ASSERT_TRUE_MESSAGE(changed, (n + ": a press does nothing").c_str());
     delete p;
   }
-  TEST_ASSERT_EQUAL_MESSAGE(11, (int)names.size(), "the nine public examples and the workspace's two");
+  TEST_ASSERT_EQUAL_MESSAGE(12, (int)names.size(), "the ten public examples and the workspace's two");
 }
 
 // Every limit at once: 8 effects, 224 lines, just under SCRIPT_MAX_BYTES (blank lines would only add text).
@@ -635,9 +709,9 @@ void tell_line_errors() {
   TEST_ASSERT_EQUAL_STRING("line 3: \"pixel speed\" is not a setting's name. A setting is one word of letters, digits and _, for example pixel_speed.", first("tell porch pixel speed = 3").c_str());
   TEST_ASSERT_EQUAL_STRING("line 3: say the value, for example \"tell porch pixel_speed = 150\".", first("tell porch pixel_speed =").c_str());
   TEST_ASSERT_EQUAL_STRING("", first("tell all blackout").c_str());
-  // a tell line first in an effect is not a wait for
+  // a tell line takes no time: an effect of only a tell line never waits
   ScriptCheck c = scriptCompile("effect a:\n  tell porch blackout\n", {}, b, *p);
-  TEST_ASSERT_EQUAL_STRING("line 1: effect \"a\" must start with \"wait for\", for example \"wait for trig1\".", c.errors[0].text.c_str());
+  TEST_ASSERT_EQUAL_STRING("line 1: effect \"a\" never waits, so it would repeat without a pause. Add a \"wait 5\" or a \"wait for trig1\".", c.errors[0].text.c_str());
   // the pool's limit
   std::string big = "effect a:\n  wait for trig1\n";
   for (int i = 0; i < 20; i++) big += "  tell porch-number-" + std::to_string(i) + " an_effect_with_a_long_name_x\n";
@@ -668,6 +742,11 @@ int main() {
   RUN_TEST(a_short_tap_never_counts);
   RUN_TEST(two_effects_at_once_and_one_input_starts_both);
   RUN_TEST(a_wait_in_the_middle);
+  RUN_TEST(lines_above_the_wait_for_run_at_power_on_and_after_each_run);
+  RUN_TEST(an_effect_with_no_wait_for_goes_round);
+  RUN_TEST(a_round_of_no_time_waits_for_the_next_tick);
+  RUN_TEST(lines_above_the_wait_for_take_turns);
+  RUN_TEST(an_effect_with_no_wait_for_gives_way);
   RUN_TEST(fade_and_flicker_take_their_time);
   RUN_TEST(sound_lines_and_dmx);
   RUN_TEST(random_presses_never_break_the_rules);

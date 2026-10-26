@@ -152,7 +152,7 @@ void Controller::applySettings() {
     has_opened_[k] = false;
     closed_since_[k] = now_;
     if (k == 0 && fx_) { fx_->released = false; fx_->confirming = false; }
-    if (script_run_) script_run_->load(script_prog_.get(), now_);  // each effect back to its first wait for
+    if (script_run_) script_run_->load(script_prog_.get(), now_);  // each effect back to its first line
   }
   engine_.setConfig(s.engine());
   for (auto& t : trig_) t.setTimes(s.trig_debounce_ms, s.trig_release_ms);
@@ -206,8 +206,8 @@ PT_STEP_CODE void Controller::ownedLevels(Millis now) {
       bool on = c == Channel::Out4 ? fx_->ready(now) && fx_->released : o[i];
       engine_.setScript(c, true, on ? FULL : 0);
     } else if (c == Channel::Out4 && !fx_ && settings_.out4_ready_lamp && script_run_ && script_prog_) {
-      // the ready lamp of the script's first effect: on while a press would start it
-      engine_.setScript(c, true, script_run_->armed(0, now) ? FULL : 0);
+      // the ready lamp of the script's first effect with a wait for: on while a press would start it
+      engine_.setScript(c, true, script_run_->armed(script_run_->lead(), now) ? FULL : 0);
     } else if (settings_.role(c) != OutputRole::Shows) {
       engine_.setScript(c, true, role_on_[i] && now < role_until_[i] ? FULL : 0);
     } else if (!(script_prog_ && (script_prog_->channels & (1u << i)))) {

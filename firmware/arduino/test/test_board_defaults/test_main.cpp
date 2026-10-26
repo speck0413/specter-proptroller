@@ -72,7 +72,7 @@ void a_wrong_default_is_refused_in_plain_words_and_the_rest_applies() {
   TEST_ASSERT_EQUAL_STRING("Prop8", s.ctl().settings().name.c_str());
   TEST_ASSERT_TRUE_MESSAGE(s.factoryRefused.find("out1_on_ms=5: ") == 0, s.factoryRefused.c_str());
   TEST_ASSERT_TRUE_MESSAGE(s.factoryRefused.find("no_such_key=1: unknown command or setting") != std::string::npos, s.factoryRefused.c_str());
-  TEST_ASSERT_TRUE_MESSAGE(s.factoryRefused.find("script: line 1: effect \"x\" must start with") != std::string::npos, s.factoryRefused.c_str());
+  TEST_ASSERT_TRUE_MESSAGE(s.factoryRefused.find("script: line 1: effect \"x\" never waits") != std::string::npos, s.factoryRefused.c_str());
 }
 
 void a_factory_reset_brings_the_defaults_back() {

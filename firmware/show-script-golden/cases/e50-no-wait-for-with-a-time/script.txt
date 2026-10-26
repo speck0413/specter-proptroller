@@ -1,0 +1,12 @@
+effect candle:
+  out1 = 60%
+  flicker out1 for 10
+effect blink:
+  rly1 = on
+  wait 1
+  rly1 = off
+  wait 1
+effect ambient:
+  audio_loop = 2
+  pixels = breathe purple
+  wait out1_on_ms        # a time setting takes time

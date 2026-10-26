@@ -73,8 +73,10 @@ void the_lines_check_clean_and_give_their_table() {
   // sound lines before the first wait for, and the loop turned off three ways
   t = tableOf("effect a:\n  audio_loop = 3\n  wait for trig1\n  audio_loop = off\n  audio_loop = \"\"\n  audio_loop = FALSE\n");
   TEST_ASSERT_TRUE_MESSAGE(t.find(R"({"line":2,"op":"audio_loop","sound":3},{"line":3,"op":"wait_for","input":"TRIG1"},{"line":4,"op":"audio_loop_off"},{"line":5,"op":"audio_loop_off"},{"line":6,"op":"audio_loop_off"})") != std::string::npos, t.c_str());
-  TEST_ASSERT_EQUAL_STRING("line 1: effect \"a\" must start with \"wait for\", for example \"wait for trig1\".",
-                           firstError("effect a:\n  audio_single = 1\n  out1 = on\n  wait for trig1\n").c_str());
+  // any line may come before the first wait for; an effect with no wait for must take time
+  TEST_ASSERT_EQUAL_STRING("(ok)", firstError("effect a:\n  audio_single = 1\n  out1 = on\n  wait for trig1\n").c_str());
+  TEST_ASSERT_EQUAL_STRING("line 1: effect \"a\" never waits, so it would repeat without a pause. Add a \"wait 5\" or a \"wait for trig1\".",
+                           firstError("effect a:\n  audio_single = 1\n  out1 = on\n").c_str());
 }
 
 void settings_name_times_and_counts() {

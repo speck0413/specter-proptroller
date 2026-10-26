@@ -302,7 +302,7 @@ PT_STEP_CODE void Controller::scriptValues() {
 PT_STEP_CODE bool Controller::scriptEffectRunning() const {
   if (!script_prog_ || !script_run_) return false;
   for (int e = 0; e < script_prog_->effects; e++)
-    if (script_run_->running(e)) return true;
+    if (script_run_->inRun(e)) return true;  // an effect with no wait for going round never stops: not a run
   return false;
 }
 

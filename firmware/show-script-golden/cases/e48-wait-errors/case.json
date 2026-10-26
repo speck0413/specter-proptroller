@@ -9,10 +9,6 @@
     "ok": false,
     "errors": [
       {
-        "line": 1,
-        "message": "line 1: effect \"a\" must start with \"wait for\", for example \"wait for trig1\"."
-      },
-      {
         "line": 5,
         "message": "line 5: \"2 hours\" is not a time. Write seconds (wait 2.5) or add a unit: ms, s or min."
       },

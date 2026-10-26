@@ -1,0 +1,148 @@
+{
+  "spec": [
+    "SS-R1",
+    "SS-R5"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "door",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "pixels",
+              "effect": "off"
+            },
+            {
+              "line": 3,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 4,
+              "op": "set",
+              "target": "OUT1",
+              "level": 1000
+            },
+            {
+              "line": 5,
+              "op": "wait_for",
+              "input": "TRIG2"
+            },
+            {
+              "line": 6,
+              "op": "set",
+              "target": "OUT1",
+              "level": 0
+            },
+            {
+              "line": 7,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 8,
+              "op": "set",
+              "target": "OUT2",
+              "level": 1000
+            },
+            {
+              "line": 9,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 10,
+              "op": "set",
+              "target": "OUT2",
+              "level": 0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 1000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 1150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 1500,
+        "in": "TRIG2",
+        "closed": true
+      },
+      {
+        "t": 1650,
+        "in": "TRIG2",
+        "closed": false
+      },
+      {
+        "t": 2000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 2150,
+        "in": "TRIG1",
+        "closed": false
+      },
+      {
+        "t": 4000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 4150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 5000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            1100,
+            1000
+          ],
+          [
+            1600,
+            0
+          ],
+          [
+            4100,
+            1000
+          ]
+        ],
+        "OUT2": [
+          [
+            2100,
+            1000
+          ],
+          [
+            3100,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

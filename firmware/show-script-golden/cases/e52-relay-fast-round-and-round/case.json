@@ -1,0 +1,22 @@
+{
+  "spec": [
+    "SS-R1",
+    "SS-D2"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": false,
+    "errors": [
+      {
+        "line": 2,
+        "message": "line 2: rly1 switches again after 50 ms. Relays and contacts switch at most every 100 ms: wait at least 0.1 between its changes."
+      },
+      {
+        "line": 7,
+        "message": "line 7: rly2 switches again after 50 ms. Relays and contacts switch at most every 100 ms: wait at least 0.1 between its changes."
+      }
+    ],
+    "warnings": []
+  }
+}

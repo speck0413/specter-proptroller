@@ -8,12 +8,8 @@
     "ok": false,
     "errors": [
       {
-        "line": 1,
-        "message": "line 1: effect \"a\" must start with \"wait for\", for example \"wait for trig1\"."
-      },
-      {
         "line": 6,
-        "message": "line 6: effect \"b\" must start with \"wait for\", for example \"wait for trig1\"."
+        "message": "line 6: effect \"b\" never waits, so it would repeat without a pause. Add a \"wait 5\" or a \"wait for trig1\"."
       }
     ],
     "warnings": []

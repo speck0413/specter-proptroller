@@ -1,0 +1,77 @@
+{
+  "spec": [
+    "SS-R1",
+    "SS-R6"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [
+      {
+        "line": 6,
+        "message": "line 6: effect \"fog\" ends with out2 still on. It may stay on until the next trigger."
+      }
+    ],
+    "table": {
+      "effects": [
+        {
+          "name": "porch",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "set",
+              "target": "OUT1",
+              "level": 200
+            },
+            {
+              "line": 3,
+              "op": "wait_for",
+              "input": "TRIG1"
+            },
+            {
+              "line": 4,
+              "op": "set",
+              "target": "OUT1",
+              "level": 1000
+            },
+            {
+              "line": 5,
+              "op": "sleep",
+              "ms": 5000
+            }
+          ]
+        },
+        {
+          "name": "fog",
+          "line": 6,
+          "steps": [
+            {
+              "line": 7,
+              "op": "audio_loop",
+              "sound": 1
+            },
+            {
+              "line": 8,
+              "op": "wait_for",
+              "input": "TRIG2"
+            },
+            {
+              "line": 9,
+              "op": "set",
+              "target": "OUT2",
+              "level": 500
+            },
+            {
+              "line": 10,
+              "op": "sleep",
+              "ms": 1000
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

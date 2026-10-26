@@ -1,0 +1,10 @@
+effect blink:
+  out1 = on
+  wait 1
+  out1 = off
+  wait 1.5
+effect scare:
+  wait for trig1
+  out2 = on
+  wait 0.5
+  out2 = off

@@ -1,5 +1,5 @@
-// Show scripts: the beginner language (firmware/SHOW-SCRIPT.md). A short text of effects; each one waits for an
-// input, then sets outputs, waits, fades, flickers and plays sounds, and goes back to its wait. The text is
+// Show scripts: the beginner language (firmware/SHOW-SCRIPT.md). A short text of effects; each one sets outputs,
+// waits for inputs or a time, fades, flickers and plays sounds, top to bottom and round again. The text is
 // checked once, when it is saved, into a fixed table of steps (SS-C1); the runner plays that table every tick.
 #pragma once
 #include "types.h"
@@ -23,6 +23,7 @@ static const uint16_t SCRIPT_MAX_TRACK = 99;       // sound N (sound.h SOUND_MAX
 static const uint16_t DMX_CHANNELS = 512;
 static const uint32_t SCRIPT_MAX_TIME_MS = 24UL * 3600UL * 1000UL;  // one line waits at most a day
 static const Millis SCRIPT_BOOT_LOCKOUT_MS = 2000; // no wait for passes after power-on (SM-B2)
+static const Millis SCRIPT_MIN_ROUND_MS = 10;      // an effect with no wait for goes round at most this often (a time setting of 0)
 static const uint8_t SCRIPT_MAX_NAMES = 16;        // patterns and buttons a script names (`pixels = pattern`, `pixels press`)
 static const uint8_t SCRIPT_MAX_PRESSES = 16;      // button presses handed to the strip in one tick
 // flicker: a new level every FLICKER_MIN_MS to FLICKER_MAX_MS, base x (FLICKER_LOW_PERMILLE + r % ...) / 1000
@@ -163,7 +164,7 @@ struct ScriptBoard {
   uint8_t roles[4] = {0, 0, 1, 2};
   bool buttons_are_triggers = false;            // user1-3 usable (the board always says true; the golden set also checks false)
   uint8_t effect_inputs = 0, effect_channels = 0;  // terminals the advanced effect owns (SS-R11)
-  bool ready_lamp = false;                      // OUT4 is the ready lamp of the script's first effect (out4_ready_lamp)
+  bool ready_lamp = false;                      // OUT4 is the ready lamp of the script's first effect with a wait for (out4_ready_lamp)
   // the profile's key aliases of the settings a line may name (alias, key)
   std::vector<std::pair<std::string, std::string>> setting_aliases;
   // SS-N: the names the person gave the terminals, as given (the wiring label, setting <terminal>_name, and the
@@ -233,7 +234,8 @@ struct ScriptInputs {
 // Plays a table. Owns its outputs' levels and the DMX universe.
 class ScriptRunner {
  public:
-  // null: no script. Every effect arrives at its top (its sound lines, then its first wait for) at `now`.
+  // null: no script. Every effect is at its first line at `now`: one that starts with a wait for sits there, any
+  // other starts at once (when its outputs are free).
   void load(const ScriptProgram* p, Millis now);
   const ScriptProgram* program() const { return p_; }
   void setTimes(uint32_t debounce_ms, uint32_t release_ms, Millis boot_end) {
@@ -255,11 +257,15 @@ class ScriptRunner {
   // The effect called `name` (lower case, runs of spaces made one; "_" for a space works too), or -1.
   int effectNamed(const std::string& name) const;
   // What a remote start did: it starts (on the next sample), it is queued (one), or why not.
-  enum class Answer : uint8_t { Starts, Queued, AlreadyQueued, Disabled, CooldownFull, NoEffect };
+  // NeverWaits: the effect has no wait for, so nothing starts it (it goes round by itself).
+  enum class Answer : uint8_t { Starts, Queued, AlreadyQueued, Disabled, CooldownFull, NoEffect, NeverWaits };
   // A remote start of effect e (web, MQTT, serial, SM-Q): now when it can start, else one waits. `allowed`:
   // remote_trigger_enable is on, or the effect starts without it.
   Answer remoteStart(int e, Millis now, bool allowed);
   bool cancelRemote();  // every queued remote start
+  // The first effect with a wait for (the one the status values and the ready lamp follow), 0 when none has one.
+  int lead() const;
+  bool waits(int effect) const { return p_ && effect < p_->effects && ((waits_ >> effect) & 1u); }
   // For status: could start now, runs left in its window, the window's time left, a start waiting.
   bool ready(int effect, Millis now) const;
   // could start now and a press would start it (released since: the ready lamp)
@@ -281,7 +287,10 @@ class ScriptRunner {
   void tick(Millis now, const ScriptInputs& in, std::vector<SoundCommand>& sound);
   Level level(int channel) const { return level_[channel]; }
   const uint8_t* dmx() const { return dmx_; }
+  // not sitting at its first wait for: a run, the lines above the first wait for, or an effect with no wait for
   bool running(int effect) const { return st_[effect].running; }
+  // in a run: from leaving its first wait for until it is back there (not an effect with no wait for going round)
+  bool inRun(int effect) const { return st_[effect].in_run; }
   // Tell lines that ran (their step index), oldest first, for the network (Controller::linkTake); a line that finds
   // SCRIPT_TELL_RING waiting is dropped and counted.
   bool takeTell(uint16_t& step);
@@ -307,15 +316,19 @@ class ScriptRunner {
   uint16_t line(int effect) const;  // the line the effect is on
   uint32_t runs(int effect) const { return st_[effect].runs; }
   // A run of an effect that turns OUT2 on (its recovery) is before that line: the status value `pulsing` (SS-R13)
-  bool beforeRecovery(int effect) const { return st_[effect].running && recovery_[effect] && st_[effect].pc < recovery_[effect]; }
+  bool beforeRecovery(int effect) const {
+    return st_[effect].running && recovery_[effect] && st_[effect].pc > top_[effect] && st_[effect].pc < recovery_[effect];
+  }
 
  private:
   struct State {
     uint16_t pc = 0;
-    bool entered = false, released = false, running = false;
+    bool entered = false, released = false, running = false, in_run = false;
     Millis since = 0, until = 0, next_flicker = 0;
     Level from = 0, before = 0;
     uint32_t runs = 0;
+    Millis round = 0;     // an effect with no wait for: when it last began its first line
+    bool rounded = false; // ... once it has
   };
   void enter(int e, Millis now);
   void advance(int e, Millis now);
@@ -324,11 +337,14 @@ class ScriptRunner {
   // the inputs as effect e sees them: a test press that starts nothing reaches only the effects in remote_free_effects
   ScriptInputs view(int e, const ScriptInputs& in) const;
   bool busy(int e) const;                     // an effect using one of its outputs runs (SS-R8)
-  bool atTop(int e) const { return st_[e].pc == head(e) && !st_[e].running; }
+  bool atTop(int e) const { return ((waits_ >> e) & 1u) && st_[e].pc == top_[e] && !st_[e].running; }
+  // an effect it shares outputs with is being started (pressed, remembered or started by name): an effect with no
+  // wait for gives way to it at the end of its time round
+  bool wants(int e, Millis now, const ScriptInputs& in) const;
   bool canStart(int e, Millis now) const;
   bool readyRule(int e) const;
   bool returnRule(int e) const;               // a trigger input's first wait for with trig1_wait / trig2_wait = return
-  uint16_t head(int e) const;                 // the step of the effect's first wait for
+  uint16_t head(int e) const { return top_[e]; }  // the step of the effect's first wait for (0: none)
   void run(Millis now, const ScriptInputs& in, std::vector<SoundCommand>& sound);
   void start(int e, Millis now);
   uint32_t timeOf(const ScriptStep& st) const { return st.setting ? values_[st.setting - 1] : st.ms; }
@@ -352,7 +368,10 @@ class ScriptRunner {
   bool ready_rule_[2] = {false, false};             // trig1_wait, trig2_wait = ready
   bool rule_set_[2] = {false, false};
   uint8_t order_[SCRIPT_MAX_EFFECTS] = {0};
-  uint16_t recovery_[SCRIPT_MAX_EFFECTS] = {0};     // 1 + the step of its first line turning OUT2 on, 0 = none (load)         // the effects by their first wait for's input (load)               // trig1_wait, trig2_wait given (ready or return)
+  uint16_t recovery_[SCRIPT_MAX_EFFECTS] = {0};     // 1 + the step of its first line turning OUT2 on after its first wait for, 0 = none (load)
+  uint16_t top_[SCRIPT_MAX_EFFECTS] = {0};          // the step of its first wait for, 0 = none (load)
+  uint8_t waits_ = 0;                               // bit per effect with a wait for (load)
+  uint8_t want_ = 0;                                // bit per effect being started (wants, every pass)
   bool press_armed_[SCRIPT_MAX_EFFECTS] = {false};  // the "return" rule: released (debounce + release open) since its last press
   Millis pulse_until_[CHANNEL_COUNT] = {0};         // a pulse turns its output off then (0: none)
   uint32_t values_[SCRIPT_SETTING_COUNT] = {0};

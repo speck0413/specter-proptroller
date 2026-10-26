@@ -1,0 +1,15 @@
+effect a:
+  out1 = on
+  audio_single = 1
+effect b:
+  wait 0
+  out2 = on
+effect c:
+  tell porch blackout
+  pulse rly2 for 200 ms
+effect d:
+  fade out3 to 50% over 0
+effect e:
+  wait soon
+effect f
+  out4 = on

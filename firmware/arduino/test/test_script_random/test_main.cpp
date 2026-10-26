@@ -1,5 +1,5 @@
 // SS-T3: random valid show scripts from the grammar (several effects, every line kind, shared inputs, audio,
-// DMX, a wait for in the middle) on the simulated board, with random presses, seeded and reproducible. On every
+// DMX, lines above the first wait for, a wait for in the middle, effects with no wait for) on the simulated board, with random presses, seeded and reproducible. On every
 // 10 ms tick:
 //   SS-R2  a run starts only from the first wait for, never while the effect runs;
 //   SS-R4  (and SS-R5) a wait for passes only after its input read open for trig_release_ms since the effect
@@ -37,7 +37,7 @@ const char* const OUTS[CHANNEL_COUNT] = {"out1", "out2", "out3", "out4", "rly1",
 struct Gen {
   std::string text;
   std::vector<std::vector<std::string>> targets;  // per effect
-  int lines_of_kind[10] = {0};                    // set, dmx, sleep, fade, flicker, single, loop, stop, wait, midwait
+  int lines_of_kind[12] = {0};                    // set, dmx, sleep, fade, flicker, single, loop, stop, wait, midwait, above, no wait for
 };
 
 std::string time(Rng& r, uint32_t lo, uint32_t hi) {
@@ -68,8 +68,22 @@ Gen generate(Rng& r) {
     for (int k = 0; k < n && at < pool.size(); k++) mine.push_back(pool[at++]);
     g.targets.push_back(mine);
     g.text += "effect e" + std::to_string(e) + ":\n";
-    g.text += std::string("  wait for ") + INPUTS[r.below(INPUT_COUNT)] + "\n";
-    g.lines_of_kind[8]++;
+    const bool waits = r.below(6) != 0;  // now and then an effect with no wait for (it goes round by itself)
+    if (waits && r.below(3) == 0) {
+      // lines above the first wait for: at power-on and after every run
+      std::string t = mine.empty() ? std::string() : mine[r.below((uint32_t)mine.size())];
+      bool dim = !t.empty() && (t[0] == 'd' || t.compare(0, 3, "out") == 0);
+      if (!t.empty()) g.text += std::string(dim ? "" : "  sleep 0.1\n") + "  " + t + " = " + level(r, dim) + "\n";
+      if (r.below(2)) g.text += "  audio_loop = " + std::to_string(r.range(1, 99)) + "\n";
+      if (r.below(2)) g.text += "  sleep " + time(r, 10, 600) + "\n";
+      g.lines_of_kind[10]++;
+    }
+    if (waits) {
+      g.text += std::string("  wait for ") + INPUTS[r.below(INPUT_COUNT)] + "\n";
+      g.lines_of_kind[8]++;
+    } else {
+      g.lines_of_kind[11]++;
+    }
     g.text += "  sleep " + time(r, 20, 400) + "\n";  // a pass always shows on the tick
     g.lines_of_kind[2]++;
     int blocks = (int)r.range(2, 7);
@@ -162,7 +176,7 @@ struct History {
 }  // namespace
 
 static int g_runs = 0, g_ticks = 0, g_starts = 0, g_passes = 0, g_refused = 0;
-static int g_kinds[10] = {0};
+static int g_kinds[12] = {0};
 
 static std::string request(const char* op, const std::string& text) {
   JsonDocument d;
@@ -177,7 +191,7 @@ void random_scripts_never_break_the_rules() {
   for (int seed = 1; seed <= RUNS; seed++) {
     Rng r((uint32_t)seed);
     Gen g = generate(r);
-    for (int k = 0; k < 10; k++) g_kinds[k] += g.lines_of_kind[k];
+    for (int k = 0; k < 12; k++) g_kinds[k] += g.lines_of_kind[k];
     Sim sim("random");
     std::string params = R"({"op":"set_params","values":[{"key":"dmx_port","value":"s4"},)"
                          R"({"key":"rly1_role","value":"shows"},{"key":"rly2_role","value":"shows"},{"key":"cc1_role","value":"shows"},{"key":"cc2_role","value":"shows"},{"key":"interlock_relays","value":true},)"
@@ -218,7 +232,13 @@ void random_scripts_never_break_the_rules() {
 
     History h;
     for (int k = 0; k < INPUT_COUNT; k++) h.ch[k].push_back({1, false});  // open from power-on, seen at the first sample
-    // per effect: the line it is on, since when, and the run count
+    // per effect: its first wait for (null: none), the line it is on, since when, and the run count
+    auto top = [&](int e) -> const ScriptStep* {
+      const ScriptEffect& f = prog->fx[e];
+      for (int i = 0; i < f.count; i++)
+        if (prog->step[f.first + i].op == ScriptStep::Op::Wait) return &prog->step[f.first + i];
+      return nullptr;
+    };
     struct Fx { uint16_t line; Millis since; uint32_t runs; bool running; };
     std::vector<Fx> fx;
     for (int e = 0; e < prog->effects; e++) fx.push_back({run->line(e), 0, 0, false});
@@ -254,17 +274,18 @@ void random_scripts_never_break_the_rules() {
         Fx& f = fx[e];
         uint16_t line = run->line(e);
         uint32_t runs = run->runs(e);
+        if (!top(e)) TEST_ASSERT_EQUAL_MESSAGE(0u, runs, "an effect with no wait for counted a run");
         if (runs != f.runs) {
           // SS-R2: a new run only from the first wait for, never while running
           // (with the "return" rule a press remembered during its own run starts the next one on the sample the
           // run ends: no sample in between)
-          const bool back_to_back = prog->step[prog->fx[e].first].target < 2 && f.running;
+          const bool back_to_back = top(e)->target < 2 && f.running;
           if (!back_to_back) {
             TEST_ASSERT_FALSE_MESSAGE(f.running, "a run started while the effect was running");
-            TEST_ASSERT_EQUAL_MESSAGE(prog->step[prog->fx[e].first].line, f.line, "a run started away from the first wait for");
+            TEST_ASSERT_EQUAL_MESSAGE(top(e)->line, f.line, "a run started away from the first wait for");
           } else {
             // its last line ran on this sample: it was at its end
-            TEST_ASSERT_TRUE_MESSAGE(h.closedAt(prog->step[prog->fx[e].first].target, now), "a remembered start without its input held");
+            TEST_ASSERT_TRUE_MESSAGE(h.closedAt(top(e)->target, now), "a remembered start without its input held");
           }
           TEST_ASSERT_EQUAL(f.runs + 1, runs);
           f.runs = runs;
@@ -279,7 +300,7 @@ void random_scripts_never_break_the_rules() {
                      (unsigned long long)now, (unsigned long long)f.since);
             TEST_ASSERT_TRUE_MESSAGE(h.closedAt(k, now), why);
             Millis c = h.closedSince(k, now);
-            if (k < 2 && f.line == prog->step[prog->fx[e].first].line) {
+            if (k < 2 && f.line == top(e)->line) {
               // TRIG1 / TRIG2 with the "return" rule at the first wait for (SS-R4): a press confirmed after the boot
               // lockout, after a release; remembered while the effect could not start and still held now (SS-R8)
               TEST_ASSERT_TRUE_MESSAGE(c + DEBOUNCE_MS + SAMPLE_SLACK_MS >= boot_end && now - c + SAMPLE_SLACK_MS >= DEBOUNCE_MS, why);
@@ -313,15 +334,16 @@ void random_scripts_never_break_the_rules() {
     }
     g_runs++;
   }
-  char m[400];
+  char m[512];
   snprintf(m, sizeof m,
            "%d seeded runs x %llu s, %d ticks checked; %d runs started, %d wait for lines passed, %d shared-target scripts accepted; "
-           "lines generated: set %d, dmx %d, sleep %d, fade %d, flicker %d, audio_single %d, audio_loop %d, audio_stop %d, first wait %d, mid wait %d",
+           "lines generated: set %d, dmx %d, sleep %d, fade %d, flicker %d, audio_single %d, audio_loop %d, audio_stop %d, first wait %d, mid wait %d, "
+           "lines above the first wait %d, effects with no wait for %d",
            g_runs, (unsigned long long)(RUN_MS / 1000), g_ticks, g_starts, g_passes, g_refused, g_kinds[0], g_kinds[1], g_kinds[2],
-           g_kinds[3], g_kinds[4], g_kinds[5], g_kinds[6], g_kinds[7], g_kinds[8], g_kinds[9]);
+           g_kinds[3], g_kinds[4], g_kinds[5], g_kinds[6], g_kinds[7], g_kinds[8], g_kinds[9], g_kinds[10], g_kinds[11]);
   TEST_MESSAGE(m);
   TEST_ASSERT_TRUE(g_starts > RUNS);   // the presses do start runs
-  TEST_ASSERT_TRUE(g_kinds[9] > 0 && g_kinds[3] > 0 && g_kinds[4] > 0 && g_kinds[1] > 0);
+  TEST_ASSERT_TRUE(g_kinds[9] > 0 && g_kinds[3] > 0 && g_kinds[4] > 0 && g_kinds[1] > 0 && g_kinds[10] > 0 && g_kinds[11] > 0);
 }
 
 int main() {

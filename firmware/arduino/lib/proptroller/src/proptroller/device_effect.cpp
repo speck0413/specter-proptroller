@@ -192,16 +192,17 @@ void Controller::statusNums(StatusNums& n) const {
   if (!script_run_ || !script_prog_ || !script_prog_->effects) return;
   n.any = true;
   n.run_count = script_run_->totalRuns();
-  n.has_limit = script_run_->hasLimit(0);
+  const int lead = script_run_->lead();  // the first effect with a wait for
+  n.has_limit = script_run_->hasLimit(lead);
   if (n.has_limit) {
-    n.runs_left = script_run_->runsLeft(0, now);
-    n.cooldown_ms = script_run_->cooldownRemaining(0, now);
+    n.runs_left = script_run_->runsLeft(lead, now);
+    n.cooldown_ms = script_run_->cooldownRemaining(lead, now);
   }
   bool pulsing = board_.levels()[index(Channel::Out1)] > 0;
   for (int e = 0; e < script_prog_->effects; e++) pulsing |= script_run_->beforeRecovery(e);
   n.pulsing = pulsing;
   n.recovering = board_.levels()[index(Channel::Out2)] > 0;
-  n.ready = script_run_->ready(0, now);
+  n.ready = script_run_->ready(lead, now);
   n.queued = script_run_->anyQueued();
 }
 
@@ -302,13 +303,19 @@ Response Controller::scriptStart(const Request& r, int e) {
       log("remote start refused: " + t);
       return Response::err(r, ErrorCode::Refused, t);
     }
+    case ScriptRunner::Answer::NeverWaits: {
+      std::string t = "effect \"" + fxname + "\" has no \"wait for\", so nothing starts it: it runs round and round by itself";
+      log("remote start ignored" + by + ": " + t);
+      return Response::err(r, ErrorCode::Refused, t);
+    }
     case ScriptRunner::Answer::NoEffect:
     default: return Response::err(r, ErrorCode::NotFound, "no such action");
   }
 }
 
 // The effect's status values from the stored script (the same keys, so a profile's status aliases work):
-// run_count counts every effect's runs; ready, runs_left and cooldown_remaining_ms are the first effect's;
+// run_count counts every effect's runs; ready, runs_left and cooldown_remaining_ms are the first effect's that has a
+// wait for;
 // pulsing: OUT1 on, or a run that turns OUT2 on (its recovery) has not reached that line yet (a recover cycle's
 // OUT1 interval counts, as the pulse-and-recover effect's firmware once reported it); recovering: OUT2 on (SM-F6);
 // queued: a remote start waits (SS-R10).

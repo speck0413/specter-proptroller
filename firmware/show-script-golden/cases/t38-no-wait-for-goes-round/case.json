@@ -1,0 +1,74 @@
+{
+  "spec": [
+    "SS-R1"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": []
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 0,
+        "power_on": true
+      },
+      {
+        "t": 3000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 3150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 6500,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            0,
+            1000
+          ],
+          [
+            1000,
+            0
+          ],
+          [
+            2500,
+            1000
+          ],
+          [
+            3500,
+            0
+          ],
+          [
+            5000,
+            1000
+          ],
+          [
+            6000,
+            0
+          ]
+        ],
+        "OUT2": [
+          [
+            3100,
+            1000
+          ],
+          [
+            3600,
+            0
+          ]
+        ]
+      }
+    }
+  }
+}

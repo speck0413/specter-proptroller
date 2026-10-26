@@ -1,0 +1,10 @@
+effect glow:
+  out1 = 30%
+  wait 2
+  out1 = 10%
+  wait 2
+effect scare:
+  wait for trig1
+  out1 = on
+  wait 1
+  out1 = off

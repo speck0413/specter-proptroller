@@ -1,0 +1,70 @@
+{
+  "spec": [
+    "SS-R1",
+    "SS-R7"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": []
+  },
+  "trace": {
+    "settings": {
+      "ambient": false
+    },
+    "events": [
+      {
+        "t": 0,
+        "power_on": true
+      },
+      {
+        "t": 3000,
+        "in": "TRIG1",
+        "closed": true
+      },
+      {
+        "t": 3150,
+        "in": "TRIG1",
+        "closed": false
+      }
+    ],
+    "until": 10000,
+    "expect": {
+      "edges": {
+        "OUT1": [
+          [
+            0,
+            200
+          ],
+          [
+            3100,
+            1000
+          ],
+          [
+            8100,
+            200
+          ]
+        ]
+      },
+      "sound": [
+        [
+          1500,
+          "loop",
+          1
+        ],
+        [
+          3100,
+          "play",
+          2
+        ],
+        [
+          6440,
+          "loop",
+          1
+        ]
+      ]
+    }
+  }
+}

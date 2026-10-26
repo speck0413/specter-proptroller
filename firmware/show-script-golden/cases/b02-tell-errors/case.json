@@ -8,10 +8,6 @@
     "ok": false,
     "errors": [
       {
-        "line": 1,
-        "message": "line 1: effect \"a\" must start with \"wait for\", for example \"wait for trig1\"."
-      },
-      {
         "line": 4,
         "message": "line 4: write it as \"tell porch blackout\" (a board's name, then one of its effects) or \"tell porch pixel_speed = 150\" (a setting)."
       },

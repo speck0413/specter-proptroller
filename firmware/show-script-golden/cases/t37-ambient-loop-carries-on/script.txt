@@ -1,0 +1,7 @@
+effect haunt:
+  audio_loop = 1
+  out1 = 20%
+  wait for trig1
+  audio_single = 2
+  out1 = on
+  wait 5

@@ -113,7 +113,7 @@ of silence, and what it was given ends with it: the remote trigger enable, manua
 | `delete_show` | `show` | `done`, or `not_found` |
 | `run` | `show` | `done`, or `refused` (running, cooldown, disabled, paused) |
 | `stop` | `show` | `done` |
-| `stop_all` | | `done` (also releases manual outputs, stops sound, sends every script effect back to its first `wait for`, ends the effect's cycle and the role pulses) |
+| `stop_all` | | `done` (also releases manual outputs, stops sound, sends every script effect back to its first line, ends the effect's cycle and the role pulses) |
 | `pause` | `on` | `done` (pause = show stop: outputs off, triggers ignored, as `stop_all` for scripts, the effect and roles; releasing it turns nothing back on) |
 | `cue` | `name` | `done` (sends a named cue on this device) |
 | `set_output` | `channel`, `level` (0-1000, or `null` to release), `ms` (optional: a pulse, at most 600000) | `done` (manual test; relays and contacts are on/off). From plain HTTP or MQTT a level above 0 needs `ms` (else `refused`); a level above 0 is `refused` while the board is paused (nothing set during a pause comes on at its release); what a phone page holds is released when its WebSocket closes |
@@ -313,7 +313,8 @@ calendar day: a night's show runs past midnight.
 One definition for every source: a run is one start of a show, of a show script's effect (it leaves its first
 `wait for`) or of the built-in pulse-and-recover effect, whatever started it: a trigger input, the web page, MQTT,
 the serial port, a cue, a timer, another show. Not runs: a trigger that is ignored (running, cooldown, paused),
-the restart of a running show (`retrigger: restart`), a looping show going round again, and a recover cycle.
+the restart of a running show (`retrigger: restart`), a looping show going round again, a script effect with no
+`wait for` going round, and a recover cycle.
 The effect's own `run_count` status keeps its meaning (since power-on, recover cycles included, SM-PR3), so it can
 differ from `runs_since_power_on`.
 
@@ -470,11 +471,12 @@ Every effect of a stored script can be started by its name (SHOW-SCRIPT.md SS-R1
 with `key` the name, MQTT `…/control/<name>`, the serial console's `<name>`; `cancel` empties the waiting starts.
 A name wins over a profile's control alias. A remote start needs `remote_trigger_enable` (refusals in the
 pulse-and-recover effect's words; one start waits while the effect cannot start), except for the effects named
-in `remote_free_effects`. `info.actions` lists every effect (`Start <name>`) and `cancel`. With the built-in
+in `remote_free_effects`. An effect with no `wait for` goes round by itself and is never started: `refused`,
+`effect "<name>" has no "wait for", so nothing starts it: it runs round and round by itself`. `info.actions` lists every effect (`Start <name>`) and `cancel`. With the built-in
 effect off, a stored script gives the effect's status lines (`run_count` of every effect; `ready`, `runs_left`
-and `cooldown_remaining_ms` of the first; `pulsing`, `recovering` as OUT1 / OUT2 on; `queued`;
+and `cooldown_remaining_ms` of the first effect with a `wait for`; `pulsing`, `recovering` as OUT1 / OUT2 on; `queued`;
 `remote_trigger_enable`, `remote_trigger_by`: SS-R13), so a profile's status aliases apply, and `out4_ready_lamp`
-makes OUT4 the first effect's ready lamp. `trig1_wait` / `trig2_wait` (`ready`, the default, or `return`) choose
+makes OUT4 that effect's ready lamp. `trig1_wait` / `trig2_wait` (`ready`, the default, or `return`) choose
 how a first `wait for` on that input starts its effect (SS-R4). Lines may name a setting for a time
 (`wait out1_on_ms`), read when they run. The stored table's format is 4 (the tell lines' names and values, then the
 names of the LED patterns and buttons the script names, after the steps); a table stored by an earlier firmware is
@@ -722,8 +724,8 @@ client that is still sending is not cut off. CORS allows the two `X-Proptroller-
      `a manual output test is on: release it first`
      (an output or the pixel test), `a show is running: stop it first`,
      `the pulse-and-recover effect is running: wait for it to finish` (a run in progress, not merely on),
-     `the show script is running an effect: wait for it to finish` (an effect past its `wait for`, not
-     merely stored);
+     `the show script is running an effect: wait for it to finish` (an effect past its first `wait for`,
+     not merely stored, nor an effect with no `wait for` going round);
   5. `invalid`: `the image is empty`, `the image is too big: 2000000 bytes, this board takes at most 1966080`.
 * During the write the board is in update mode: outputs off, triggers and radio cues ignored, every request
   that changes something answered `refused`, `a firmware update is running`. `state.update` and the event

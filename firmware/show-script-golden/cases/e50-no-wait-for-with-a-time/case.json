@@ -1,0 +1,85 @@
+{
+  "spec": [
+    "SS-R1",
+    "SS-L"
+  ],
+  "sounds": {},
+  "settings": {},
+  "check": {
+    "ok": true,
+    "errors": [],
+    "warnings": [],
+    "table": {
+      "effects": [
+        {
+          "name": "candle",
+          "line": 1,
+          "steps": [
+            {
+              "line": 2,
+              "op": "set",
+              "target": "OUT1",
+              "level": 600
+            },
+            {
+              "line": 3,
+              "op": "flicker",
+              "target": "OUT1",
+              "ms": 10000
+            }
+          ]
+        },
+        {
+          "name": "blink",
+          "line": 4,
+          "steps": [
+            {
+              "line": 5,
+              "op": "set",
+              "target": "RLY1",
+              "level": 1000
+            },
+            {
+              "line": 6,
+              "op": "sleep",
+              "ms": 1000
+            },
+            {
+              "line": 7,
+              "op": "set",
+              "target": "RLY1",
+              "level": 0
+            },
+            {
+              "line": 8,
+              "op": "sleep",
+              "ms": 1000
+            }
+          ]
+        },
+        {
+          "name": "ambient",
+          "line": 9,
+          "steps": [
+            {
+              "line": 10,
+              "op": "audio_loop",
+              "sound": 2
+            },
+            {
+              "line": 11,
+              "op": "pixels",
+              "effect": "breathe",
+              "color": "#8000ff"
+            },
+            {
+              "line": 12,
+              "op": "sleep",
+              "setting": "out1_on_ms"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

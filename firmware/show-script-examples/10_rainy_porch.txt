@@ -1,0 +1,30 @@
+# 10 Rainy porch: rain plays all the time and a porch lamp glows dim. A visitor sets off a scream and the lamp
+# comes up full, then the rain and the glow come back by themselves. A candle flickers round and round without
+# any trigger.
+#
+# Wiring:
+#   motion sensor                 -> TRIG1 jack
+#   12 V lamp or LED bulb         -> OUT1 + and - (2 A or less: dimming is for small loads)
+#   12 V candle LED               -> OUT2 + and -
+#   a speaker on the board's SPK terminals; the SD card has rain as sound 1 (01/001-rain.mp3) and a scream as
+#   sound 2 (02/001-scream.mp3)
+#
+#        [motion sensor]--TRIG1        OUT1--[12 V lamp]        OUT2--[candle LED]
+#
+# The lines above "wait for trig1" run at power-on and again every time the effect comes back to the top. The
+# rain does not start over there: a loop of the sound that is already looping carries on. An effect with no
+# "wait for" goes round and round from power-on, so it needs a wait or a flicker to take some time.
+
+effect porch:
+  audio_loop = 1
+  out1 = 15%
+  wait for trig1
+  audio_single = 2
+  out1 = on
+  wait 4
+  wait 10                       # rest before the next visitor
+
+effect candle:
+  out2 = 40%
+  flicker out2 for 3
+  wait 1
