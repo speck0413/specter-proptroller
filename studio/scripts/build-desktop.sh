@@ -1,8 +1,8 @@
 #!/bin/sh
 # The desktop bundle: the practice board (simulator), the generic firmware release that comes with Studio, the firmware
 # library and workspace template, and the wiring guides.
-# The guides come from the repository's docs/wiring-guides/html, or SPECTER_GUIDES_DIR when set. Without them the build stops (ALLOW_NO_GUIDES=1 builds anyway, and Help says they are
-# not installed).
+# The guides come from the repository's docs/wiring-guides/html, or SPECTER_GUIDES_DIR when set. Without them
+# the build stops (ALLOW_NO_GUIDES=1 builds anyway, and Help says they are not installed).
 #   scripts/build-desktop.sh [deb|appimage|app,dmg|...] [more tauri build arguments]
 set -e
 cd "$(dirname "$0")/.."

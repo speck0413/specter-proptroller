@@ -50,7 +50,7 @@ export default defineConfig({
     port: Number(process.env.PORT || 1420),
     strictPort: true,
     // the firmware's shared modules (words.js, take.js) are imported from the repository's firmware/web, outside studio/
-    fs: { allow: [searchForWorkspaceRoot(process.cwd()), path.resolve(__dirname, '../firmware/web')] },
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), path.resolve(import.meta.dirname, '../firmware/web')] },
     // other checkouts of this repo (git worktrees in .worktrees/) are never this app's sources; matched below this
     // checkout only, so a checkout that itself lives in .worktrees/ still watches its own files
     watch: { ignored: ['**/firmware/**', '**/target/**', '**/src-tauri/**', (f: string) => path.relative(process.cwd(), f).split(path.sep).includes('.worktrees')] },
