@@ -27,7 +27,7 @@ React + MUI (src/)  ──call(cmd, args) / events──►  Tauri shell (src-ta
   that live as long as a session (the remote trigger enable) work. Sessions answer pings and reconnect by
   themselves (after an update's restart, a Wi-Fi drop).
 - **No second simulator or checker.** Practice boards, the effect checker and the tests use the firmware's own
-  `sim` build (the C++ controller code on this computer) from the `firmware` submodule; nothing is copied.
+  `sim` build (the C++ controller code on this computer) from the repository's `firmware/`; nothing is copied.
 - **Recognising what runs where.** A script Studio sends carries one comment line,
   `# Specter Studio: <name>, saved <time>`; the library's hidden index maps content hashes to names and save
   times, and keeps a copy of every saved version. So a board's text alone says which effect and which version
@@ -217,7 +217,7 @@ Duplicate…, Delete…). Opening one shows its code (Monaco) beside a live prev
   library, where the patterns are) and a C++ step (`setPixels`, `chasePixels`, `rainbowPixels`, `flashPixels`,
   `fadeInPixels`, `flickerPixels`, `pixelsOff` with the board's own times; comet, sparkle, breathe and fire stay a
   comment). The words (keywords, outputs, inputs, levels, units, settings, effects, colours) are the firmware's
-  `firmware/web/words.js`, imported through the submodule by `src/effects/words.ts` (as `take.ts` imports take.js),
+  `firmware/web/words.js`, imported from the repository's `firmware/web` by `src/effects/words.ts` (as `take.ts` imports take.js),
   so the phone page and Studio colour alike.
 - **Patterns on a board** (firmware PROTOCOL.md "LED patterns", SHOW-SCRIPT.md SS-X7, SS-X8). The board runs the
   same program bytes as the preview, bit for bit: `vm.ts` is integers only (`fixed.ts`), its random numbers are 16
@@ -536,14 +536,16 @@ firmware list folder (inside its plugin folder) works from these clones unchange
 
 ## Firmware release source
 
-Studio checks for firmware updates without any setup: the default source is the public firmware repository's
+Studio checks for firmware updates without any setup: the default source is this repository's
 GitHub releases (`https://github.com/speck0413/specter-proptroller/releases`, renamed from `spectre-proptroller`:
 the old address is read as the new one, and GitHub's redirects are followed; an empty `releases` preference
 means this, so people who never chose anything get it too). The core asks GitHub's API
 (`/repos/<owner>/<repo>/releases`) for the newest full release that carries `proptroller-firmware.json` as an
 asset, or, while there is none, the newest such pre-release (owner 2026-10-24: release candidates stay
 pre-releases on GitHub; drafts never count) (PROTOCOL.md "Releases"), reads that manifest and downloads each image
-from its own asset address in the same release (checked against its SHA-256). The answer is kept for five
+from its own asset address in the same release (checked against its SHA-256). Studio's own releases (tags
+`studio-v…`, same repository) carry no manifest and are skipped; the list asked for is the 20 newest releases of
+both kinds. The answer is kept for five
 minutes (GitHub allows 60 unauthenticated requests an hour; every board's check would otherwise ask). Settings
 names the source in plain words with **Check now**; another source (a GitHub releases page, a manifest's web
 address or a downloaded release folder) is an Advanced setting. Offline, the message says that checking needs
@@ -677,7 +679,7 @@ ignored, so it can never replace the stock firmware or another plugin's. One lis
 on its type and never hides the others.
 
 - **The generic release that comes with Studio**: the desktop app bundles the generic images (ESP32 DevKit, and
-  Pico W / Pico 2 W in CI builds) and their manifest, built from the firmware submodule at build time
+  Pico W / Pico 2 W in CI builds) and their manifest, built from the repository's `firmware/` at build time
   (`scripts/bundle-firmware.py`, run by `scripts/build-desktop.sh` and CI; `src-tauri/bundled-firmware/`, found
   through `SPECTER_BUNDLED_FIRMWARE`). Generic (stock) with the built-in Proptroller board is so always offered,
   offline and before any release is published; a downloaded release is used instead when it is the same version or
@@ -844,6 +846,6 @@ practice board with the test extension `tests/plugins-e2e/board-files-demo`.
    plotter, own firmware (text or blocks) upload over Wi-Fi or USB, plugins, MQTT fleet server, bridge, sharing.
 2. **Next**: the fleet-commander pieces (several bridges with counters, broker monitor, external broker,
    observer password, headless mode on an always-on box, hotspot joining); move
-   the submodule to the firmware's new beginner API; QEMU device; effect timeline view.
+   Studio to the firmware's new beginner API; QEMU device; effect timeline view.
 3. **Then**: debugging with breakpoints on the simulator (and QEMU); shared libraries for teams (GitHub / Drive
    sync helpers); show-wide timelines across boards.

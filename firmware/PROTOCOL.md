@@ -787,7 +787,7 @@ First-flash images (USB), one per board, listed in the same manifest with `"firs
 
 The update images come first in `images`, the first-flash entries after them, so a client that takes the first
 entry whose `fw`, `impl` and `mcu` match gets the update image. The stock release
-(`.github/workflows/release.yml`, on a tag `v<firmware/VERSION>`; packaged by `firmware/arduino/tools/release.py`)
+(`.github/workflows/firmware-release.yml`, on a tag `v<firmware/VERSION>`; packaged by `firmware/arduino/tools/release.py`)
 names them `generic-<mcu>-<version>.bin` (update) and `first-flash-esp32-devkit-<version>.bin`,
 `first-flash-pico-w-<version>.uf2`, `first-flash-pico2-w-<version>.uf2`, `first-flash-pico-<version>.uf2`, for the
 ESP32 DevKit, the Pico W, the Pico 2 W and the plain Pico (which has a first-flash entry only: it has no update

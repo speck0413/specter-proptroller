@@ -6,12 +6,12 @@ about the other systems.
 ## macOS installer on a Mac
 
 ```sh
-scripts/setup.sh                # once: tools, Rust, the submodule, npm ci
+scripts/setup.sh                # once: tools, Rust, npm ci
 scripts/build-macos.sh          # Specter Studio.app and Specter Studio_<version>_<arch>.dmg
 ```
 
 It runs `scripts/build-desktop.sh app,dmg --target <this Mac's triple>` (practice board, firmware library,
-wiring guides from the submodule) and prints where the `.dmg` is: `target/<triple>/release/bundle/dmg/`.
+wiring guides from the repository's `docs/wiring-guides/html`) and prints where the `.dmg` is: `target/<triple>/release/bundle/dmg/`.
 `TARGET=x86_64-apple-darwin` names the other processor, but the simulator is always built for this Mac, so build
 each architecture on its own kind of Mac (as CI does). Signing is ad-hoc (`APPLE_SIGNING_IDENTITY=-`) unless
 that variable names a Developer ID identity; with `APPLE_ID`, `APPLE_PASSWORD` and `APPLE_TEAM_ID` set as well,
@@ -21,7 +21,7 @@ Tauri notarizes. An ad-hoc build runs on the Mac that built it; another Mac asks
 ## Windows and macOS installers from Linux: CI
 
 Short answer: the installers for Windows and macOS are built on Windows and macOS machines, which GitHub
-Actions provides (`.github/workflows/build.yml`). A Linux computer cannot build macOS apps at all; it can
+Actions provides (`.github/workflows/studio.yml` at the repository root). A Linux computer cannot build macOS apps at all; it can
 build the Windows NSIS installer (`scripts/build-windows.sh`), which Tauri calls a less tested last resort.
 Checked 2026-10-22 against the Tauri docs ("Windows Installer", updated 2026-10-16; "GitHub" pipeline page,
 updated 2026-06-29) and by trying it on the development machine.
@@ -74,7 +74,7 @@ mkdir -p ~/.local/opt/nsis-3.13/Bin && cp out/makensis ~/.local/opt/nsis-3.13/Bi
 unzip nsis-3.13.zip && cp -r nsis-3.13/{Stubs,Plugins,Include,Contrib,nsisconf.nsh,COPYING} ~/.local/opt/nsis-3.13/
 # makensis looks for its data one level above its own folder, hence Bin/
 
-SPECTER_GUIDES_DIR=<firmware checkout>/docs/wiring-guides/html scripts/build-windows.sh
+scripts/build-windows.sh        # the wiring guides from ../docs/wiring-guides/html (or SPECTER_GUIDES_DIR)
 ```
 
 `scripts/build-windows.sh` puts those tools on PATH, keeps the build off `/tmp` (`CARGO_TARGET_DIR=
@@ -105,11 +105,16 @@ Windows GNU check builds; nothing short of Apple's SDK allows macOS ones.
 
 ## The CI workflow
 
-`.github/workflows/build.yml` runs on pushes to `main`, tags `v*`, pull requests and by hand:
+`.github/workflows/studio.yml` (at the repository root) runs on pushes to `main` and pull requests that change
+`studio/`, `firmware/`, `docs/wiring-guides/html/` or the workflow itself, on tags `studio-v*`, and by hand. Every
+job runs in `studio/` and uses the repository's own `firmware/` (no submodule). The firmware has its own workflows
+(`firmware.yml`, `firmware-release.yml`); a change to `studio/` alone does not run them.
 
-Every job first checks out the firmware submodule with `scripts/ci-firmware-submodule.sh` (below).
-
-1. **tests (Linux)**: `npm test`, the frontend build, the simulated board, `cargo test --workspace` (the
+0. **what changed**: compares the push or pull request with its base (`git diff --name-only`) and decides
+   whether the installers run: on a change under `studio/` (or to `studio.yml`), on a `studio-v*` tag, or when
+   run by hand. A firmware-only change runs the tests and e2e but not the installers.
+1. **tests (Linux)**: on a `studio-v*` tag, first checks that the tag is `studio-v` + the version in
+   `package.json`, `src-tauri/tauri.conf.json` and `Cargo.toml`; then `npm test`, the frontend build, the simulated board, `cargo test --workspace` (the
    device layer against the real simulated board, including a real firmware build; PlatformIO is cached).
 2. **e2e (Linux)**: the Playwright tests (`tests/e2e`, `playwright.config.ts`) in the runner's Google Chrome
    against the real bridge, real simulated boards, the embedded MQTT broker and the GitHub mock: the simulated
@@ -117,32 +122,36 @@ Every job first checks out the firmware submodule with `scripts/ci-firmware-subm
    drive real boards and servers with wall-clock waits: a test that passes on its second try shows as "flaky" in
    the summary without failing the job, and a test that fails twice fails it. Traces and screenshots are kept
    for 7 days when it fails. The installers do not wait for it.
-3. **installers**, one job per system: `npm test`, the simulated board (named for the target), the wiring
-   guides, then `tauri-apps/tauri-action` with `--config src-tauri/tauri.bundle.conf.json --target <triple>
+3. **installers**, one job per system (after the tests, when "what changed" says so): `npm test`, the simulated
+   board (named for the target), the bundled firmware, the wiring guides (`docs/wiring-guides/html`), then `tauri-apps/tauri-action` with `--config src-tauri/tauri.bundle.conf.json --target <triple>
    --bundles <list>`. The installers are uploaded as workflow artifacts (`specter-studio-<triple>`, kept 14
    days).
-4. **release** (pushed `v*` tags only): downloads this run's installers and puts them, with `SHA256SUMS.txt`,
-   on the tag's GitHub release. It creates the release when there is none (a pre-release when the tag has a
-   `-`, e.g. `v0.1.0-rc.2`) and replaces same-named files on an existing one. To release: push the tag
-   (`git tag v0.1.0-rc.2 && git push origin v0.1.0-rc.2`), or re-run the workflow on the tag.
+4. **release** (pushed `studio-v*` tags only): downloads this run's installers and puts them, with
+   `SHA256SUMS.txt`, on the tag's GitHub release, titled "Specter Studio <version>". It creates the release when
+   there is none (a pre-release when the version has a `-`, e.g. `studio-v0.1.0-rc.3`) and replaces same-named
+   files on an existing one.
+
+### Releasing Studio
+
+Studio and the firmware are released from the same repository with different tags: `v<firmware/VERSION>` for the
+firmware (`firmware-release.yml`, `docs/FIRMWARE-BUILD.md` section 6) and `studio-v<version>` for Studio. To
+release Studio:
+
+1. Set the new version in `package.json` (and `package-lock.json`: `npm version --no-git-tag-version <v>`),
+   `src-tauri/tauri.conf.json` and `Cargo.toml` (`[workspace.package]`, then `cargo update -w` for `Cargo.lock`),
+   and commit.
+2. Tag and push: `git tag studio-v0.1.0-rc.3 && git push origin studio-v0.1.0-rc.3` (or re-run the workflow on
+   the tag). A tag that does not match the three versions stops the run in the tests job.
+
+Studio's firmware updates read the same repository's releases but take only those with
+`proptroller-firmware.json` (`core/src/fleet.rs` `pick_release`), so a Studio release is never offered as
+firmware.
 
 Actions are pinned by commit SHA with the tag in a comment.
 
 The tauri arguments were checked on Linux (2026-10-22): `--config src-tauri/tauri.bundle.conf.json --target
 x86_64-unknown-linux-gnu --bundles deb` bundles the sidecar; adding the `externalBin: []` overlay builds the
 same `.deb` without it (resources kept), which is how the Windows job works.
-
-### The firmware submodule in CI
-
-The submodule URL is the public firmware repository (`https://github.com/speck0413/specter-proptroller.git`).
-`scripts/ci-firmware-submodule.sh` checks out the pinned commit from there, with no token; a pin that is not
-published there stops every job at that step with an error naming the pin.
-
-### Repository settings it needs
-
-| Name | Kind | Needed | What |
-|---|---|---|---|
-| `GUIDES_REF` | variable | for installers with the wiring guides | ref of `specter-proptroller` with `docs/wiring-guides/html` when the pinned submodule commit has none. Without guides the installers say they are not installed |
 
 ### Signing (later; installers are unsigned until these are set)
 
@@ -175,7 +184,7 @@ triple>` only names the file for `tauri build --target`. Tauri looks for
   espMqttClient's POSIX client is opened to `__APPLE__` by `tools/emc_posix_apple.py`, and the strict flags
   leave out clang's `-Wsign-conversion` (GCC has none for C++).
 - Windows: does not build. `net/posix.cpp` and `posix.h` are compiled only on `__unix__` / `__APPLE__`, so
-  `main_sim.cpp` has no network layer. The fix belongs in the firmware repository: a Winsock version
+  `main_sim.cpp` has no network layer. The fix belongs in the firmware (`firmware/arduino`): a Winsock version
   (`WSAStartup`, `closesocket`, `ioctlsocket(FIONBIO)`, `WSAGetLastError() == WSAEWOULDBLOCK`, no SIGPIPE, link
   `ws2_32`) and a compiler on the runner (MSYS2 MinGW, which the Windows runners carry, or clang-cl). Until
   then the Windows installer is built without the sidecar (`externalBin: []`), so it has no practice board, and

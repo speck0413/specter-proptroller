@@ -26,10 +26,12 @@ Homebrew asks for your Mac password. At the end it prints **Next steps** with tw
 
 ## 2. Get Specter Studio
 
+Studio is in the `studio/` folder of this repository:
+
 ```sh
 mkdir -p ~/specter && cd ~/specter
-git clone --recurse-submodules https://github.com/speck0413/specter-studio.git
-cd specter-studio
+git clone https://github.com/speck0413/specter-proptroller.git
+cd specter-proptroller/studio
 ```
 
 ## 3. Set up and start Studio
@@ -44,7 +46,8 @@ npm run tauri dev
 `scripts/setup.sh` checks and installs everything else: Node.js, Rust, esptool (Homebrew), PlatformIO in
 `~/.platformio` (the official installer), libclang (Studio builds the board's file system image with the C
 littlefs library, through bindgen: the Command Line Tools' libclang, else `brew install llvm` and the
-`LIBCLANG_PATH` line it prints), the firmware submodule, the npm packages and the practice board. It
+`LIBCLANG_PATH` line it prints), the npm packages and the practice board (built from the repository's
+`firmware/`). It
 prints each thing it checks and installs, and it is safe to run again. `scripts/setup.sh --check` only looks and
 installs nothing. Anything that needs your password it prints for you to run.
 
@@ -107,7 +110,7 @@ then:
 ```
 
 (`esptool --port … write_flash 0x0 …` works the same if esptool is on your PATH.) Or straight from the source:
-`cd firmware/firmware/arduino && ~/.platformio/penv/bin/pio run -e esp32dev -t upload`. Then go on with step 6
+`cd ../firmware/arduino && ~/.platformio/penv/bin/pio run -e esp32dev -t upload` (from `studio/`). Then go on with step 6
 on the phone page.
 
 Building, flashing and releasing the firmware in more detail: [FIRMWARE-BUILD.md](FIRMWARE-BUILD.md).
@@ -127,8 +130,8 @@ The ESP32 DevKit has a USB-serial chip next to its USB socket: **CP210x** (Silic
 
 - Install **Git for Windows** first (`winget install --id Git.Git -e`), then clone in **Git Bash** as in step 2.
 - Instead of `scripts/setup.sh`, in PowerShell in the clone:
-  `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` (checks and prints what is missing), then the same
-  with `-Install` (installs the missing tools with winget, LLVM for libclang included, then the submodule and npm
+  `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` in `studio\` (checks and prints what is missing), then the same
+  with `-Install` (installs the missing tools with winget, LLVM for libclang included, then the npm
   packages; it prints the `LIBCLANG_PATH` line to set). Windows asks
   for administrator approval for the Microsoft C++ Build Tools and some others; answer it yourself.
 - Start Studio from **Git Bash**: `npm run tauri dev` (it runs a small `sh` script first).
@@ -146,8 +149,8 @@ The ESP32 DevKit has a USB-serial chip next to its USB socket: **CP210x** (Silic
 ## If something goes wrong
 
 - **`scripts/setup.sh` says MISSING**: it prints the command for each; run them, then `scripts/setup.sh` again.
-- **The firmware submodule did not check out**: in the `specter-studio` folder run
-  `git submodule update --init --recursive`, then `scripts/setup.sh` again.
+- **`scripts/setup.sh` says there is no firmware at `../firmware`**: run it in the `studio` folder of a full
+  clone of this repository (`specter-proptroller/studio`), not in a copy of `studio/` on its own.
 - **Studio's install says there is no USB install for this kind of board**: Settings → Firmware updates shows
   where firmware comes from; **Use the official releases** goes back to the firmware that comes with Studio and
   the GitHub releases.

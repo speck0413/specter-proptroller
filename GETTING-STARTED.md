@@ -144,6 +144,7 @@ a doorbell chime).
 - Change the firmware itself: the developer quick start in the [README](README.md#developer-quick-start-vs-code).
 - Build the firmware and flash it by hand, make a release folder, update over Wi-Fi:
   [docs/FIRMWARE-BUILD.md](docs/FIRMWARE-BUILD.md).
-- The desktop app, Specter Studio, is a separate project: it finds your boards, copies sounds to the card and
-  edits scripts with blocks. [docs/DEV-SETUP.md](docs/DEV-SETUP.md) goes from a computer with nothing installed
+- The desktop app, Specter Studio (in [studio/](studio/README.md), installers on the
+  [releases page](https://github.com/speck0413/specter-proptroller/releases)): it finds your boards, copies sounds
+  to the card and edits scripts with blocks. [docs/DEV-SETUP.md](docs/DEV-SETUP.md) goes from a computer with nothing installed
   to Studio built from source and a board running the stock firmware.

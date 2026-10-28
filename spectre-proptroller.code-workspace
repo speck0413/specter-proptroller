@@ -10,6 +10,10 @@
     {
       "path": "firmware/arduino",
       "name": "firmware (PlatformIO)"
+    },
+    {
+      "path": "studio",
+      "name": "Specter Studio"
     }
   ],
   "settings": {
@@ -35,6 +39,7 @@
     },
     "files.exclude": {
       "firmware/arduino": true,
+      "studio": true,
       "**/.pio": true,
       "**/node_modules": true
     }

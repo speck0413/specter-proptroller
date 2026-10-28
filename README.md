@@ -30,6 +30,10 @@ the sound card, wiring, and your first effect script typed on your phone. Then:
 - [hardware/README.md](hardware/README.md): ratings, pinout and power.
 - [firmware/BARE-DEVKIT.md](firmware/BARE-DEVKIT.md): no board yet? Run the firmware on a bare ESP32 DevKit,
   ESP32-S3 DevKit or ESP32-C3 SuperMini (outputs through MOSFET or relay modules).
+- [studio/](studio/README.md): **Specter Studio**, the desktop app for these boards (Windows, macOS, Linux):
+  find boards, write effects as text or blocks, try them on a practice board, update firmware, copy sounds to the
+  SD card. Installers are on the [releases page](https://github.com/speck0413/specter-proptroller/releases)
+  (`studio-v…` tags).
 - [docs/DEV-SETUP.md](docs/DEV-SETUP.md): from nothing to a running board with Specter Studio built from
   source (macOS, with Windows and Linux notes): the setup script, the clone, a USB install and a script.
 - [docs/FIRMWARE-BUILD.md](docs/FIRMWARE-BUILD.md): build the firmware for each board, flash it over USB, make a
@@ -42,7 +46,7 @@ This repository holds hardware rev B (relay insulation margin and air-gap slots 
 tested), differs as `hardware/README.md` describes (ratings, relay positions, errata).
 A 3D-printed enclosure is in `enclosure/` (not printed yet).
 Firmware: C++ on the Arduino cores with PlatformIO (`firmware/arduino`), tested on the host and in a simulator; not yet run on a
-board. The desktop app is Specter Studio, a separate repository. Wiring guides and a build guide are in `docs/` (below).
+board. The desktop app, Specter Studio, is in `studio/`. Wiring guides and a build guide are in `docs/` (below).
 
 ## What is here
 
@@ -56,9 +60,10 @@ board. The desktop app is Specter Studio, a separate repository. Wiring guides a
 | `enclosure/` | the 3D-printed enclosure: OpenSCAD model, `design.toml` with every size, Bambu Studio projects, build and check tools |
 | `GETTING-STARTED.md` | from a new board to a running prop, no programming |
 | `firmware/` | the firmware (`arduino/`), the protocol (`PROTOCOL.md`), flash maps, the phone web UI (`web/`) and its browser tests (`web-test/`), golden sets and example show scripts |
-| `.github/workflows/release.yml` | on a tag `v<firmware/VERSION>`: builds the stock firmware (ESP32 DevKit, Pico W, Pico 2 W, and the bare devkits), drafts a GitHub Release with the update and first-flash images and `proptroller-firmware.json`, and publishes the browser flasher to GitHub Pages |
+| `studio/` | Specter Studio, the desktop app (Tauri: Rust device layer in `core/`, React app in `src/`, Playwright tests in `tests/e2e/`); it builds its practice board from `firmware/` and bundles the firmware library and the wiring guides. See [studio/README.md](studio/README.md) and [studio/docs/BUILDING.md](studio/docs/BUILDING.md) |
+| `.github/workflows/` | `firmware.yml`: firmware host tests, board builds, examples, simulator and phone-page browser tests (on changes to `firmware/`); `firmware-release.yml`: on a tag `v<firmware/VERSION>`, builds the stock firmware (ESP32 DevKit, Pico W, Pico 2 W, and the bare devkits), drafts a GitHub Release with the update and first-flash images and `proptroller-firmware.json`, and publishes the browser flasher to GitHub Pages; `studio.yml`: Studio's tests and e2e (on changes to `studio/` or `firmware/`), the installers (on changes to `studio/`), and on a tag `studio-v<version>` the installers on that tag's release |
 | `docs/` | wiring guides (interactive 3D pages, written pages, videos), the case build guide, switching AC loads, developer setup with Specter Studio (`DEV-SETUP.md`), building and flashing the firmware (`FIRMWARE-BUILD.md`) |
-| `tools/` | `setup.sh` (firmware setup; `--dev` for the developer checks), bootstrap, JLC order packages (with rotation corrections), routing helpers |
+| `tools/` | `setup.sh` (firmware setup; `--dev` for the developer checks; Studio has its own, `studio/scripts/setup.sh`), bootstrap, JLC order packages (with rotation corrections), routing helpers |
 
 The generated KiCad project (`hardware/kicad/`: board, schematic, rules, symbol library, build records) and the order files
 (`hardware/fab/`: gerbers zip, BOM, CPL, three JLC packages) are committed, so you can open or order the board without building it.
@@ -124,12 +129,38 @@ Two ways, both with VS Code:
   `esptool.py erase_flash`) and flash again.
 
 
+## Specter Studio from source
+
+```sh
+git clone https://github.com/speck0413/specter-proptroller.git && cd specter-proptroller/studio
+scripts/setup.sh          # Node.js, Rust, PlatformIO, Tauri's system parts; npm ci and the practice board
+npm run tauri dev         # the desktop app
+```
+
+Windows uses `scripts\setup.ps1`. The step-by-step version is [docs/DEV-SETUP.md](docs/DEV-SETUP.md); tests,
+desktop builds and the layout are in [studio/README.md](studio/README.md). Studio needs no submodule (the `aieda`
+submodule is for the hardware build only).
+
+## Releases
+
+One repository, two kinds of tag:
+
+| Tag | Workflow | Release |
+|---|---|---|
+| `v<firmware/VERSION>`, e.g. `v0.1.0-rc.3` | `firmware-release.yml` | a draft "Firmware v…" release with the images and `proptroller-firmware.json` (published by hand), and the browser flasher |
+| `studio-v<version>`, e.g. `studio-v0.1.0-rc.3` (the version in `studio/package.json`, `studio/src-tauri/tauri.conf.json` and `studio/Cargo.toml`) | `studio.yml` | a "Specter Studio …" release with the installers and `SHA256SUMS.txt` |
+
+A version with a suffix (`-rc.3`) makes a pre-release. Studio's firmware updates look only at releases that
+carry `proptroller-firmware.json`, so Studio's own releases never count as firmware; GitHub's "Latest" label goes
+to whichever full release is newest, so link the firmware by its tag. Details:
+[docs/FIRMWARE-BUILD.md](docs/FIRMWARE-BUILD.md) (section 6) and [studio/docs/BUILDING.md](studio/docs/BUILDING.md).
+
 ## Build (hardware)
 
 Requires KiCad 10 (with `kicad-cli`), Node.js, Python 3 and Java (for Freerouting).
 
 ```sh
-git clone --recursive <this repo> && cd spectre-proptroller
+git clone --recursive https://github.com/speck0413/specter-proptroller.git && cd specter-proptroller
 tools/bootstrap.sh        # aieda submodule, its Node deps, Freerouting
 make typecheck
 make build                # KiCad project in hardware/kicad/ (about 4 minutes)
@@ -166,5 +197,5 @@ within its terminal's rating ([hardware/README.md](hardware/README.md)).
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The licence covers everything in this repository: the software (firmware, tools, web
-page), the hardware design files (`hardware/`, `enclosure/`) and the documentation. See also [SAFETY.md](SAFETY.md).
+MIT, see [LICENSE](LICENSE). The licence covers everything in this repository: the software (firmware, Specter
+Studio, tools, web page), the hardware design files (`hardware/`, `enclosure/`) and the documentation. See also [SAFETY.md](SAFETY.md).

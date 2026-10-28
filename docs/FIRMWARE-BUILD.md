@@ -2,7 +2,7 @@
 
 This page builds the stock firmware from source, puts it on a board over USB, makes a release folder, and
 updates boards over Wi-Fi. It assumes PlatformIO is installed: `tools/setup.sh` in this repository, or
-Specter Studio's `scripts/setup.sh` ([DEV-SETUP.md](DEV-SETUP.md)). Every command runs in `firmware/arduino`.
+Specter Studio's `studio/scripts/setup.sh` ([DEV-SETUP.md](DEV-SETUP.md)). Every command runs in `firmware/arduino`.
 
 If `pio` is not found, use its full path: `~/.platformio/penv/bin/pio` (Windows:
 `~/.platformio/penv/Scripts/pio.exe` in Git Bash), and `~/.platformio/penv/bin/python` for the Python tools.
@@ -128,7 +128,9 @@ Pico is updated over USB only (section 2).
 
 ## 6. What CI does on a `v*` tag
 
-Pushing a tag `v<firmware/VERSION>` (for example `v0.1.0-rc.2`) runs `.github/workflows/release.yml`:
+Pushing a tag `v<firmware/VERSION>` (for example `v0.1.0-rc.3`) runs `.github/workflows/firmware-release.yml`
+(Specter Studio is released from the same repository with `studio-v<version>` tags, which this workflow does not
+match; `studio/docs/BUILDING.md`):
 
 1. checks that the tag matches `firmware/VERSION`;
 2. builds `esp32dev`, `pico`, `picow`, `pico2w` and the two Pico bootloaders, and merges the Pico W / Pico 2 W
@@ -141,7 +143,9 @@ Pushing a tag `v<firmware/VERSION>` (for example `v0.1.0-rc.2`) runs `.github/wo
 
 The images are unsigned: the SHA-256 in the manifest checks the download, it is not a signature.
 
-Every push and pull request runs `.github/workflows/ci.yml` (nothing is published):
+Every push and pull request that changes `firmware/` runs `.github/workflows/firmware.yml` (nothing is
+published); it also runs Studio's tests and e2e (`.github/workflows/studio.yml`), since Studio builds its practice
+board from `firmware/` and checks scripts against the golden sets:
 
 | Job | What it runs |
 |---|---|

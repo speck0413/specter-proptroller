@@ -230,8 +230,9 @@ come again on every reconnect, so they are not news.
 ## Quick start (development)
 
 From a computer with nothing installed to Studio running and a blank ESP32 DevKit on the stock firmware. The
-same steps with more explanation, and the Windows and Linux notes, are in the firmware repository's
-[docs/DEV-SETUP.md](https://github.com/speck0413/specter-proptroller/blob/main/docs/DEV-SETUP.md).
+same steps with more explanation, and the Windows and Linux notes, are in
+[docs/DEV-SETUP.md](../docs/DEV-SETUP.md). Studio lives in `studio/` of the Specter Proptroller repository and
+builds against the firmware in the repository's `firmware/` folder; every command below runs in `studio/`.
 
 **1. Tools (macOS, once).** Apple's Command Line Tools and Homebrew (it asks for your password; paste the two
 "Next steps" lines it prints):
@@ -241,17 +242,17 @@ xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
-**2. Clone** (with the firmware submodule):
+**2. Clone:**
 
 ```sh
 mkdir -p ~/specter && cd ~/specter
-git clone --recurse-submodules https://github.com/speck0413/specter-studio.git && cd specter-studio
+git clone https://github.com/speck0413/specter-proptroller.git && cd specter-proptroller/studio
 ```
 
 **3. Set up and start:**
 
 ```sh
-scripts/setup.sh                # tools, Rust, the firmware submodule, npm ci, the practice board
+scripts/setup.sh                # tools, Rust, npm ci, the practice board
 export PATH="$(brew --prefix rustup)/bin:$PATH"                          # macOS: Homebrew's Rust, now
 echo 'export PATH="$(brew --prefix rustup)/bin:$PATH"' >> ~/.zprofile  # macOS: and in new terminals
 npm run tauri dev               # the desktop app (the first build takes several minutes)
@@ -269,12 +270,12 @@ package image"; setup.sh / setup.ps1 check it): Linux `libclang-dev`, macOS the 
 `brew install llvm` and `LIBCLANG_PATH`), Windows `winget install LLVM.LLVM` and `LIBCLANG_PATH`. Homebrew's rustup is keg-only, hence the two macOS `PATH` lines (once).
 
 **4. Your own firmware build (optional).** Studio comes with the stock ESP32 DevKit firmware (the first
-`npm run tauri dev` builds it from the firmware submodule) and also reads newer releases from GitHub. For the Pico W
+`npm run tauri dev` builds it from `../firmware`) and also reads newer releases from GitHub. For the Pico W
 boards, or to install a firmware you built yourself, build a release folder in a second terminal and point Studio
 at it:
 
 ```sh
-cd ~/specter/specter-studio/firmware/firmware/arduino
+cd ~/specter/specter-proptroller/firmware/arduino
 ~/.platformio/penv/bin/pio run -e esp32dev -e picow -e pico2w -e boot_rp2040 -e boot_rp2350
 ~/.platformio/penv/bin/python tools/picoboot_image.py merge pico-w
 ~/.platformio/penv/bin/python tools/picoboot_image.py merge pico2-w
@@ -294,9 +295,8 @@ and **Send to this board only**.
 Without Studio: `~/.platformio/penv/bin/python ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32
 --port <port> write_flash 0x0 ~/specter/release/assets/first-flash-esp32-devkit-0.1.0-rc.2.bin`.
 
-By hand, the checkout part of setup.sh is `git -c protocol.file.allow=always submodule update --init` (a sibling
-clone works as the remote), `npm ci` and `scripts/build-sim.sh` (the practice board: the firmware's own
-simulator build; run it again after firmware changes).
+By hand, the checkout part of setup.sh is `npm ci` and `scripts/build-sim.sh` (the practice board: the
+firmware's own simulator build from `../firmware/arduino`; run it again after firmware changes).
 
 In a browser instead (the same app; the device layer runs as a small local service):
 
@@ -338,13 +338,15 @@ page, type in its effect script: **Send to this board only** and the badge says 
 **Advanced** for the protocol console and the C++ preview. **Serial monitor** and **Help** (wiring guides) are
 in the top bar.
 
-## Updating the firmware submodule
+## Firmware changes
+
+Studio builds against the repository's own `../firmware`, so a firmware change and the Studio change that goes
+with it are one commit. After changing the firmware:
 
 ```sh
-git -C firmware fetch && git -C firmware checkout <commit on firmware-cpp>
-./scripts/checker-parity.sh <commit>   # before moving: what the new golden set changes (SS-C5)
-git add firmware && git commit -m "firmware: <what changed>"
-./scripts/build-sim.sh
+./scripts/build-sim.sh                 # the practice board (and the checker) from the changed firmware
+cargo test && npm test                 # parity with the firmware's golden sets
+./scripts/checker-parity.sh <ref>      # optional: what another commit's golden set changes (SS-C5)
 ```
 
 Studio's script checker is the board's own (the simulator). `core/tests/checker_parity.rs` runs every case of
@@ -354,14 +356,14 @@ checks that the blocks, the C++ export and the hints read every golden script as
 ## Desktop builds
 
 ```sh
-SPECTER_GUIDES_DIR=<firmware repo>/docs/wiring-guides/html scripts/build-desktop.sh deb   # or appimage, msi, dmg
+scripts/build-desktop.sh deb   # or appimage, msi, dmg; the wiring guides come from ../docs/wiring-guides/html
 ```
 
 The bundle carries the simulator (sidecar), the firmware's library, template and examples, and the wiring
 guides (the build stops without them; `ALLOW_NO_GUIDES=1` builds anyway).
 On a Mac, `scripts/build-macos.sh` builds `Specter Studio.app` and a `.dmg` (ad-hoc signed unless
 `APPLE_SIGNING_IDENTITY` is set). Windows and macOS installers are also built by CI
-(`.github/workflows/build.yml`); see `docs/BUILDING.md`.
+(`.github/workflows/studio.yml` at the repository root); see `docs/BUILDING.md`.
 
 ## Layout
 
@@ -371,7 +373,7 @@ On a Mac, `scripts/build-macos.sh` builds `Specter Studio.app` and a `.dmg` (ad-
 | `src-tauri/` | the thin Tauri shell: one `dispatch` command, events, the `plugin://` scheme |
 | `src/` | the React + MUI app; `src/effects/` the editor (Monaco language, Blockly blocks, C++ preview) |
 | `plugins/board-list/` | an example plugin and the plugin-side API (`studio-plugin.js`) |
-| `firmware/` | the firmware repository (submodule): simulator, checker, library, template, examples |
+| `../firmware/` | the firmware (in this repository, not in `studio/`): simulator, checker, library, template, examples |
 | `tests/e2e/` | Playwright |
 
 MIT licensed.
