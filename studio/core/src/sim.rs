@@ -24,7 +24,7 @@ impl Drop for Sim {
 }
 
 /// Where the simulator program is: `PROPTROLLER_SIM`, next to Studio's own executable (the bundled
-/// sidecar), or the firmware submodule's build (development).
+/// sidecar), or the repository's own firmware build in `firmware/arduino` (development).
 pub fn find_program() -> Option<PathBuf> {
     if let Ok(p) = std::env::var("PROPTROLLER_SIM") {
         return Some(PathBuf::from(p));
@@ -39,7 +39,7 @@ pub fn find_program() -> Option<PathBuf> {
             }
         }
     }
-    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../firmware/firmware/arduino/.pio/build/sim/program");
+    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../firmware/arduino/.pio/build/sim/program");
     dev.exists().then_some(dev)
 }
 

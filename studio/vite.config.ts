@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -41,14 +41,16 @@ function blocklyMedia() {
 }
 
 export default defineConfig({
-  // the firmware's shared plain ES modules (firmware/web/take.js) are no React code: no JSX transform, and no
-  // lookup of the firmware repository's own tsconfig.json (it extends a submodule Studio does not check out)
-  plugins: [react({ exclude: [/[\\/]firmware[\\/]firmware[\\/]web[\\/]/, /node_modules/] }), blocklyMedia()],
+  // the firmware's shared plain ES modules (../firmware/web/take.js) are no React code: no JSX transform, and no
+  // lookup of the repository root's tsconfig.json (it extends aieda, which Studio does not need checked out)
+  plugins: [react({ exclude: [/[\\/]firmware[\\/]web[\\/]/, /node_modules/] }), blocklyMedia()],
   clearScreen: false,
   optimizeDeps: { entries: ['index.html'] },
   server: {
     port: Number(process.env.PORT || 1420),
     strictPort: true,
+    // the firmware's shared modules (words.js, take.js) are imported from the repository's firmware/web, outside studio/
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), path.resolve(__dirname, '../firmware/web')] },
     // other checkouts of this repo (git worktrees in .worktrees/) are never this app's sources; matched below this
     // checkout only, so a checkout that itself lives in .worktrees/ still watches its own files
     watch: { ignored: ['**/firmware/**', '**/target/**', '**/src-tauri/**', (f: string) => path.relative(process.cwd(), f).split(path.sep).includes('.worktrees')] },

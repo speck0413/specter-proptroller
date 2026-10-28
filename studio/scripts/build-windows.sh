@@ -21,7 +21,7 @@ for t in cargo-xwin makensis llvm-rc llvm-lib clang clang-cl lld-link; do
   command -v "$t" >/dev/null || { echo "error: $t not found (see docs/BUILDING.md, Windows from Linux)" >&2; exit 1; }
 done
 
-GUIDES="${SPECTER_GUIDES_DIR:-firmware/docs/wiring-guides/html}"
+GUIDES="${SPECTER_GUIDES_DIR:-../docs/wiring-guides/html}"
 rm -rf src-tauri/guides && mkdir -p src-tauri/guides
 if [ -f "$GUIDES/index.html" ]; then
   cp -r "$GUIDES"/. src-tauri/guides/

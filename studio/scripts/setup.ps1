@@ -130,12 +130,11 @@ Write-Host 'This checkout'
 rustup show active-toolchain *> $null
 if ($LASTEXITCODE -ne 0) { rustup default stable }
 rustup toolchain install
-git submodule update --init
-if ($LASTEXITCODE -ne 0) {
-  Write-Host 'The firmware submodule did not check out.'
-  Write-Host 'Check the internet connection and run this again.'
+if (-not (Test-Path (Join-Path '..' 'firmware\arduino\platformio.ini'))) {
+  Write-Host 'No firmware at ..\firmware: run this in studio\ of a full specter-proptroller clone.'
   exit 1
 }
+Ok 'firmware at ..\firmware'
 Did 'npm packages (npm ci)'
 npm ci
 if ($LASTEXITCODE -ne 0) { exit 1 }

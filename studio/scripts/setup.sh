@@ -1,8 +1,8 @@
 #!/bin/sh
 # Development setup for macOS and Linux, safe to run again. It says what it checks and what it installs.
 #
-#   scripts/setup.sh           tools, then this checkout: Rust toolchain, firmware submodule, npm ci, practice board
-#   scripts/setup.sh --tools   the tools only (no submodule, npm or practice board)
+#   scripts/setup.sh           tools, then this checkout: Rust toolchain, npm ci, practice board
+#   scripts/setup.sh --tools   the tools only (no npm or practice board)
 #   scripts/setup.sh --check   installs and changes nothing; lists what is there and what is missing
 #
 # Tools: git, Node.js 20+, Rust (rustup), PlatformIO Core in ~/.platformio (Studio's USB install runs esptool from
@@ -215,11 +215,10 @@ if have rustup; then
 fi
 ok "$(rustc --version)"
 
-if git -c protocol.file.allow=always submodule update --init; then
-  ok "firmware submodule at $(git -C firmware rev-parse --short HEAD)"
+if [ -f ../firmware/arduino/platformio.ini ]; then
+  ok "firmware at ../firmware"
 else
-  echo "The firmware submodule did not check out." >&2
-  echo "Check the internet connection and run scripts/setup.sh again." >&2
+  echo "No firmware at ../firmware: run this in studio/ of a full specter-proptroller clone." >&2
   exit 1
 fi
 did "npm packages (npm ci)"

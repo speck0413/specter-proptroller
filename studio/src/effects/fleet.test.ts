@@ -18,7 +18,7 @@ const boards: Record<string, any> = {
   d: { key: 'adapter:x:1', adapter: 'x', info: { name: 'Smart plug' } }, // a device adapter's device: not a board
 };
 // a board's settings as the firmware lists them (its golden get_params answer)
-const PARAMS = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../firmware/firmware/arduino/test/golden/02-params.json'), 'utf8'));
+const PARAMS = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../firmware/arduino/test/golden/02-params.json'), 'utf8'));
 const params: any[] = (PARAMS.result ?? PARAMS).params;
 const fleet = fleetFrom(boards, 'a', { b: params });
 const labels = (before: string) => completionsAt(before, defaultTerms(), fleet).map((c) => c.label);
@@ -56,7 +56,7 @@ describe('the settings a tell line can change', () => {
   });
   it('the refused list is the checker\'s (b02-tell-errors refuses wifi_pass and remote_trigger_enable)', () => {
     expect(NOT_FROM_ANOTHER_BOARD).toEqual(expect.arrayContaining(['wifi_pass', 'remote_trigger_enable']));
-    const readme = fs.readFileSync(path.resolve(__dirname, '../../firmware/firmware/show-script-golden/README.md'), 'utf8');
+    const readme = fs.readFileSync(path.resolve(__dirname, '../../../firmware/show-script-golden/README.md'), 'utf8');
     const row = readme.split('\n').find((l) => l.startsWith('| `tell <board> <effect>`'))!;
     const listed = /never takes from another \(([^)]*)\)/.exec(row)![1].match(/`([a-z_]+)`/g)!.map((w) => w.slice(1, -1));
     expect([...NOT_FROM_ANOTHER_BOARD].sort()).toEqual([...listed].sort());
@@ -116,7 +116,7 @@ describe('help for tell', () => {
     expect(h).toMatch(/restarts/);
   });
   it('adds no hint of its own under the board\'s tell messages (b02-tell-errors)', () => {
-    const dir = path.resolve(__dirname, '../../firmware/firmware/show-script-golden/cases/b02-tell-errors');
+    const dir = path.resolve(__dirname, '../../../firmware/show-script-golden/cases/b02-tell-errors');
     const c = JSON.parse(fs.readFileSync(path.join(dir, 'case.json'), 'utf8'));
     const lines = fs.readFileSync(path.join(dir, 'script.txt'), 'utf8').split('\n');
     const tells = c.check.errors.filter((e: any) => /^\s*tell/i.test(lines[e.line - 1]));

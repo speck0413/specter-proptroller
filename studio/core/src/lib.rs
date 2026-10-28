@@ -141,12 +141,12 @@ pub fn this_computer() -> String {
 }
 
 /// The firmware's `firmware/arduino` (the Proptroller library and the project template): `SPECTER_FIRMWARE_DIR`,
-/// else the firmware submodule (development).
+/// else the repository's own `firmware/arduino` (development).
 pub fn arduino_dir() -> Option<std::path::PathBuf> {
     if let Ok(p) = std::env::var("SPECTER_FIRMWARE_DIR") {
         return Some(p.into());
     }
-    let dev = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../firmware/firmware/arduino");
+    let dev = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../firmware/arduino");
     // the library is the firmware's lib/proptroller (the project template moved to workspace-template)
     dev.join("lib/proptroller").exists().then(|| dunce::canonicalize(&dev).unwrap_or(dev))
 }

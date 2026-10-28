@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The generic release that comes with Studio (core/src/fwtypes.rs bundled_dir): built from the firmware submodule,
+"""The generic release that comes with Studio (core/src/fwtypes.rs bundled_dir): built from the repository's firmware,
 so the stock firmware and the Proptroller board are offered offline and before any release is published.
 
     python3 scripts/bundle-firmware.py [--pico]
@@ -18,7 +18,8 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ARD = os.path.join(ROOT, "firmware", "firmware", "arduino")
+REPO = os.path.dirname(ROOT)
+ARD = os.path.join(REPO, "firmware", "arduino")
 OUT = os.path.join(ROOT, "src-tauri", "bundled-firmware")
 PIO_HOME = os.environ.get("PLATFORMIO_CORE_DIR", os.path.join(os.path.expanduser("~"), ".platformio"))
 BUILD = os.path.join(ARD, ".pio", "build")
@@ -53,15 +54,19 @@ def entry(path, mcu, first_flash=False):
 
 def main(argv):
     pico = "--pico" in argv
-    version = open(os.path.join(ROOT, "firmware", "firmware", "VERSION")).read().strip()
+    version = open(os.path.join(REPO, "firmware", "VERSION")).read().strip()
     envs = ["esp32dev"] + (["picow", "pico2w", "boot_rp2040", "boot_rp2350"] if pico else [])
     args = [pio(), "run"]
     for e in envs:
         args += ["-e", e]
+    # the firmware build regenerates a committed header (web_assets.h, from firmware/web): when neither had changes
+    # before the build, put the header back afterwards; otherwise leave the regenerated one to be committed
+    header = "firmware/arduino/lib/proptroller/src/proptroller/web_assets.h"
+    keep = subprocess.call(["git", "-C", REPO, "diff", "--quiet", "HEAD", "--", header, "firmware/web"],
+                           stderr=subprocess.DEVNULL) == 0
     subprocess.check_call(args, cwd=ARD)
-    # the firmware build regenerates a committed header; keep the submodule clean
-    subprocess.call(["git", "-C", os.path.join(ROOT, "firmware"), "checkout", "--",
-                     "firmware/arduino/lib/proptroller/src/proptroller/web_assets.h"], stderr=subprocess.DEVNULL)
+    if keep:
+        subprocess.call(["git", "-C", REPO, "checkout", "--", header], stderr=subprocess.DEVNULL)
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(OUT)
     updates, firsts = [], []

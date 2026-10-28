@@ -1,5 +1,5 @@
 //! SS-C5: Studio's script checker must give the board's answer. Every case of the firmware's show-script
-//! golden set (`firmware/firmware/show-script-golden/`, the submodule) goes through Studio's own
+//! golden set (the repository's `firmware/show-script-golden/`) goes through Studio's own
 //! `check_script` path, as the effect editor calls it: the hidden checker board when the case has no
 //! settings, else a practice board with the case's settings (the "Check with the settings of" choice). The
 //! answer must match the case's `ok`, `errors` and `warnings` byte for byte (and its `table` when the reply
@@ -12,7 +12,7 @@
 //! the board does anyway) and a `buttons = learn` case is skipped (no such board to ask).
 //!
 //! `SHOW_SCRIPT_GOLDEN=<dir with cases/>` runs another golden set instead (scripts/checker-parity.sh uses it
-//! to see what changes when the submodule pin moves to a newer firmware).
+//! to compare Studio with another firmware commit's golden set).
 
 use serde_json::{json, Value};
 use std::path::PathBuf;
@@ -32,14 +32,14 @@ fn no_simulator_here() -> bool {
 fn golden_dir() -> PathBuf {
     match std::env::var("SHOW_SCRIPT_GOLDEN") {
         Ok(d) => PathBuf::from(d),
-        Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../firmware/firmware/show-script-golden"),
+        Err(_) => PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../firmware/show-script-golden"),
     }
 }
 
 fn cases() -> Vec<(String, PathBuf)> {
     let dir = golden_dir().join("cases");
     let mut v: Vec<_> = std::fs::read_dir(&dir)
-        .unwrap_or_else(|e| panic!("{}: {e} (run git submodule update --init)", dir.display()))
+        .unwrap_or_else(|e| panic!("{}: {e} (the firmware's show-script golden set)", dir.display()))
         .map(|d| d.unwrap().path())
         .map(|p| (p.file_name().unwrap().to_string_lossy().into_owned(), p))
         .collect();

@@ -11,9 +11,9 @@ defineBlocks();
 
 function scripts(): [string, string][] {
   const out: [string, string][] = [];
-  const g = path.join(ROOT, 'firmware/firmware/show-script-golden/cases');
+  const g = path.join(ROOT, '../firmware/show-script-golden/cases');
   for (const d of fs.readdirSync(g).sort()) out.push([d, fs.readFileSync(path.join(g, d, 'script.txt'), 'utf8')]);
-  const ex = path.join(ROOT, 'firmware/firmware/show-script-examples');
+  const ex = path.join(ROOT, '../firmware/show-script-examples');
   for (const f of fs.readdirSync(ex).filter((f) => f.endsWith('.txt')).sort()) out.push([f, fs.readFileSync(path.join(ex, f), 'utf8')]);
   out.push(['mixed line endings', 'effect a:\r\n  wait for trig1\n  out1 = on\r  sleep 1\n']);
   out.push(['no final newline', 'effect a:\n  wait for trig1\n  out1 = on']);

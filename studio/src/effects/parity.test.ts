@@ -17,7 +17,7 @@ import { duration, percent, scriptToCpp } from './cppgen';
 import { hoverFor } from './language';
 import { conflicts, missingHint } from '../words';
 
-const GOLDEN = process.env.SHOW_SCRIPT_GOLDEN || path.resolve(__dirname, '../../firmware/firmware/show-script-golden');
+const GOLDEN = process.env.SHOW_SCRIPT_GOLDEN || path.resolve(__dirname, '../../../firmware/show-script-golden');
 
 interface Msg { line: number; message: string }
 interface Step { line: number; op: string; input?: string; target?: string; level?: number; ms?: number; sound?: number; setting?: string; board?: string; effect?: string; value?: string }

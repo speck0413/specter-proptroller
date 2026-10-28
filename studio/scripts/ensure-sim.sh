@@ -8,7 +8,7 @@ if [ ! -f src-tauri/bundled-firmware/proptroller-firmware.json ] && { command -v
   echo "bundled firmware: not built yet, building it (scripts/bundle-firmware.py)"
   python3 scripts/bundle-firmware.py || echo "warning: the bundled firmware did not build; USB installs need a release" >&2
 fi
-[ -x firmware/firmware/arduino/.pio/build/sim/program ] && exit 0
+[ -x ../firmware/arduino/.pio/build/sim/program ] && exit 0
 if command -v pio >/dev/null 2>&1 || [ -x "$HOME/.platformio/penv/bin/pio" ]; then
   echo "practice board: not built yet, building it (scripts/build-sim.sh)"
   ./scripts/build-sim.sh || echo "warning: the practice board did not build; the app starts without it" >&2

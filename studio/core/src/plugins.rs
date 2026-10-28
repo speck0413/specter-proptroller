@@ -105,13 +105,13 @@ pub fn bridge_dirs(examples: Option<&std::ffi::OsStr>, extra: Option<&std::ffi::
 }
 
 /// The wiring guides (offline pages from the firmware's `docs/wiring-guides/html`): `SPECTER_GUIDES_DIR`,
-/// else the firmware submodule (development).
+/// else the repository's own `docs/wiring-guides/html` (development).
 pub fn guides_dir() -> Option<PathBuf> {
     if let Ok(p) = std::env::var("SPECTER_GUIDES_DIR") {
         let p = PathBuf::from(p);
         return p.join("index.html").is_file().then_some(p);
     }
-    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../firmware/docs/wiring-guides/html");
+    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../docs/wiring-guides/html");
     // a guides folder without its index (a bundle built without the guides) counts as not installed
     dev.join("index.html").is_file().then_some(dev)
 }

@@ -3,7 +3,7 @@
 // module its TypeScript types, the way src/record/take.ts does for take.js.
 
 // @ts-ignore the firmware's plain ES module has no type declarations; they are written out below
-import * as shared from '../../firmware/firmware/web/words.js';
+import * as shared from '../../../firmware/web/words.js';
 
 export const KEYWORDS: string[] = shared.KEYWORDS;
 export const OUTPUTS: string[] = shared.OUTPUTS;

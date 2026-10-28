@@ -1,6 +1,6 @@
-// The shared golden vectors (firmware/pattern-golden in the firmware submodule): Studio's interpreter must give
+// The shared golden vectors (the repository's firmware/pattern-golden): Studio's interpreter must give
 // every case's lights byte for byte, run from the case's program bytes, as the board's native test does.
-// PATTERN_GOLDEN_OUT=<firmware checkout>/firmware/pattern-golden writes them again from golden/cases.ts.
+// PATTERN_GOLDEN_OUT=../firmware/pattern-golden (from studio/) writes them again from golden/cases.ts.
 
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -12,7 +12,7 @@ import { runGolden } from './golden/run';
 import { BOARD_LIMITS } from './vm';
 
 const OUT = process.env.PATTERN_GOLDEN_OUT;
-const DIR = join(__dirname, '../../firmware/firmware/pattern-golden');
+const DIR = join(__dirname, '../../../firmware/pattern-golden');
 
 describe('pattern golden vectors', () => {
   it.runIf(!!OUT)('are written from golden/cases.ts', () => {
@@ -29,7 +29,7 @@ describe('pattern golden vectors', () => {
     }
   });
 
-  it.runIf(existsSync(DIR))('give the same lights here as on the board (the submodule\'s set)', () => {
+  it.runIf(existsSync(DIR))('give the same lights here as on the board (the firmware\'s set)', () => {
     expect(JSON.parse(readFileSync(join(DIR, 'limits.json'), 'utf8'))).toEqual(BOARD_LIMITS);
     const files = readdirSync(join(DIR, 'cases')).filter((f) => f.endsWith('.json'));
     expect(files.length).toBeGreaterThan(20);

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { duration, effectName, scriptToCpp } from './cppgen';
 
-const EX = path.resolve(__dirname, '../../firmware/firmware/show-script-examples');
+const EX = path.resolve(__dirname, '../../../firmware/show-script-examples');
 
 describe('effect script to C++', () => {
   it('times', () => {

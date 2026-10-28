@@ -51,7 +51,7 @@ pub fn run() {
             }
         })
         .setup(move |app| {
-            // the bundled firmware library and workspace template (desktop builds; development uses the submodule)
+            // the bundled firmware library and workspace template (desktop builds; development uses the repository's firmware/)
             if let Ok(res) = app.path().resource_dir() {
                 let ard = res.join("firmware/arduino");
                 if ard.join("lib/proptroller").is_dir() && std::env::var_os("SPECTER_FIRMWARE_DIR").is_none() {

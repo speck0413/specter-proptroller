@@ -1,4 +1,4 @@
-//! The device layer against the real C++ simulator (the firmware submodule's `sim` build; run
+//! The device layer against the real C++ simulator (the repository firmware's `sim` build; run
 //! scripts/build-sim.sh first). Every simulator gets a free port and no UDP discovery unless a test needs it.
 
 use serde_json::{json, Value};

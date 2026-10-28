@@ -5,7 +5,7 @@
 // back on the board and saves the text.
 
 // @ts-ignore the firmware's plain ES module has no type declarations; they are written out below
-import * as shared from '../../firmware/firmware/web/take.js';
+import * as shared from '../../../firmware/web/take.js';
 
 /** A hold of one output, in ms from the start of the take. `cut`: the recorder let go at the maximum on-time
  * while the finger was still down; `heldMs`: how long the finger really stayed down. */

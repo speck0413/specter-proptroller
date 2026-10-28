@@ -657,7 +657,7 @@ mod tests {
     fn the_firmwares_own_record_reads_back() {
         // firmware/arduino/test/fixtures/records/board-record.bin (a /board-a.bin the firmware wrote), when the
         // firmware tree is there
-        let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../firmware/firmware/arduino/test/fixtures/records");
+        let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../firmware/arduino/test/fixtures/records");
         let (Ok(bin), Ok(json)) = (std::fs::read(dir.join("board-record.bin")), std::fs::read_to_string(dir.join("board-record.json"))) else {
             eprintln!("no firmware fixture here: skipped");
             return;

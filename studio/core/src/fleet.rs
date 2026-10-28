@@ -10,8 +10,8 @@ use tokio::sync::broadcast;
 
 pub const MANIFEST: &str = "proptroller-firmware.json";
 
-/// Where firmware comes from when the person has not chosen anything: the public firmware repository's GitHub
-/// releases. Each release carries `proptroller-firmware.json` and the images it lists as release assets.
+/// Where firmware comes from when the person has not chosen anything: this repository's GitHub
+/// releases. Each firmware release carries `proptroller-firmware.json` and the images it lists as release assets.
 pub const DEFAULT_SOURCE: &str = "https://github.com/speck0413/specter-proptroller/releases";
 
 /// Repositories that were renamed: `(owner, old name, new name)`. A source saved with the old name keeps working

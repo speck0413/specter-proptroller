@@ -75,7 +75,7 @@ fn identify_a_boards_script() {
 fn firmware_projects_are_recognised() {
     use studio_core::projects;
     let d = tmp("fw");
-    let fw = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../firmware/firmware/arduino");
+    let fw = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../firmware/arduino");
     let p = projects::new_project(&d, "Tracking Babies", &fw.join("template")).unwrap();
     assert_eq!(p["folder"], "tracking-babies");
     assert!(d.join("firmware/tracking-babies/tracking-babies.ino").exists());

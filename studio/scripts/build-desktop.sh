@@ -1,8 +1,7 @@
 #!/bin/sh
 # The desktop bundle: the practice board (simulator), the generic firmware release that comes with Studio, the firmware
 # library and workspace template, and the wiring guides.
-# The guides come from the firmware repository (docs/wiring-guides/html): the submodule when it has them, else
-# SPECTER_GUIDES_DIR. Without them the build stops (ALLOW_NO_GUIDES=1 builds anyway, and Help says they are
+# The guides come from the repository's docs/wiring-guides/html, or SPECTER_GUIDES_DIR when set. Without them the build stops (ALLOW_NO_GUIDES=1 builds anyway, and Help says they are
 # not installed).
 #   scripts/build-desktop.sh [deb|appimage|app,dmg|...] [more tauri build arguments]
 set -e
@@ -10,7 +9,7 @@ cd "$(dirname "$0")/.."
 ./scripts/build-sim.sh
 # the generic release that comes with Studio (ESP32; BUNDLE_PICO=1 adds the Pico W and Pico 2 W)
 python3 scripts/bundle-firmware.py ${BUNDLE_PICO:+--pico}
-GUIDES="${SPECTER_GUIDES_DIR:-firmware/docs/wiring-guides/html}"
+GUIDES="${SPECTER_GUIDES_DIR:-../docs/wiring-guides/html}"
 rm -rf src-tauri/guides && mkdir -p src-tauri/guides
 if [ -f "$GUIDES/index.html" ]; then
   cp -r "$GUIDES"/. src-tauri/guides/
