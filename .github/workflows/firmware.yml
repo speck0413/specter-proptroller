@@ -1,19 +1,24 @@
-# Firmware CI: on every push and pull request, the host tests, the board builds with the release packaging (no
-# tag, nothing published), the example and workspace builds, and the simulated board with the phone page's browser
-# tests (Chrome is on GitHub's Ubuntu runners). docs/FIRMWARE-BUILD.md section 6 lists the jobs. Actions are
-# pinned by commit SHA (the tag in the comment); PlatformIO is pinned as in release.yml.
-name: CI
+# Firmware CI: on a push or pull request that changes firmware/ (or this file), the host tests, the board builds
+# with the release packaging (no tag, nothing published), the example and workspace builds, and the simulated
+# board with the phone page's browser tests (Chrome is on GitHub's Ubuntu runners). Studio's own tests
+# (studio.yml) also run on firmware changes, since they build the simulator and read the golden sets.
+# docs/FIRMWARE-BUILD.md section 6 lists the jobs. Actions are pinned by commit SHA (the tag in the comment);
+# PlatformIO is pinned as in firmware-release.yml.
+name: firmware
 
 on:
   push:
+    branches: ['**']
+    paths: ['firmware/**', '.github/workflows/firmware.yml']
   pull_request:
+    paths: ['firmware/**', '.github/workflows/firmware.yml']
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: firmware-${{ github.ref }}
   cancel-in-progress: true
 
 env:

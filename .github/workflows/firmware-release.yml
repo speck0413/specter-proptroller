@@ -5,6 +5,7 @@
 #  - publish the browser flasher (ESP Web Tools) to GitHub Pages. Once, by the owner: Settings > Pages > Source:
 #    GitHub Actions, and Settings > Environments > github-pages > deployment branches and tags: add the tag rule
 #    v* (the environment allows only the default branch otherwise). Pages needs a public repository (or a paid plan).
+# Specter Studio is released from the same repository with studio-v<version> tags (studio.yml), which v* does not match.
 # The images are unsigned. Actions are pinned by commit SHA (the tag in the comment).
 name: Release
 
