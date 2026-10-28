@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board list</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  body { margin: 16px; }
+  .board { border: 1px solid #8884; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  button { font-size: 16px; min-height: 44px; padding: 0 16px; }
+  .out { display: inline-block; margin: 4px 8px 4px 0; }
+</style>
+</head>
+<body>
+<h1>Board list</h1>
+<p>An example plugin. It sees boards only through Specter Studio.</p>
+<div id="boards">Loading…</div>
+<script src="studio-plugin.js"></script>
+<script>
+  const el = document.getElementById('boards');
+  let boards = [];
+  const answers = {};
+  const outsHtml = (b) => (b.state?.outputs || []).map((o) => `<span class="out">${o.channel}: ${o.level > 0 ? 'on' : 'off'}</span>`).join('');
+  // Draws the list in place: a board's card and buttons stay the same elements when the list is drawn again (Studio
+  // tells the plugin each time a board comes or goes, often right after the page opens), so a press is never lost on
+  // a button replaced under the pointer.
+  function draw() {
+    if (!boards.length) { el.textContent = 'No boards connected.'; return; }
+    if (!el.querySelector('.board')) el.textContent = '';
+    for (const d of [...el.querySelectorAll('.board')]) if (!boards.some((b) => b.key === d.dataset.key)) d.remove();
+    for (const b of boards) {
+      let d = el.querySelector(`.board[data-key="${CSS.escape(b.key)}"]`);
+      if (!d) {
+        d = document.createElement('div');
+        d.className = 'board';
+        d.dataset.key = b.key;
+        d.innerHTML = '<h2></h2><div class="online"></div><div class="outs"></div>';
+        const ask = document.createElement('button');
+        ask.className = 'ask';
+        ask.onclick = async () => {
+          // Studio refuses or the board does not answer: say so on the button (a plugin never fails silently)
+          try {
+            const r = await studio.rpc(b.key, { op: 'state' });
+            answers[b.key] = r.ok ? `Up ${Math.round(r.result.uptime_ms / 1000)} s` : 'No answer: ' + r.error.message;
+          } catch (e) { answers[b.key] = 'No answer: ' + e.message; }
+          draw();
+        };
+        const send = document.createElement('button');
+        send.className = 'send';
+        send.onclick = async () => {
+          try {
+            const r = await studio.sendScript(b.key, 'effect plugin test:\n  wait for trig2\n  out2 = on\n  sleep 1\n  out2 = off\n');
+            answers['send:' + b.key] = r.ok && r.result.ok ? 'Test effect sent' : 'Not sent: ' + (r.error?.message || r.result?.errors?.[0]?.message);
+          } catch (e) { answers['send:' + b.key] = 'Not sent: ' + e.message; }
+          draw();
+        };
+        d.append(ask, send);
+        el.appendChild(d);
+      }
+      // the board's name is text, never markup (a name is whatever someone typed)
+      const set = (sel, text) => { const x = d.querySelector(sel); if (x.textContent !== text) x.textContent = text; };
+      set('h2', b.name || b.key);
+      set('.online', b.online ? 'online' : 'offline');
+      d.querySelector('.outs').innerHTML = outsHtml(b);
+      set('.ask', answers[b.key] || 'Ask for its state');
+      set('.send', answers['send:' + b.key] || 'Send a tiny test effect');
+    }
+  }
+  studio.boards().then((b) => { boards = b; draw(); });
+  studio.subscribe((e) => {
+    if (e.kind === 'boards_changed') { studio.boards().then((b) => { boards = b; draw(); }); return; }
+    if (e.kind === 'board' && e.msg.event === 'state') {
+      const b = boards.find((x) => x.key === e.key);
+      // update the outputs in place (redrawing would replace the buttons under the pointer)
+      if (b) {
+        b.state = e.msg.data;
+        const el = document.querySelector(`.board[data-key="${CSS.escape(b.key)}"] .outs`);
+        if (el) el.innerHTML = outsHtml(b);
+      }
+    }
+  });
+</script>
+</body>
+</html>
