@@ -47,7 +47,7 @@ A release is the set of files people install. Build everything, then package it:
 pio run -e esp32dev -e pico -e picow -e pico2w -e boot_rp2040 -e boot_rp2350 -e esp32dev_generic -e esp32s3_generic -e esp32c3_supermini
 python tools/picoboot_image.py merge pico-w
 python tools/picoboot_image.py merge pico2-w
-python tools/release.py ~/specter/release --version 0.1.0-rc.2
+python tools/release.py ~/specter/release --version 0.1.0-rc.3
 ```
 
 `--version` defaults to `firmware/VERSION`. `~/specter/release/assets/` then holds:

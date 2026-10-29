@@ -101,12 +101,12 @@ has the wiring).
 
 ## Without Studio: esptool
 
-The first-flash image, written by hand: download `first-flash-esp32-devkit-0.1.0-rc.2.bin` from the
+The first-flash image, written by hand: download `first-flash-esp32-devkit-0.1.0-rc.3.bin` from the
 [firmware release](https://github.com/speck0413/specter-proptroller/releases), find the port with `ls /dev/cu.*`,
 then:
 
 ```sh
-~/.platformio/penv/bin/python ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32 --port /dev/cu.usbserial-XXXX write_flash 0x0 ~/Downloads/first-flash-esp32-devkit-0.1.0-rc.2.bin
+~/.platformio/penv/bin/python ~/.platformio/packages/tool-esptoolpy/esptool.py --chip esp32 --port /dev/cu.usbserial-XXXX write_flash 0x0 ~/Downloads/first-flash-esp32-devkit-0.1.0-rc.3.bin
 ```
 
 (`esptool --port … write_flash 0x0 …` works the same if esptool is on your PATH.) Or straight from the source:

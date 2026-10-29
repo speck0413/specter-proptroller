@@ -1,6 +1,6 @@
 {
   "name": "Proptroller",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "description": "Show controller for the Spectre Proptroller board: outputs, triggers, sound, pixels, phone UI and MQTT. Friendly API for first projects, full access for experts.",
   "keywords": "prop, show, controller, relay, mosfet, dfplayer, ws2812, mqtt",
   "license": "MIT",
