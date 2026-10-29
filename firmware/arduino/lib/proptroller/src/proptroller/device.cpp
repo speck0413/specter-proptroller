@@ -511,15 +511,16 @@ void Controller::setRunStore(Storage* store) {
 void Controller::runsSaveNow() {
   if (!runs_.unsaved()) return;
   // no store, or a file system that could not be opened (nothing is written there until a factory reset): RAM only
-  if (!run_store_ || !run_store_->usable()) { runs_.saved(now_, true); return; }
+  if (!run_store_ || !run_store_->usable()) { runs_.saved(now_, true, runs_.unsaved()); return; }
   if (window_open_) return;  // another request is writing: the loop tries again
   std::string rec = runs_.record();
+  const uint32_t written = runs_.unsaved();  // the step may count more while the record is written
   bool ok = false;
   {
     Unlocked u(*this);  // a few bytes, written without holding up the step
     ok = run_store_->save(rec);
   }
-  runs_.saved(now_, ok);
+  runs_.saved(now_, ok, written);
   if (!ok) store_errors++;
 }
 

@@ -72,10 +72,13 @@ class RunCounter {
   }
   // A clean restart is coming: write whatever is waiting.
   void flushSoon() { if (unsaved_) force_ = true; }
-  // The write went through (true) or failed.
-  void saved(Millis now, bool ok) {
+  // The write of the record taken when `written` runs were waiting went through (true) or failed. The step can
+  // count runs while the record is written (the lock is given back): they stay waiting, from `now`, for the next
+  // write on the usual throttle.
+  void saved(Millis now, bool ok, uint32_t written) {
     if (!ok) { not_before_ = now + RUNS_SAVE_RETRY_MS; return; }
-    unsaved_ = 0;
+    unsaved_ -= written < unsaved_ ? written : unsaved_;
+    if (unsaved_) unsaved_since_ = now;
     force_ = false;
     last_save_ = now;
     saved_once_ = true;

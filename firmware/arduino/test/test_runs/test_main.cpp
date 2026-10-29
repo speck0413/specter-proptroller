@@ -434,6 +434,43 @@ void a_sudden_power_cut_loses_only_the_runs_not_yet_written() {
   TEST_ASSERT_EQUAL(1, lifetime(s));
 }
 
+// The lifetime count is written with the lock given back (a window): the step keeps running and can count runs
+// meanwhile. The record holds the count from before the window; a run counted during it waits for the next write,
+// on the same throttle as any run (no extra write). The window is the run store's slow flash: a press held while
+// it writes, the step running on (Sim::press also runs the loop's background work, which has nothing to write here).
+static Sim* g_runs_sim = nullptr;
+static int g_runs_windows = 0;
+static std::string g_runs_record;
+static int runsRelease(void*) { return 1; }  // the window opens (Controller::Unlocked); nothing else is held
+static void runsRetake(void*, int) {}
+static void runsSlowSave() {
+  if (g_runs_windows++) return;
+  g_runs_sim->press(Input::Trig1, 300);  // a show run, started and counted by the step during the write
+}
+void a_run_counted_while_the_count_is_written_is_written_later() {
+  ShowSim s;
+  s.press(Input::Trig1, 200);
+  s.step(6000);  // the show and its cooldown end: quiet
+  g_runs_sim = &s;
+  g_runs_windows = 0;
+  s.ctl().setLockHooks(runsRelease, runsRetake, nullptr);
+  s.runsFlash().save_hook = runsSlowSave;
+  for (Millis t = 0; t < 2 * RUNS_SAVE_PERIOD_MS && s.runsFlash().saves == 0; t += 1000) s.step(1000);
+  s.runsFlash().save_hook = nullptr;
+  s.ctl().setLockHooks(nullptr, nullptr, nullptr);
+  g_runs_sim = nullptr;
+  TEST_ASSERT_EQUAL(1, s.runsFlash().saves);
+  TEST_ASSERT_EQUAL(1, g_runs_windows);
+  TEST_ASSERT_EQUAL(2, lifetime(s));  // the record written holds 1
+  s.step(6000 + RUNS_SAVE_MIN_GAP_MS);  // quiet and past the minimum gap: the run waits for its own period
+  TEST_ASSERT_EQUAL(1, s.runsFlash().saves);
+  s.step(RUNS_SAVE_PERIOD_MS);
+  TEST_ASSERT_EQUAL(2, s.runsFlash().saves);
+  s.powerCycle();
+  s.step(100);
+  TEST_ASSERT_EQUAL(2, lifetime(s));
+}
+
 void a_clean_restart_writes_at_once() {
   ShowSim s;
   s.press(Input::Trig1, 200);
@@ -569,10 +606,10 @@ void the_throttle_on_its_own() {
   TEST_ASSERT_TRUE(c.saveDue(1000 + RUNS_SAVE_PERIOD_MS, true));
   TEST_ASSERT_FALSE(c.saveDue(1000 + RUNS_SAVE_PERIOD_MS, false));  // busy
   TEST_ASSERT_FALSE(c.saveDue(1000 + 100 * RUNS_SAVE_PERIOD_MS, false));  // busy: never, however long
-  c.saved(61000, false);  // a failed write: tried again later
+  c.saved(61000, false, 1);  // a failed write: tried again later
   TEST_ASSERT_FALSE(c.saveDue(61000 + RUNS_SAVE_RETRY_MS - 1, true));
   TEST_ASSERT_TRUE(c.saveDue(61000 + RUNS_SAVE_RETRY_MS, true));
-  c.saved(400000, true);
+  c.saved(400000, true, 1);
   TEST_ASSERT_EQUAL(0, c.unsaved());
   c.count(400001);
   c.flushSoon();
@@ -581,6 +618,15 @@ void the_throttle_on_its_own() {
   TEST_ASSERT_TRUE(RunCounter::parse(c.record(), n));
   TEST_ASSERT_EQUAL(2, (int)n);
   TEST_ASSERT_FALSE(RunCounter::parse("{}", n));
+  // a run counted while the record is written stays waiting, its period from the write
+  RunCounter w;
+  w.count(1000);
+  const uint32_t written = w.unsaved();
+  w.count(1500);
+  w.saved(2000, true, written);
+  TEST_ASSERT_EQUAL(1, w.unsaved());
+  TEST_ASSERT_FALSE(w.saveDue(2000 + RUNS_SAVE_PERIOD_MS - 1, true));
+  TEST_ASSERT_TRUE(w.saveDue(2000 + RUNS_SAVE_PERIOD_MS, true));
 }
 
 int main(int, char**) {
@@ -604,6 +650,7 @@ int main(int, char**) {
   RUN_TEST(the_write_waits_for_the_period_or_ten_runs_and_a_quiet_board);
   RUN_TEST(nothing_is_written_while_a_show_runs);
   RUN_TEST(a_sudden_power_cut_loses_only_the_runs_not_yet_written);
+  RUN_TEST(a_run_counted_while_the_count_is_written_is_written_later);
   RUN_TEST(a_clean_restart_writes_at_once);
   RUN_TEST(a_backup_restore_and_a_factory_reset_keep_the_lifetime_count);
   RUN_TEST(a_factory_reset_and_a_firmware_update_write_unsaved_runs_first);
