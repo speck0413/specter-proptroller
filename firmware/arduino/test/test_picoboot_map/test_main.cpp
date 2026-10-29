@@ -1,6 +1,6 @@
 // The flash map behind the Pico bootloader (PICO-BOOTLOADER.md): picoboot_map.h against platformio.ini, the regions in order without overlap, and every
 // image built so far (bootloaders, firmware, the merged first-flash file) where the map puts it. An env not
-// built yet is skipped; `pio run -e boot_rp2040 -e boot_rp2350 -e picow -e pico2w` and
+// built yet is skipped (a failure with PT_REQUIRE_IMAGES=1, test/image_paths.h); `pio run -e boot_rp2040 -e boot_rp2350 -e picow -e pico2w` and
 // `tools/picoboot_image.py merge pico-w` (and pico2-w) first check them all.
 #include <unity.h>
 #include <sys/stat.h>
@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "../image_paths.h"
 #include "picoboot.h"
 #include "picoboot_map.h"
 
@@ -99,7 +100,7 @@ void built_images_are_where_the_map_puts_them() {
   const uint32_t base = PICOBOOT_XIP_BASE + PICOBOOT_ACTIVE_OFFSET;
   char m[200];
   for (auto& e : envs) {
-    std::string bp = std::string(".pio/build/") + e.boot + "/firmware.bin", ap = std::string(".pio/build/") + e.app + "/firmware.bin";
+    std::string bp = imagePath(std::string(e.boot) + "/firmware.bin"), ap = imagePath(std::string(e.app) + "/firmware.bin");
     std::string boot = exists(bp) ? readFile(bp.c_str()) : "", app = exists(ap) ? readFile(ap.c_str()) : "";
     if (!boot.empty()) {
       snprintf(m, sizeof m, "%s: %u B of the %u B bootloader region", e.boot, (unsigned)boot.size(), (unsigned)PICOBOOT_BOOT_LEN);
@@ -107,8 +108,7 @@ void built_images_are_where_the_map_puts_them() {
       TEST_ASSERT_TRUE_MESSAGE(boot.size() <= PICOBOOT_BOOT_LEN, m);
       TEST_ASSERT_TRUE_MESSAGE(picoboot_vectors_ok((const uint8_t*)boot.data() + e.vt, PICOBOOT_XIP_BASE + e.vt, PICOBOOT_BOOT_LEN - e.vt, 0x20000000, e.ram_end), e.boot);
     } else {
-      snprintf(m, sizeof m, "%s: not built, skipped", e.boot);
-      TEST_MESSAGE(m);
+      imageMissing(bp);
     }
     if (!app.empty()) {
       snprintf(m, sizeof m, "%s: %u B, %.1f %% of the %u B active slot (target 80 %%)", e.app, (unsigned)app.size(), 100.0 * (double)app.size() / e.active_len, (unsigned)e.active_len);
@@ -118,10 +118,10 @@ void built_images_are_where_the_map_puts_them() {
       // the image carries its board and implementation markers (the update target checks them)
       TEST_ASSERT_TRUE(app.find(std::string("PROPTROLLER-IMPL:cpp")) != std::string::npos);
     } else {
-      snprintf(m, sizeof m, "%s: not built, skipped", e.app);
-      TEST_MESSAGE(m);
+      imageMissing(ap);
     }
-    std::string mp = std::string(".pio/build/picoboot-") + e.board + "/flash.bin";
+    std::string mp = imagePath(std::string("picoboot-") + e.board + "/flash.bin");
+    if (!exists(mp)) imageMissing(mp);
     if (exists(mp) && !boot.empty() && !app.empty()) {
       std::string merged = readFile(mp.c_str());
       TEST_ASSERT_EQUAL_UINT32(PICOBOOT_ACTIVE_OFFSET + app.size(), merged.size());
@@ -130,7 +130,7 @@ void built_images_are_where_the_map_puts_them() {
       TEST_ASSERT_TRUE(merged.compare(PICOBOOT_ACTIVE_OFFSET, app.size(), app) == 0);
       TEST_ASSERT_EQUAL_HEX32(u32(app, 0), u32(merged, PICOBOOT_ACTIVE_OFFSET));
       // the UF2 writes the state sector (erased) so a USB flash always starts from plain boot
-      std::string up = std::string(".pio/build/picoboot-") + e.board + "/flash.uf2";
+      std::string up = imagePath(std::string("picoboot-") + e.board + "/flash.uf2");
       std::string uf = readFile(up.c_str());
       TEST_ASSERT_TRUE(!uf.empty() && uf.size() % 512 == 0);
       std::vector<bool> seen(PICOBOOT_STATE_LEN / 256, false);

@@ -1,6 +1,6 @@
 // The flash map (firmware/FLASH-MAP.md): the ESP32 partition table the build uses
 // (firmware/partitions/esp32-4mb.csv) and the Pico filesystem sizes in platformio.ini against the named
-// constants of proptroller/flash_map.h; every image built so far (.pio/build/<env>/firmware.bin) against its
+// constants of proptroller/flash_map.h; every image built so far (<build folder>/<env>/firmware.bin, test/image_paths.h) against its
 // slot.
 #include <unity.h>
 #include <sys/stat.h>
@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "../image_paths.h"
 #include "proptroller/flash_map.h"
 #include "proptroller/types.h"
 
@@ -140,12 +141,11 @@ void built_images_fit_their_slots() {
       {"esp32dev", ESP32_APP_SLOT_BYTES}, {"pico", PICO_SKETCH_BYTES},
       {"picow", PICOW_SLOT_BYTES}, {"pico2w", PICO2W_SLOT_BYTES}};
   for (auto& e : envs) {
-    std::string p = std::string(".pio/build/") + e.env + "/firmware.bin";
+    std::string p = imagePath(std::string(e.env) + "/firmware.bin");
     struct stat st;
     char m[160];
     if (stat(p.c_str(), &st) != 0) {
-      snprintf(m, sizeof m, "%s: not built, skipped", e.env);
-      TEST_MESSAGE(m);
+      imageMissing(p);
       continue;
     }
     snprintf(m, sizeof m, "%s: %ld of %u B (%.1f %%, target %u %%)", e.env, (long)st.st_size, (unsigned)e.slot,
@@ -171,8 +171,8 @@ void the_version_is_the_same_everywhere() {
 // chip (esp_image_header_t: min_chip_rev at byte 14, min_chip_rev_full at 15-16; ESP-IDF esp_app_format.h).
 // A core or IDF update that raised the minimum fails here. Skipped until esp32dev is built.
 void esp32_image_runs_on_every_chip_revision() {
-  std::string img = readFile(".pio/build/esp32dev/firmware.bin");
-  if (img.size() < 24) { TEST_MESSAGE("esp32dev not built: skipped"); return; }
+  std::string p = imagePath("esp32dev/firmware.bin"), img = readFile(p.c_str());
+  if (img.size() < 24) { imageMissing(p); return; }
   TEST_ASSERT_EQUAL_HEX8(0xE9, (uint8_t)img[0]);
   TEST_ASSERT_EQUAL_UINT8_MESSAGE(0, (uint8_t)img[14], "min_chip_rev");
   TEST_ASSERT_EQUAL_UINT16_MESSAGE(0, (uint16_t)((uint8_t)img[15] | (uint8_t)img[16] << 8), "min_chip_rev_full");

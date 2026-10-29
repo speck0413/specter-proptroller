@@ -78,6 +78,10 @@ jobs:
         run: |
           python tools/picoboot_image.py merge pico-w
           python tools/picoboot_image.py merge pico2-w
+      - name: Built images against the flash map (a missing image fails)
+        env:
+          PT_REQUIRE_IMAGES: "1"
+        run: pio test -e native -f test_picoboot_map -f test_flash_map
       - name: Package as the release would (release.py, no tag)
         run: python tools/release.py "$RUNNER_TEMP/release"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
