@@ -84,7 +84,7 @@ Parameter changes, each tried on the SolidCraft design and the parts measured af
 | `corner_r` 4 → 6 | box, rim groove, lid and tongue corners follow |
 | `groove_w` 3 → 3.4 | the rim groove 0.4 mm wider all round |
 | `sg_d` 1.6 → 2 | both faceplate seal grooves deeper |
-| `wall` 2.4 → 3 | rebuilds, but the hinge knuckles, latch ears and screw bosses stay on the old wall face: rerun the script |
+| `wall` 2.4 → 3 | rebuilds (the wall grows outward, the faceplates follow), but the hinge knuckles and latch ears stay on the old outside face, inside the new wall: rerun the script |
 | `inner_h` 51 → 60 | the lid's knuckles and keeper lugs come away as separate bodies: rerun the script |
 | `inner_l` 195 → 210 | fails: the ribs and latch ears are left inside the box: rerun the script |
 
