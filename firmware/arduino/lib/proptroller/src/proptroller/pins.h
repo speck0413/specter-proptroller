@@ -95,6 +95,12 @@ static const uint8_t PICO_ONLY_EXPANSION[5] = {0, 1, 2, 6, 13};
 constexpr uint8_t ESP32_INPUT_ONLY[6] = {34, 35, 36, 37, 38, 39};
 static const uint8_t ESP32_STRAPPING[5] = {0, 2, 5, 12, 15};
 
+// The ESP32-C3 has two UARTs: the USB console needs none, the sound port takes UART1, and the DMX port on S4 would
+// need it too: one or the other. A single return, so a C++11 constexpr too: board_package.cpp calls it at run time.
+constexpr bool c3UartsOk(const PinMap& m) {
+  return m.mcu != Mcu::Esp32C3 || m.exp[0] == NO_PIN || m.df_tx == NO_PIN || m.df_rx == NO_PIN;
+}
+
 // Checked at compile time: no GPIO serves two functions, and on the ESP32 no output sits on an input-only pin.
 // (C++14 constexpr loops: every PlatformIO env builds as C++17; an Arduino IDE build on an older default such as
 // gnu++11 skips the check, which the PlatformIO builds have already made.)
@@ -122,11 +128,6 @@ constexpr bool internalPullsPossible(const PinMap& m) {
     for (int j = 0; j < 6; j++)
       if (m.mcu == Mcu::Esp32DevKit && !inputExternalPull(m, k) && inputPin(m, k) == ESP32_INPUT_ONLY[j]) return false;
   return true;
-}
-// The ESP32-C3 has two UARTs: the USB console needs none, the sound port takes UART1, and the DMX port on S4 would
-// need it too: one or the other
-constexpr bool c3UartsOk(const PinMap& m) {
-  return m.mcu != Mcu::Esp32C3 || m.exp[0] == NO_PIN || m.df_tx == NO_PIN || m.df_rx == NO_PIN;
 }
 static_assert(pinsDistinct(ESP32_DEVKIT) && pinsDistinct(PICO), "a GPIO serves two board functions");
 static_assert(c3UartsOk(ESP32C3_SUPERMINI), "the C3's sound port and DMX port share UART1");
