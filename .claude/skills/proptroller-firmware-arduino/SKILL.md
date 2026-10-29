@@ -84,4 +84,5 @@ tools/build-examples.sh                  # compile every example
   `tools/web_assets.py`; the header is committed so the library builds in the Arduino IDE. Never edit it by hand.
 - Beginner first (as in Rust): plain names with units, ~10-line sketches, numbered examples, plain-word errors;
   every limit and default is a named constant.
+- Never block the main loop: every timeout or wait (Wi-Fi scan/join, flash writes, network, sound player) is a deadline polled from the loop (start, then check `now - started >= LIMIT` each pass), never `delay()`, a busy-wait or a blocking library call. Use async library modes (e.g. `scanNetworks(true, ...)`); limits are named constants; the 1 ms trigger sampling and the 10 ms engine tick must never stall.
 - Secrets set-only; no `.pio/` output in commits; no personal paths or event content in the public tree.
