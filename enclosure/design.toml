@@ -43,8 +43,10 @@ assumed = ["window"]
 
 [parts.button]     # TRIG2 on the lid
 name = "APIELE 10 mm metal momentary push button, IP65"
-x = 137.0          # where it sits, over the board: board x, and y from the board's back edge (clear of the DFPlayer and the
-y = 6.0            # speaker jack below; an arcade button there was too tight)
+x = 129.0          # where it sits: board x, and y from the board's back edge (negative: behind the board, over the floor
+y = -10.0          # between the board and the back wall). In the middle of a cell of the lid's rib grid in both cases, so
+                   # every rib runs full length (owner 2026-10-24: it sat across two ribs); asserted clear of the ribs, the
+                   # back jacks' bodies and the board's parts
 thread_d = 10.0
 head_d = 12.0
 body_d = 10.0
@@ -165,14 +167,25 @@ LINE = { face = "back", kind = "j35", x = 146.0, label = "LINE" }
 
 # ------------------------------------------------------------------ 6. faceplates
 [plates]
-# Each faceplate goes straight onto the outside of its wall, located by two guide pins printed on its back (into holes
-# through the wall), and is held one of two ways:
-#   "glue"    bonded flat to the wall: CA for tack, a sealing adhesive in the groove round its back (README: Faceplates)
-#   "screws"  six countersunk M3s into heat-set inserts in bosses behind the wall, sealed in the wider groove (sg_ below) along
-#             the screw rows (the default)
-# The plate only changes by its screw holes and, for "screws", a band above and below for them. tools/print_build.sh
-# builds both (stl/*_screws.*); the Bambu projects use this one.
-mount = "screws"        # the default since 2026-10-20 (owner): the plate comes off again
+# How each faceplate is held (tools/print_build.sh builds every one; the Bambu projects use the one set here):
+#   "inset"   (the default, owner 2026-10-24) the plate sits in a recess in the wall's outside face, inset_d deep: the recess
+#             locates it (no guide pins), a keyed corner makes it fit one way round only, and the wall behind it has a
+#             single large opening instead of a window per jack. Six M3s as "screws", sealed in the same groove. The
+#             opening prints with thin break-out ribs every break_pitch so its top never bridges further: snap them out
+#             before fitting the plate
+#   "inline"  a try-out (owner 2026-10-24, standard case only): no plate at all, the jacks go straight through the wall
+#             (teardrop holes as printed upright), the labels sunk into the wall's outside face in one colour
+#   "screws"  the plate flat on the wall, located by guide pins through it, six M3s, one window per jack (until 2026-10-24)
+#   "glue"    the same plate bonded flat to the wall: CA for tack, a sealing adhesive in the groove round its back
+mount = "inset"
+inset_d = 1.0           # "inset": the recess's depth in the 2.4 mm wall (1.4 mm of wall left behind the plate); its top edge
+                        # chamfered at 45 degrees so it prints without a ledge
+inset_clr = 0.3         # the recess this much larger than the plate all round
+inset_key = 6.0         # the keyed corner: the plate's top corner at its x1 end cut off at 45 degrees, this far each way;
+                        # the recess keeps that corner filled, so the plate fits one way round only
+break_pitch = 20.0      # "inset": the opening's break-out ribs at most this far apart, so its top bridges at most this far
+break_t = 0.8           # their thickness (two lines), and 0.4 (one line) for 1 mm where they meet the wall: snap them out there
+break_neck = 1.0
 plate_t = 3.0
 plate_margin = 16.0     # at least this past the outer connector at each end (room for its label)
 plate_r = 3.0
@@ -222,9 +235,11 @@ notes = [ { face = "front", under = ["RLY1", "RLY2"], text = "T=NO R=NC S=COM", 
 [gasket]
 gasket_clr = 0.1        # the gasket's base this much narrower than the groove (sg_w) each side (TPU prints a little wide)
 gasket_base = 0.4       # the base strip's thickness (2 layers)
-gasket_h = 2.4          # base to lip tip: sg_d less than this is the squeeze when the plate is screwed flat (0.8 mm)
+gasket_h = 2.8          # base to lip tip (owner 2026-10-24: a little taller, 2.4 before): sg_d less than this is the squeeze
+                        # when the plate is screwed flat (1.2 mm)
 gasket_lip = 0.45       # the lip's width in each layer (one line of a 0.4 nozzle)
-gasket_tip = 0.6        # the tip's outer edge this far in from the base's outer edge: room for it to swing out as it bends
+gasket_tip = 0.85       # the tip's outer edge this far in from the base's outer edge: room for it to swing out as it bends
+gasket_tip_lid = 1.2    # the same for the lid's gasket (its 3 mm groove and the tongue's squeeze leave the lip less room)
 
 # ------------------------------------------------------------------ 7. seal
 [seal]
@@ -241,6 +256,21 @@ seal_gap = 0.4
 
 # ------------------------------------------------------------------ 8. lid
 [lid]
+lid_mount = "screws"    # "screws" (owner 2026-10-24): the lid comes straight off, held by countersunk M3 x 12s through bosses
+                        # on its edge into ears on the tub's outside walls, outside the seal: no hinge, no latches. "hinge":
+                        # the hinge and latches below (until 2026-10-24; not built, the model still has it)
+lid_screw_d = 4.5       # each screw's axis this far out from the wall's outside face
+lid_screw_r = 3.75      # the lid's boss and the tub's ear round it
+lid_screw_gap = 0.2     # the ear's top this far under the boss when the lid is screwed down to the seal's design squeeze
+lid_screw_pilot = 2.5   # the ear's blind hole: the screw taps it (an M3 x 12 flat head: 6.4 mm of boss, 5.6 into the ear)
+lid_screw_depth = 6.0
+lid_ear_h = 6.0         # the ear's solid height under its top, then a 45-degree underside down to the wall
+# where (README "Lid"): one on each long wall near each end, past the faceplate (the front pair lid_screw_front from the
+# straight wall's ends, the back pair lid_screw_back: different, so the lid goes on one way round only), and one in the
+# middle of each end wall. A long wall with no room past its plate (the AC front) gets one on each end wall near that
+# corner instead (latch_in from the inside corner)
+lid_screw_front = 14.0
+lid_screw_back = 4.5
 lid_t = 2.4
 lid_gap = 1.0
 skirt_t = 2.0

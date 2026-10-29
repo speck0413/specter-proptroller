@@ -29,7 +29,7 @@ import plate_fea as F
 P = F.P
 xo0, xo1, yo0, yo1 = P['ix0'] - P['wall'], P['ix1'] + P['wall'], P['iyf'] - P['wall'], P['iyb'] + P['wall']
 SK = P['lid_gap'] + P['skirt_t']                       # the skirt, outside the tub's outline (front and ends)
-X0, X1, Y0, Y1 = xo0 - SK, xo1 + SK, yo0 - SK, yo1
+X0, X1, Y0, Y1 = xo0 - SK, xo1 + SK, yo0 - SK, yo1 + (SK if P.get('lid_mount') == 'screws' else 0)   # the screwed lid has its skirt on the back too
 # the rib grid smeared: a 40 mm pitch T (2.4 mm flange, 1.6 x 5 web) per mm of width -> an equivalent plate thickness
 p_, t_, b_, h_ = P['lid_rib_pitch'], P['lid_t'], 1.6, P['lid_rib_h']
 yb = (p_ * t_ * t_ / 2 + b_ * h_ * (t_ + h_ / 2)) / (p_ * t_ + b_ * h_)
@@ -49,7 +49,7 @@ def model():
     nx, ny = int(round(X1 - X0)), int(round(Y1 - Y0)); hx, hy = (X1 - X0) / nx, (Y1 - Y0) / ny
     xs, ys = X0 + hx * np.arange(nx + 1), Y0 + hy * np.arange(ny + 1)
     def thick(x, y):
-        if x < xo0 or x > xo1 or y < yo0: return T_SKIRT                    # the skirt
+        if x < xo0 or x > xo1 or y < yo0 or y > yo1: return T_SKIRT         # the skirt
         if x < xo0 + P['land_w'] + 1 or x > xo1 - P['land_w'] - 1 or y < yo0 + P['land_w'] + 1 or y > yo1 - P['land_w'] - 1: return t_
         return T_RIB
     kes = {}; rows, cols, vals = [], [], []
@@ -68,12 +68,15 @@ def model():
     ring = [n for n, (x, y) in enumerate(XY) if rx0 - 0.51 <= x <= rx1 + 0.51 and ry0 - 0.51 <= y <= ry1 + 0.51
             and min(abs(x - rx0), abs(x - rx1), abs(y - ry0), abs(y - ry1)) <= 0.51]
     lpn = 2 * ((rx1 - rx0) + (ry1 - ry0)) / len(ring)
-    lay = sys.argv[sys.argv.index('--latches') + 1] if '--latches' in sys.argv else 'four'
+    lay = sys.argv[sys.argv.index('--latches') + 1] if '--latches' in sys.argv else ('ears' if P.get('lid_mount') == 'screws' else 'four')
     ym, xm = (P['iyf'] + P['iyb']) / 2, (P['ix0'] + P['ix1']) / 2
-    if lay == 'four': lat = [(x, y) for x in (xo0 - SK / 2, xo1 + SK / 2) for y in (P['iyf'] + P['latch_in'], P['iyb'] - P['latch_in'])]   # as built
+    if lay == 'ears':   # the screwed lid (as built): held at each screw, at the skirt over its ear
+        E_ = {'front': lambda s_: (s_, Y0 + SK / 2), 'back': lambda s_: (s_, Y1 - SK / 2), 'left': lambda s_: (xo0 - SK / 2, s_), 'right': lambda s_: (xo1 + SK / 2, s_)}
+        lat = [E_[f](s_) for f, s_ in P['lid_ears']]
+    elif lay == 'four': lat = [(x, y) for x in (xo0 - SK / 2, xo1 + SK / 2) for y in (P['iyf'] + P['latch_in'], P['iyb'] - P['latch_in'])]   # the hinged lid's latches
     else: lat = [(xo0 - SK / 2, ym), (xo1 + SK / 2, ym)] + ([(xm, Y0 + SK / 2)] if lay == 'three' else [])   # end-wall centres (+ front centre)
     xc = (P['ix0'] + P['ix1']) / 2
-    hin = [(hx, Y1) for hx in P['hinge_xs']]
+    hin = [] if lay == 'ears' else [(hx, Y1) for hx in P['hinge_xs']]
     nf = int(sys.argv[sys.argv.index('--front-latches') + 1]) if '--front-latches' in sys.argv else (1 if P.get('front_latch') else 0)   # as built: the front latch
     lat += [(xo0 + (xo1 - xo0) * (i + 1) / (nf + 1), Y0 + SK / 2) for i in range(nf)]
     held = [n for n, (x, y) in enumerate(XY) if any(math.hypot(x - a, y - b) <= 2.5 for a, b in lat + hin)]
@@ -97,7 +100,7 @@ def lift(M, k_line, sq):
 if __name__ == '__main__':
     M = model()
     print(F.PJ, 'case:', 'AC' if P['ac'] else 'standard', f'lid {X1 - X0:.0f} x {Y1 - Y0:.0f} mm, ribs smeared to {T_RIB:.2f} mm, '
-          f'skirt {T_SKIRT:g} mm; latches {sys.argv[sys.argv.index("--latches") + 1] if "--latches" in sys.argv else "four"} (+{int(sys.argv[sys.argv.index("--front-latches") + 1]) if "--front-latches" in sys.argv else (1 if P.get("front_latch") else 0)} front), hinges at {P["hinge_xs"]}; the foam compressed {SQF:.1f} mm (a cured bead, --beads, {SQ:g} mm)')
+          f'skirt {T_SKIRT:g} mm; held by {sys.argv[sys.argv.index("--latches") + 1] if "--latches" in sys.argv else ("the lid screws at " + str(P["lid_ears"])) if P.get("lid_mount") == "screws" else "four latches"} (+{int(sys.argv[sys.argv.index("--front-latches") + 1]) if "--front-latches" in sys.argv else (1 if P.get("front_latch") else 0)} front), hinges at {P["hinge_xs"]}; the foam compressed {SQF:.1f} mm (a cured bead, --beads, {SQ:g} mm)')
     for name, k in KF:
         l, at = lift(M, k, SQF)
         print(f'  {name:26s} {k:.3f} N/mm at {SQF:.1f} mm: lift {l:.2f} mm ({1 - l / SQF:.0%} of the compression left) at x {at[0]:.0f}, y {at[1]:.0f}')

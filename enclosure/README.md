@@ -3,9 +3,11 @@
 A 3D-printed box for the Spectre Proptroller board, for a Bambu Lab X1C with an AMS, **printed in ASA** (owner
 2026-10-20: PLA and PLA-CF are too brittle and soften in a sun-warmed box):
 - the board on 10 mm standoffs;
-- panel-mount jacks in two flat faceplates, front and back, located by guide pins and **screwed on with six M3s each**
-  (the default) or glued on, with labels inlaid in a second colour;
-- a lid on a printed hinge, sealed on a silicone bead and drawn down by four cam latches;
+- panel-mount jacks in two flat faceplates, front and back, each **set in a recess in its wall and screwed on with six
+  M3s** (the default), with labels inlaid in a second colour; or, as a try-out, no plates: the jacks straight through the
+  walls;
+- a lid **screwed down with six M3s** through bosses on its edge into ears on the tub's walls, outside the seal, which is
+  closed-cell foam tape (or a printed TPU gasket) in a groove round the rim, pressed by a tongue on the lid;
 - a flat floor on the bed, with a boss in each corner for a screw-on rubber foot.
 
 There is also an **AC case** for rev B boards only, an advanced option: a bigger box with one 120 V duplex receptacle on
@@ -23,25 +25,33 @@ for the assembled view and the AC case's barrier).
 
 Every combination is built every time, its name spelled out:
 
-| Case | Hinge | Plates | Tub | Plates | Project |
-|---|---|---|---|---|---|
-| standard | printed pin | **screwed (default)** | `stl/tub_screws.stl` | `stl/plate_front_screws.3mf`, `stl/plate_back_screws.3mf` | `specter-case-screws.3mf` |
-| standard | printed pin | glued | `stl/tub_glue.stl` | `stl/plate_front_glue.3mf`, `stl/plate_back_glue.3mf` | `specter-case-glue.3mf` |
-| standard | Everbilt | screwed | `stl/tub_everbilt_screws.stl` | as screwed above | `specter-case-everbilt-screws.3mf` |
-| standard | Everbilt | glued | `stl/tub_everbilt_glue.stl` | as glued above | `specter-case-everbilt-glue.3mf` |
-| AC (rev B only) | printed pin | screwed | `stl/tub_ac_screws.stl` | `stl/plate_front_ac_screws.3mf`, `stl/plate_back_ac_screws.3mf` | `specter-case-ac-screws.3mf` |
-| AC (rev B only) | printed pin | glued | `stl/tub_ac_glue.stl` | `stl/plate_front_ac_glue.3mf`, `stl/plate_back_ac_glue.3mf` | `specter-case-ac-glue.3mf` |
-| AC (rev B only) | Everbilt | screwed / glued | `stl/tub_ac_everbilt_screws.stl`, `..._glue.stl` | as above | `specter-case-ac-everbilt-screws.3mf`, `-glue.3mf` |
+| Case | Faceplates (`[plates] mount`) | Tub | Plates | Project |
+|---|---|---|---|---|
+| standard | **inset (default)** | `stl/tub_inset.stl` | `stl/plate_front_inset.3mf`, `stl/plate_back_inset.3mf` | `specter-case-inset.3mf` |
+| standard | inline (a try-out: no plates) | `stl/tub_inline.stl` | none | `specter-case-inline.3mf` |
+| standard | screws (on guide pins) | `stl/tub_screws.stl` | `stl/plate_front_screws.3mf`, `stl/plate_back_screws.3mf` | `specter-case-screws.3mf` |
+| standard | glue | `stl/tub_glue.stl` | `stl/plate_front_glue.3mf`, `stl/plate_back_glue.3mf` | `specter-case-glue.3mf` |
+| AC (rev B only) | inset | `stl/tub_ac_inset.stl` | `stl/plate_front_ac_inset.3mf`, `stl/plate_back_ac_inset.3mf` | `specter-case-ac-inset.3mf` |
+| AC (rev B only) | screws / glue | `stl/tub_ac_screws.stl`, `stl/tub_ac_glue.stl` | `stl/plate_*_ac_screws.3mf`, `stl/plate_*_ac_glue.3mf` | `specter-case-ac-screws.3mf`, `-glue.3mf` |
 
-The lids follow the case and hinge (`stl/lid.3mf`, `stl/lid_everbilt.3mf`, `stl/lid_ac.3mf`, `stl/lid_ac_everbilt.3mf`);
-the latches are the same for all; the AC case adds its mains-bay cover (`stl/cover_ac.3mf`). The screwed plates' printed
-TPU gaskets, if you seal with them, are their own projects: `stl/gaskets.3mf` (standard) and `stl/gaskets_ac.3mf` (AC).
-The panel USB-C port the other way round from `design.toml` (off by default) is `stl/tub_usb.stl` and
+The lid follows the case (`stl/lid.3mf`, `stl/lid_ac.3mf`); the AC case adds its mains-bay cover (`stl/cover_ac.3mf`). The
+printed TPU gaskets, if you seal with them, are their own projects: `stl/gaskets.3mf` (standard) and `stl/gaskets_ac.3mf`
+(AC). The panel USB-C port the other way round from `design.toml` (off by default) is `stl/tub_usb.stl` and
 `stl/plate_back_usb.3mf`, with the default mount.
 `[plates] mount` in `design.toml` only picks what the model shows when you open it; `[case] ac` the same for the case.
+`[lid] lid_mount = "hinge"` puts back the printed hinge and the four cam latches (**Hinged lid**); it isn't built.
 
 **Which to choose.**
-- **Screwed (the default).** The plate comes off again: six countersunk M3 × 12s (or pan heads, `[holes] screw_head_type`) through the wall into hex nuts in pockets on the bosses behind it (2026-10-22: nuts are easier to get than heat-set inserts; `[holes] plate_nut` "M3" or "#4"), sealed in
+- **Inset (the default).** The screwed plate below, set 1 mm into a recess in the wall's outside face: the recess locates
+  it, so there are no guide pins, and one corner is cut off at 45° (and filled in the recess) so it goes on one way round
+  only. Behind it the wall has one large opening instead of a window per jack, so wiring and fitting the jacks has room;
+  while it prints, thin break-out ribs across the opening hold up its top: **snap them out before fitting the plate**
+  (**Faceplates**, below). Everything else, the six screws, the nuts, the seal, is as screwed.
+- **Inline (a try-out).** No plate: the jacks go straight through the wall, in holes that print upright (round, with a
+  45° roof cut off flat at the top, so a jack sits on the round part), and the labels are sunk 0.4 mm into the wall's
+  outside face, in the body's colour. Nothing to seal round a plate and nothing to screw; but the holes aren't as round as a
+  plate's, and a jack can only be changed in the wall itself. Standard case only.
+- **Screwed (on guide pins).** The plate comes off again: six countersunk M3 × 12s (or pan heads, `[holes] screw_head_type`) through the wall into hex nuts in pockets on the bosses behind it (2026-10-22: nuts are easier to get than heat-set inserts; `[holes] plate_nut` "M3" or "#4"), sealed in
   the groove round its back. Choose it if the plate's layout may change, if you may want to reprint a plate, or to get at a
   jack's back from outside. It comes off with the lid open: the DC jacks' nuts inside hold it too (**Taking a screwed plate
   off**). The cost: 12 nuts and screws, and a seal that has to cope with the plate bowing between six
@@ -51,12 +61,13 @@ The panel USB-C port the other way round from `design.toml` (off by default) is 
   because it is bonded all over. Choose it for a box that stays as it is. A glued plate makes it impossible to change the
   plate's layout (move a jack, add one, take a different size) or to replace a damaged plate without prising it off, which
   will likely mark the wall; screws allow all of that.
-- **Replacing a jack** works with either, without the plate coming off; checked against the model:
+- **Replacing a jack** works with every mount, without the plate coming off; checked against the model (an inset plate
+  as screwed; inline: the same with the wall in place of the plate):
 
   | Jack | Which side | Glued plate | Screwed plate |
   |---|---|---|---|
   | 3.5 mm TRS (TRIG1/2, RLY1/2, CC1/2, SPK, LINE) | nut on the show face, body inside; the wall window (11 mm) clears its 9.8 mm round back (owner 2026-10-22: the 9.2 mm window was too small), and the plate is counterbored from its back to the window's width, leaving 1.75 mm where the jack seats (`[plates] j35_seat`, owner 2026-10-21: the thread is short), so more thread reaches the nut | open the lid, unsolder (or unplug) its lead, unscrew the nut outside, pull the jack into the box; the new one goes in from inside and its nut on outside | the same; or take the plate off (**Taking a screwed plate off**) and do it on the bench |
-  | DC barrel (OUT1–4, PWR) | flange on the show face, **nut inside, on the wall's inside face** (the default): the thread passes plate and wall through a 13.2 mm window, and the nut clamps both | open the lid, unsolder its leads, undo the nut inside with a 15 mm open-end spanner (the nut is on the open inside face; at 19.7–20.2 mm pitch a socket barely clears the next nut), pull the jack out through the front; the new one goes in from the front and its nut on inside | the same |
+  | DC barrel (OUT1–4, PWR) | flange on the show face, **nut inside, on the wall's inside face** (the default): the thread passes plate and wall through a 13.2 mm window (inset: the opening, 13.2 mm tall there), and the nut clamps both | open the lid, unsolder its leads, undo the nut inside with a 15 mm open-end spanner (the nut is on the open inside face; at 19.7–20.2 mm pitch a socket barely clears the next nut), pull the jack out through the front; the new one goes in from the front and its nut on inside | the same |
   | AC receptacle | strap behind the wall, three #6-32s from the show face | cover off, unwire it, the three screws out, lift it out of the bay | the same |
 
   **The DC jacks need a thread of 8.5 mm or more** for that (plate 3 + wall 2.4 + the nut): the owner's measure 9.0 mm
@@ -79,11 +90,11 @@ The panel USB-C port the other way round from `design.toml` (off by default) is 
 3. **Holes:** derived from 1 and 2. Set one here to override it.
 4. **Box.**
 5. **Connectors:** each panel jack's wall, kind, position and label.
-6. **Faceplates:** how they're held (`mount`), the guide pins, the seal groove, the screws, the labels.
+6. **Faceplates:** how they're held (`mount`), the recess and its break-out ribs, the guide pins, the seal groove, the
+   screws, the labels.
 7. **Seal.**
-8. **Lid.**
-9. **Hinge.**
-10. **Latches.**
+8. **Lid:** how it's held (`lid_mount`) and its screws.
+9. **Hinge** and 10. **Latches:** the hinged lid only.
 11. **Text.**
 12. **AC case:** the `[ac]` tables, which override the sections above of the same name.
 
@@ -97,23 +108,27 @@ anywhere**), or if an assert in `tools/print_params.py` or the model finds two p
 | a connector's place, label, or a new one | `[connectors]`: `face`, `kind` (`j35`, `dc`, `usb`), `x`, `label`; `enabled = false` leaves one out | its cutout, wall window, label and the plate's length |
 | the panel USB-C port (off by default) | `[connectors] USB` `enabled = true` | the back plate's USB cutout, window and label |
 | the USB and button holes' fit | `[fit] hole_fit`, or `[holes] usb` / `button` outright | those holes |
-| how the faceplates are held | `[plates] mount`: `"screws"` (the default) or `"glue"` | only what the model shows: both are built |
+| how the faceplates are held | `[plates] mount`: `"inset"` (the default), `"inline"`, `"screws"` or `"glue"` | only what the model shows: all are built |
+| the inset plate's recess and opening | `[plates] inset_d` (1.0), `inset_clr`, `inset_key`; the break-out ribs `break_pitch` (20), `break_t`, `break_neck` | the recess, the keyed corner, the opening (`print_params.py` keeps it inside the seal) and its ribs |
+| the lid's screws | `[lid] lid_screw_front`, `lid_screw_back` (from the long walls' straight ends: different, so the lid fits one way round), `lid_screw_d`, `lid_screw_r`, `lid_screw_pilot`, `lid_ear_h` | the ears on the tub, the bosses on the lid |
+| where TRIG2 sits on the lid | `[parts.button] x`, `y` | its hole and label; asserted in a cell of the lid's rib grid (both cases), clear of the back jacks and the board |
 | the screws | `[plates] screw_layout`: `"six"` (the default: left, middle, right along top and bottom) or `"pitch"` (advanced: as many as keep each gap within `screw_pitch`) | the screw rows, the insert bosses |
-| the guide pins | `[plates] pin_d`, `pin_l`, `pin_wall`, or `pins` to place them by hand; their play `[fit] pin_clr` | the pins on both plates and their wall holes |
+| the guide pins (`mount` screws or glue) | `[plates] pin_d`, `pin_l`, `pin_wall`, or `pins` to place them by hand; their play `[fit] pin_clr` | the pins on both plates and their wall holes |
 | the screwed plates' seal groove | `[plates] sg_w`, `sg_d` (3.5 × 1.6), `sg_m`, `sg_land`, `sg_edge`, `sg_round`; the TPU gasket's section `[gasket]` | the groove's path round the screws, the bottom screw row (lowered if a bend round a screw would reach a window), the TPU gaskets; then `plate_fea.py --fill` and `--seals` |
 | the plate screws and nuts | `[holes] plate_nut` ("M3", or "#4" with `[box] boss_w` 11, `boss_h` 9.2, `boss_len` 4.3), `screw`, `screw_head`, `screw_head_type` ("flat" countersunk or "pan") | every boss's nut pocket and plate countersink |
 | the board standoffs | `[holes] standoff`: 4.0 for a heat-set insert, 2.6 for a self-tapping screw | all four |
-| the pin size | `[holes] pin`: 3.3 for M3 or #4 (`pin_pilot` 2.5 for the far knuckle or ear it threads into), 1.9 for filament | hinges and latches |
-| the screw length for hinges and latches | `[hinge] pin_span` (20.4: M3 × 20 or #4 × ¾ pan head) | the knuckles' length, the latch ears' and lugs' thickness |
-| the latches | `[latch]`: `latch_in` (from the corners), `latch_bite` (squeeze), `latch_detent`, `latch_travel` | the levers, tub ears and lid lugs |
-| the box's size | `[box] clear_front`, `clear_back`, `clear_left`, `clear_right`, `inner_h` | walls, floor, ribs, lid, latches |
+| the hinged lid's pin size (`lid_mount = "hinge"`) | `[holes] pin`: 3.3 for M3 or #4 (`pin_pilot` 2.5 for the far knuckle or ear it threads into), 1.9 for filament | hinges and latches |
+| its screw length for hinges and latches | `[hinge] pin_span` (20.4: M3 × 20 or #4 × ¾ pan head) | the knuckles' length, the latch ears' and lugs' thickness |
+| its latches | `[latch]`: `latch_in` (from the corners; the screwed lid's end-wall screws near the AC front use it too), `latch_bite` (squeeze), `latch_detent`, `latch_travel` | the levers, tub ears and lid lugs |
+| the box's size | `[box] clear_front`, `clear_back`, `clear_left`, `clear_right`, `inner_h` | walls, floor, ribs, lid, its screws |
 | the lid text | `[text] title` | every lid |
 | the AC case (advanced, rev B only) | `[ac]`, `[ac.*]`, `[parts.outlet]`, `[parts.gland]` | the AC parts (**AC case (advanced)**) |
 
 ## In Fusion, SolidCraft or another CAD program
 
-`fusion/SpecterEnclosure/` is a Fusion script that builds the standard case (screwed faceplates, printed-pin hinge, cam
-latches) as a parametric Fusion design, from the same sizes as `proptroller-print.scad`. `tools/fusion_check/check.sh
+`fusion/SpecterEnclosure/` is a Fusion script that builds the standard case as it was before 2026-10-24 (faceplates screwed
+on guide pins, the printed-pin hinge, cam latches: `mount = "screws"`, `lid_mount = "hinge"`) as a parametric Fusion design,
+from the same sizes as `proptroller-print.scad`; it doesn't model the inset or inline plates or the screwed lid yet. `tools/fusion_check/check.sh
 cad` builds the same timeline in SolidCraft (`cad/specter-enclosure.solidcraft`) and a solid STEP assembly
 (`cad/specter-enclosure.step`), and compares every part with the OpenSCAD model. How to run it, what follows a
 parameter change and what was checked: `fusion/README.md`.
@@ -123,10 +138,9 @@ parameter change and what was checked: `fusion/README.md`.
 **ASA, every part** (owner 2026-10-20), the standard case included. No carbon-filled filament for the AC case.
 
 **Easiest: open a project file in Bambu Studio** (File → Open Project): the table above names them. Plates, laid out as
-you arranged them (2026-10-21, fewer plate changes): the standard case on **two plates**, 1 the tub with the four latches
-(turned 90°, along the left edge) and the back faceplate, 2 the lid and the front faceplate.
-The AC projects keep four (their tub is too big to share a plate): 1 both faceplates and the latches, 2 tub, 3 lid, 4 the
-mains-bay cover. The text parts are on filament 2. **The last plate (3, or 5 in the AC projects) is the TPU gaskets**
+you arranged them (2026-10-21, fewer plate changes): the standard case on **two plates**, 1 the tub and the back faceplate, 2 the lid and the front faceplate (the inline
+try-out: 1 the tub, 2 the lid).
+The AC projects keep four (their tub is too big to share a plate): 1 both faceplates, 2 tub, 3 lid, 4 the mains-bay cover. The text parts are on filament 2. **The last plate (3, or 5 in the AC projects) is the TPU gaskets**
 (2026-10-21: to try them in place of the foam), on **filament 3, TPU 95A**: the lid's gasket ring with, inside it, the
 screwed plates' front and back gaskets (a glued-plate project has the lid's alone). When you send it, map filament 3 to
 the **external spool** (the TPU 95A profile: too soft for the AMS), and dry the TPU first.
@@ -141,14 +155,11 @@ its corners; `EARS` in `tools/make_project3mf.py` puts them back (`Metadata/brim
 
 **Screw zones:** the tub and the lid each carry a modifier named "screw zones" (`stl/zones/*.stl`, from the model's
 `zones_tub` and `zones_lid`) round every insert, nut and screw: the plate screws through the wall into their bosses,
-the board standoffs, the feet, the latch ears and lugs, the hinge knuckles (or the Everbilt bosses) and the AC cover's
-bosses. They print with 6 walls and solid infill (`ZONE` in `tools/make_project3mf.py`)
-whatever the project's walls and infill, so the rest can stay light; and their overhangs slower (20 mm/s for 25–50 % of a line width, 15 for 50–75 %), for the hinge gussets' and latch ears' 45-degree undersides (2026-10-21: rough in ASA). Those two speed keys aren't yet confirmed kept by Studio in a modifier: check the zone's settings in the object list. In Bambu Studio they show under the tub and the lid
+the board standoffs, the feet, the lid screws' ears and bosses and the AC cover's bosses. They print with 6 walls and solid infill (`ZONE` in `tools/make_project3mf.py`)
+whatever the project's walls and infill, so the rest can stay light; and their overhangs slower (20 mm/s for 25–50 % of a line width, 15 for 50–75 %), for the lid ears' 45-degree undersides (such undersides came out rough in ASA). Those two speed keys aren't yet confirmed kept by Studio in a modifier: check the zone's settings in the object list. In Bambu Studio they show under the tub and the lid
 in the object list; check one in the slice preview (solid round each insert) before trusting them.
 `tools/make_project3mf.py` writes them, and checks each plate: every part on the bed, out of the X1C's
-front-left exclusion zone (18 × 28 mm), clear of the others where they share a height (the tub's latch ears overhang the
-latches 30 mm up), and the tower clear of every part. Your layout moved one thing: the back faceplate 1.6 mm right (centre
-x 102.5; 103.4 from 2026-10-22, when the wider 3.5 mm windows made the back plate 1.8 mm longer), out of that corner. What a project can't set:
+front-left exclusion zone (18 × 28 mm), clear of the others where they share a height, and the tower clear of every part. Each plate's two parts are laid out with the faceplate along the bed's front edge and the tub or lid behind it. What a project can't set:
 - Close the door and the top lid, and keep the room free of drafts; the screen shows the chamber's temperature (about
   40 °C or more is the aim);
 - pick your real second ASA filament (or sync the AMS): filament 2 is white.
@@ -164,14 +175,14 @@ values (`bambu/asa.json`), a 105 °C bed and the exhaust low on both slots, and 
 
 **The TPU gaskets, in TPU 95A,** are the case projects' last plate (above), and also projects of their own:
 `stl/gaskets.3mf` (the lid's ring with the standard front and back gaskets inside it) and `stl/gaskets_ac.3mf` (the AC
-ones), one plate each, one filament; each gasket alone too (`stl/gasket_*.3mf`). They are for a lid or a screwed plate
+ones), one plate each, one filament; each gasket alone too (`stl/gasket_*.3mf`). They are for a lid or a screwed (or inset) plate
 sealed with the printed gasket in place of the foam (**Seal (the lid)**, **Sealing a screwed plate**). What
 the projects set: the same saved process, on the values of Bambu Studio's "Bambu TPU 95A HF @BBL X1C" profile
 (`bambu/tpu95a.json`: 230 °C nozzle, 35 °C bed, 12 mm³/s at most), Arachne walls (the lip is a single 0.45 mm line, which
 the classic wall generator may drop) and no brim. The TPU 95A profile notes it is too soft for the AMS: **feed it from the
-external spool**. Dry it first (TPU takes up water and then strings). Each gasket is 2.4 mm tall: a 2-layer base and a
-10-layer lip that leans 0.25 mm a layer (51° from upright: each 0.45 mm line overlaps the one below by 0.2 mm), a steep
-overhang for TPU; check in the slice preview that every lip layer is there all round, print slowly with the part fan on,
+external spool**. Dry it first (TPU takes up water and then strings). Each gasket is 2.8 mm tall (owner 2026-10-24: 2.4
+before): a 2-layer base and a 12-layer lip that leans 0.18 mm a layer on the plates' gaskets and 0.1 mm on the lid's (each
+0.45 mm line overlaps the one below by 0.27 mm or more), a steep overhang for TPU; check in the slice preview that every lip layer is there all round, print slowly with the part fan on,
 and **print a short length first** (`stl/gasket_back.3mf`, cut off in the slicer) and try it on the mount coupon. Not
 sliced in Bambu Studio yet.
 
@@ -191,16 +202,15 @@ already on filament 2:
 
 | Part | File | Pose | Notes |
 |---|---|---|---|
-| Tub | `stl/tub_screws.stl` (and the others above) | floor down | 199.8 × 160.8 mm, 53 mm to the rim (222.7 × 170.1 with the latch ears and knuckles). AC: 209.8 × 202.8, 70 mm to the rim (232.7 × 212.1) |
-| Lid | `stl/lid.3mf` (lid + text) | top face down | the title and TRIG2 are inlaid 0.4 mm on the bottom layers, on filament 2 |
-| Front plate | `stl/plate_front_screws.3mf` | show face down | a flat 3 mm plate, 159.9 × 41.1 mm screwed (27.6 glued), its two guide pins standing up off its back: TRIG1, RLY1 and RLY2 8 mm (3.5 mm TRS), OUT1–4 12 mm (DC). Labels inlaid on the bottom layers, with the relay jacks' wiring key (`T=NO R=NC S=COM`) under RLY1 and RLY2 |
-| Back plate | `stl/plate_back_screws.3mf` | show face down | 158.8 × 38.1 mm screwed (27.4 glued), notched under the hinges: LINE, SPK, CC1/2, TRIG2 8 mm, PWR 12 mm |
-| AC front plate | `stl/plate_front_ac_screws.3mf` | show face down | 199.2 × 60.2 mm screwed (48 glued): the receptacle's openings, TRIG1, OUT1–4, the rating |
+| Tub | `stl/tub_inset.stl` (and the others above) | floor down | 199.8 × 160.8 mm, 53 mm to the rim (216.3 × 177.3 with the lid screws' ears). AC: 209.8 × 202.8, 70 mm to the rim (226.3 × 211.1) |
+| Lid | `stl/lid.3mf` (lid + text) | top face down | 216.3 × 177.3 mm with its six screw bosses (AC 226.3 × 214.1); the title and TRIG2 are inlaid 0.4 mm on the bottom layers, on filament 2 |
+| Front plate | `stl/plate_front_inset.3mf` (`_screws`, `_glue`) | show face down | a flat 3 mm plate, 154.4 × 41.1 mm (inset and screwed; 27.6 glued; the screwed and glued ones carry guide pins standing up off the back, the inset one its keyed corner): TRIG1, RLY1 and RLY2 8 mm (3.5 mm TRS), OUT1–4 12 mm (DC). Labels inlaid on the bottom layers, with the relay jacks' wiring key (`T=NO R=NC S=COM`) under RLY1 and RLY2 |
+| Back plate | `stl/plate_back_inset.3mf` | show face down | 160.6 × 38.1 mm (27.4 glued): LINE, SPK, CC1/2, TRIG2 8 mm, PWR 12 mm |
+| AC front plate | `stl/plate_front_ac_inset.3mf` | show face down | 199.2 × 60.2 mm (48 glued): the receptacle's openings, TRIG1, OUT1–4, the rating |
 | AC cover | `stl/cover_ac.3mf` | top face down | 102.6 × 88.5 mm, 44 mm tall with its chimney; `UNPLUG CORD BEFORE OPENING` inlaid on filament 2 |
-| Latch lever ×4 | `stl/latch.stl` | on its side | |
-| TPU gaskets (screwed plates, optional) | `stl/gaskets.3mf`, `stl/gaskets_ac.3mf` (`stl/gasket_front.stl`, `gasket_back.stl`, `gasket_front_ac.stl`, `gasket_back_ac.stl`, `gasket_back_usb.stl`) | flat, lip up | TPU 95A on its own, from the external spool: 155.1 × 35.1 (front), 153.9 × 32.1 (back; the AC back's is the same size, its dips under the hinges elsewhere; 153.9 × 34.9 with the USB port), 195.5 × 54.2 mm (AC front), 2.4 mm tall |
-| **First:** seal coupon | `stl/coupon_seal.stl`, in `stl/coupons.3mf` | as printed | 40 mm of the left wall's rim round the first latch (land, groove, latch ears) and that corner of the lid (tongue, skirt, keeper lugs): try a lever, its two screws and the bead before the tub |
-| **First:** mount coupon | `stl/coupon_mount_screws.stl` (`coupon_mount_glue.stl`), in `stl/coupons.3mf` | as printed | the front wall's right-hand end (the OUT4 window, a guide-pin hole, the nut bosses) and that end of the front plate with its pin: try the pin's fit (`pin_clr`), the nuts in their pockets, turning a DC jack's nut inside the box, and your seal (butyl strip, silicone, tubing or a piece of the TPU gasket) or adhesive before the tub. It has one pin, so it tests the fit, not the one-way-round. The wall piece stands on a 2.4 mm edge: the project brims it |
+| TPU gaskets (screwed plates, optional) | `stl/gaskets.3mf`, `stl/gaskets_ac.3mf` (`stl/gasket_front.stl`, `gasket_back.stl`, `gasket_front_ac.stl`, `gasket_back_ac.stl`, `gasket_back_usb.stl`) | flat, lip up | TPU 95A on its own, from the external spool: 148.4 × 35.1 (front), 155.7 × 32.1 (back, the AC back's too; 155.7 × 34.9 with the USB port), 195.5 × 54.2 mm (AC front), 2.8 mm tall |
+| **First:** seal coupon | `stl/coupon_seal.stl`, in `stl/coupons.3mf` | as printed | 40 mm of the left wall's rim round its lid screw (land, groove, the ear) and that piece of the lid (tongue, skirt, the boss): try an M3 × 12 in the ear's pilot, the foam (or gasket) and the squeeze before the tub |
+| **First:** mount coupon | `stl/coupon_mount_inset.stl` (`coupon_mount_screws.stl`, `coupon_mount_glue.stl`), in `stl/coupons.3mf` | as printed | the front wall's right-hand end (inset: the recess, the opening's end with its last break-out rib, the nut bosses; screwed or glued: the OUT4 window and a guide-pin hole) and that end of the front plate: try the plate in its recess (`inset_clr`), snapping out the rib, the nuts in their pockets, turning a DC jack's nut inside the box, and your seal before the tub. The wall piece stands on a 2.4 mm edge: if it tips, add a brim to it in Studio |
 
 **No supports anywhere.** `tools/overhangs.py` slices every STL in its print pose every 0.2 mm, as the printer lays it,
 and checks that each layer stands on the one below: within 0.3 mm (a 45° wall moves 0.2 mm a layer) of material that is
@@ -208,13 +218,14 @@ itself held up, all the way down to the bed. What's left is a **ledge** (within 
 straight line that ends on support at both ends, at most 30 mm), or an **island**, which would print on air:
 `tools/print_build.sh` fails on any island. On the parts it finds:
 - **Bridges** (all on the tubs unless named):
-  - the window tops: 6 mm (3.5 mm jacks), 10.1 mm (DC jacks), 12.8 mm (USB, `tub_usb.stl` only);
+  - the inset tubs' opening tops between their break-out ribs, up to 18 mm;
+  - the window tops (screwed and glued tubs): 6 mm (3.5 mm jacks), 10.1 mm (DC jacks), 12.8 mm (USB, `tub_usb.stl` only); the inline tub's jack holes' flat tops, up to 4.9 mm;
   - the guide-pin holes' roofs, 1.3–1.5 mm; the rubber-foot pilot holes' tops, 2 mm; the M3 insert holes' tops, 1.2–1.5 mm;
     the Everbilt pilot holes, 1.2 mm; the lid's text pockets' ceilings, up to 2 mm;
   - AC case: the curtain over the relay window, 27.2 mm; the receptacle's face windows, up to 26.2 mm; the tie points'
     slots, 4.7 mm; the gland hole's top, 8.3 mm; the #6-32 holes' tops, 1.4 mm. The cover: 1.4 mm.
-- **Small ledges:** the 0.2 mm steps of the chamfers, the countersinks, the knuckle bores. `python3 tools/overhangs.py -v stl/tub_screws.stl` lists them.
-- No islands on any part (44 parts, the five TPU gaskets included, 2026-10-21).
+- **Small ledges:** the 0.2 mm steps of the chamfers, the countersinks, the break-out ribs' necks, the inline tub's sunk labels. `python3 tools/overhangs.py -v stl/tub_inset.stl` lists them.
+- No islands on any part (56 parts, the TPU gaskets included, 2026-10-24).
 
 **Rubber feet.** Screw one into each corner boss from underneath: blind 2.5 mm pilots, 7 mm deep (M3 self-tapping or #4
 screws). **A foot screw may go at most 7 mm into the boss** (its length less the foot's thickness under the head): the cap
@@ -231,19 +242,18 @@ after a fresh clone or after changing a number.
 |---|---|---|
 | M3 heat-set insert, M3 × 5.7 short (Ø4.0 hole) | 4 | board standoffs. For self-tapping M3 screws instead, set `[holes] standoff = 2.6` |
 | M3 × 6 pan head | 4 | board onto the standoffs |
-| M3 × 20 pan head, or #4 × ¾ in pan head | 2 | hinge pins: in from the hinge's outer end (towards the nearer side wall, where a screwdriver has room), clear through two knuckles, threaded into the one nearer the middle (no nut). A flat-head #4 × ¾ is measured overall and is about 1.7 mm short: use pan heads |
-| M3 × 20 pan head, or #4 × ¾ in pan head | 8 | the latches: a pivot through each lever's tub ears and a keeper across each pair of lid lugs, each in from the corner's side, clear through the thick ear or lug (6 mm) and tapping its own thread in the thin one's undersized 2.5 mm hole (3.6 mm, towards the wall's middle): no nuts |
+| M3 × 12 flat head, 90° countersunk (as the plate screws) | 6 | the lid: down through each boss on its edge (6.4 mm, countersunk in the lid's top) into the ear on the tub's wall under it, tapping its own thread in the ear's blind 2.5 mm pilot (6 mm deep: the screw goes 5.6 mm in) |
 | Rubber feet, screw-on, with M3 or #4 self-tapping screws (at most 7 mm into the boss) | 4 | one in each corner boss under the floor |
-| Screwed plates, optional: M3 hex nut (DIN 934, 5.5 mm across flats), or #4-40 (¼ in) with `plate_nut = "#4"` | 0–12 | six behind each plate, each in the pocket on its boss's inside end (AC case: the front plate's bosses in the mains bay take M3 × 5.7 heat-set inserts instead, set from outside, so no nut or screw end is in the bay) |
-| Screwed plates: M3 × 12 flat head, 90° countersunk (ISO 10642 / DIN 7991, stainless), or pan heads with `screw_head_type = "pan"`; #4-40 × ½ in with #4 nuts | 12 | through the plate (3), then tapping its own thread in the wall and boss (2.4 + 4.75, an undersized 2.5 mm hole: `[holes] plate_pilot`), and into the nut if you fit one, about 2 mm past it. AC mains-bay inserts: M3 × 8 |
-| Screwed plates: the seal | 0.72 m (AC case 0.83 m) of strip or tubing | one of, best first: **closed-cell EPDM foam tape 1/8 in (3.2 mm) thick, slit to 3.5 mm**; butyl tape 1/8 in thick cut into 2 mm strips (or Ø3 mm butyl rope); neutral-cure silicone, screwed down wet; 0.8 × 2.4 mm (1/32 × 3/32 in) soft silicone tubing; the printed TPU 95A gasket (`stl/gaskets.3mf`). In the 3.5 × 1.6 mm groove round each plate's back: **Sealing a screwed plate** |
+| Inset or screwed plates, optional: M3 hex nut (DIN 934, 5.5 mm across flats), or #4-40 (¼ in) with `plate_nut = "#4"` | 0–12 | six behind each plate, each in the pocket on its boss's inside end (AC case: the front plate's bosses in the mains bay take M3 × 5.7 heat-set inserts instead, set from outside, so no nut or screw end is in the bay) |
+| Inset or screwed plates: M3 × 12 flat head, 90° countersunk (ISO 10642 / DIN 7991, stainless), or pan heads with `screw_head_type = "pan"`; #4-40 × ½ in with #4 nuts | 12 | through the plate (3), then tapping its own thread in the wall and boss (2.4 + 4.75, an undersized 2.5 mm hole: `[holes] plate_pilot`), and into the nut if you fit one, about 2 mm past it. AC mains-bay inserts: M3 × 8 |
+| Inset or screwed plates: the seal | 0.72 m (AC case 0.83 m) of strip or tubing | one of, best first: **closed-cell EPDM foam tape 1/8 in (3.2 mm) thick, slit to 3.5 mm**; butyl tape 1/8 in thick cut into 2 mm strips (or Ø3 mm butyl rope); neutral-cure silicone, screwed down wet; 0.8 × 2.4 mm (1/32 × 3/32 in) soft silicone tubing; the printed TPU 95A gasket (`stl/gaskets.3mf`). In the 3.5 × 1.6 mm groove round each plate's back: **Sealing a screwed plate** |
 | Glued plates: adhesive | | gel CA for tack, a sealing adhesive for the groove, or acetone: **Glue** |
 | Panel-mount female DC barrel jack, 12 mm cutout, nut inside, **thread 8.5 mm or longer** | 5 | OUT1–4, PWR |
 | Panel-mount 3.5 mm **stereo (TRS)** jack, 7.8–8 mm cutout | 8 | TRIG1, RLY1, RLY2, LINE, SPK, CC1, CC2, TRIG2 (the AC case: 6, no RLY jacks). Three conductors: TRIG1/TRIG2 and the relays use all three. If yours is the switched 5-lug kind, wire only the T, R and S lugs |
 | Optional: panel-mount USB-C extension (nut, 12 mm thread) | 0–1 | only with `[connectors] USB` `enabled = true` |
 | Closed-cell EPDM foam tape, 1/8 in (3.2 mm) thick, 1/4 in wide, adhesive-backed | ~2 m (AC ~2.3 m) | the lid's seal (slit to 3 mm) and the screwed plates' (slit to 3.5 mm): search "closed-cell EPDM foam tape 1/8 inch" |
 | Neutral-cure silicone (clear, outdoor) | 1 tube | sealing the jacks, and the fallback seals (the lid's formed-in-place bead, a plate screwed down wet) |
-| APIELE 10 mm metal momentary push button, IP65, pre-wired (sold in 5-packs) | 1 | TRIG2 on the lid: 10.2 mm hole through the 2.4 mm lid, nut underneath |
+| 10 mm metal momentary push button, IP65, pre-wired | 1 | TRIG2 on the lid: 10.2 mm hole through the 2.4 mm lid, nut underneath, behind the board's back right corner (in a cell of the lid's rib grid) |
 
 The AC case's own parts are in its section.
 
@@ -328,7 +338,7 @@ Screwed or glued plates, printed pin or Everbilt hinge: all four are built. Its 
   inlet's rectangular cutout has to be held to a few tenths and its snap-in clips are made for 1–2 mm sheet, the
   conductors go straight into lever connectors (the inlet's 6.3 mm tabs want crimped quick-disconnects), and the inlet's
   one fuse would serve both outlets. The cost: the cord is part of the box. The gland sits 102 mm from the board's back
-  edge and 19.5 mm up: its locknut clears the floor fillet, its cap the front left latch's ears (asserted), and the end
+  edge and 19.5 mm up: its locknut clears the floor fillet, its cap the left wall's lid-screw ears (asserted), and the end
   walls' front ribs sit 60 mm from the wall's middle to clear the locknut (`[ac.box] ribs`).
   - **The cord must fit the gland:** its outer diameter inside the gland's clamping range (6–12 mm for the one listed), and
     its jacket running at least 10 mm in past the locknut before the conductors fan out.
@@ -561,14 +571,33 @@ only**: required, it is the protection the board doesn't have.
 
 The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_w`, `body_w`, `body_l`, `body_d`,
 `face_proud`) and the gland's nut sizes are `assumed`: measure yours, change `design.toml` and rebuild. The asserts in
-`tools/print_params.py` then recheck the barrier, the bay, the cover, the seat, the stops and the latch clearances.
+`tools/print_params.py` then recheck the barrier, the bay, the cover, the seat, the stops and the lid-screw ears' clearances.
 
 ## Design choices
 
 - **Faceplates instead of holes in the walls.** A hole in a wall printed upright comes out pear-shaped. Each plate prints
   face down, so the holes come out round, the labels sit on the bottom layers, and the plate is flat: the panel-mount
-  jacks go through it and their nuts tighten on it. Behind each connector the wall has a window just wider than what sits
-  behind the plate (rounded, so its top is a short bridge). The plate goes straight onto the outside of the wall:
+  jacks go through it and their nuts tighten on it.
+  - **Inset (`mount = "inset"`, the default, owner 2026-10-24).** The plate sits in a recess in the wall's outside face,
+    1 mm deep (`inset_d`, leaving 1.4 mm of wall behind it) and 0.3 mm larger all round (`inset_clr`); the recess's top
+    edge is chamfered at 45° so it prints without a ledge. The recess locates the plate, so there are no guide pins. Its
+    top corner at one end (as seen from outside: the right on the front, the left on the back's x1 end) is cut off 6 mm at
+    45° (`inset_key`) and the recess keeps that corner filled, so turned round the plate won't go in. Behind it the wall
+    has **one opening**: the jacks' windows joined, each gap between two windows as tall as the shorter of them, and made
+    shorter where it would reach the seal's bend round a screw (`print_params.py` keeps all of it ring_m inside the seal).
+    **Break-out ribs:** while the tub prints, ribs 0.8 mm thick (two lines) cross the opening wherever its height steps and
+    at most 20 mm apart (`break_pitch`), so its top bridges 18 mm at most; each meets the wall above and below on a 1 mm
+    neck one line (0.4 mm) thick. **Snap them out before fitting the plate:** pliers, or push each sideways at its middle
+    until both necks break, and pare any stub flush with a blade. The six screws, their nuts and bosses, the seal groove and
+    its seals are the screwed plate's (below): the groove seals on the recess's floor round the opening.
+  - **Inline (`mount = "inline"`, a try-out, standard case only).** No plate: each jack goes through the wall itself, in a
+    hole that prints upright (round, its top cut off flat under a 45° roof: a short bridge); each 3.5 mm jack's hole is
+    counterbored from inside, teardrop too, to the window's width, leaving 1.75 mm of wall where it seats (`j35_seat`),
+    so its short thread reaches the nut. The labels are sunk 0.4 mm into the wall's outside face, in one colour. No
+    screws, nuts, bosses or seal round a plate.
+  - **Screwed or glued on guide pins (`mount = "screws"` / `"glue"`).** Behind each connector the wall has a window just
+    wider than what sits behind the plate (rounded, so its top is a short bridge). The plate goes straight onto the
+    outside of the wall:
   - **Guide pins.** Two Ø4 mm pins (three on the standard front plate), 4 mm long with a chamfered tip, printed standing up off each plate's back, go through
     holes in the wall: 4.3 mm (`pin_clr` 0.15 all round), with a 45° roof cut off flat at the top, so the hole prints
     upright as a round hole with a 1.5 mm bridge. One pin sits in the widest gap between two windows, the other just past
@@ -578,18 +607,18 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
     turned end for end, a pin lands on solid wall and the plate won't go on (`tools/print_params.py` checks it, and that
     no pin tip runs into a screw boss or a DC jack's nut). Both are inside the seal ring, so their through-holes are sealed too. A pin
     printed upright is accurate and needs no parts to cut or lose; it only locates the plate, the screws or glue hold it.
-  - **Screws (`mount = "screws"`, the default).** Six countersunk M3s per plate (owner 2026-10-20): left, middle and right
+  - **Screws (`mount = "screws"`, and the inset plate).** Six countersunk M3s per plate (owner 2026-10-20): left, middle and right
     along the top and along the bottom, through the plate, the wall and a boss behind it into a hex nut in the boss's pocket. The top
     row sits high enough that its bosses' 45° undersides clear the windows (a wedge over a window would start on air); the
     bottom row low enough that the seal can bend round each screw clear of the windows above it (`print_params.py` lowers
     the row until it does: 1 mm on the standard front, under OUT1). A screw that would cut into a label moves the least
-    distance along its row; none had to. On the back plate the top row clears the hinges: the plate steps down to the
-    glued plate's height under each hinge (both kinds), and the top left and right screws sit just outside those notches.
+    distance along its row; none had to. (With the hinged lid, `lid_mount = "hinge"`, the back plate steps down under each
+    hinge and the top left and right screws sit just outside those notches.)
     In the AC case the front plate's bosses in the mains bay reach 1.1 mm further in, so 2 mm of plastic (`[ac] bay_cap`)
     separates the bay's wiring from each insert and its screw, whose head is on the show face.
     - **The seal groove (owner 2026-10-20: wider, and where the screws clamp).**
 
-      ![the back plate's back, as printed: the groove along the screw rows, bending round each screw and dipping under the hinge notches](docs/seal-plate-back.png)
+      ![the back plate's back, as printed: the groove along the screw rows, bending round each screw, and the keyed corner](docs/seal-plate-back.png)
       ![its TPU gasket](docs/seal-gasket.png)
       ![the gasket's section (25×): the base strip and the lip leaning out, a 0.45 mm line a layer](docs/seal-gasket-section.png)
 
@@ -599,7 +628,7 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
       the screw on a solid land (3.6 mm round the screw's centre, `sg_land`, for the countersunk head), so the seal runs
       right where each screw clamps, the six screws stay outside it, and the windows, the guide-pin holes and the
       receptacle's screws stay inside it. Its inner edge keeps 2 mm off a DC jack's window (`sg_m`) and 1 mm off the others;
-      under the back plate's hinge notches it dips below the notch. Why one loop that bends round the inside of each screw,
+      with the hinged lid it dips below the back plate's hinge notches. Why one loop that bends round the inside of each screw,
       not a loop round each screw: a screw that has its own small seal still leaves the plate free to bow between screws,
       and the bosses are blind, so a screw hole needs no seal of its own; one loop through the clamping points is the
       shortest seal line where the plate is held. Why the inside, not round the outside of each screw: there is no room
@@ -615,7 +644,7 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
          1.6 mm depth (50 %) when the plate is flat on the wall; closed-cell foam takes the squeeze by compressing its
          cells, so it stays in the groove's width. **Apply:** clean the groove, peel the liner, lay the strip in the
          groove adhesive down, round the bends at the screws (notch its inner edge with scissors every few mm round each
-         bend so it lies flat), ends butted at the middle of the bottom run; plate on its pins, screws in, middle first.
+         bend so it lies flat), ends butted at the middle of the bottom run; plate in its recess (or on its pins), screws in, middle first.
          **Remove:** the plate off (below); the foam stays in the plate's groove and can go back on, or peels out.
          **FEA** (`plate_fea.py --seals --foam`, the foam at 30 / 60 / 100 kPa at 50 %, 0.10–0.35 N/mm, assumed): the
          share of its squeeze left is 90 / 81 / 71 % (standard front), 88 / 79 / 68 % (back, every case) and 77 / 61 / 46 %
@@ -629,12 +658,12 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
          solvent-based "non-hardening" sealant (ketones and aromatic solvents attack ASA): try yours on the mount coupon.
          **Apply:** press the strip into the groove all round, in the bends round the screws too, ends butted (not
          overlapped) at the middle of the bottom run; keep it in the groove, off its inner edge (the windows are 2 mm away
-         and the DC nuts behind them). Plate on its pins, the screws in, middle ones first, until the plate is flat on the
+         and the DC nuts behind them). Plate in its recess (or on its pins), the screws in, middle ones first, until the plate is flat on the
          wall; wipe off what squeezes out at the edge. Butyl creeps: tighten the screws again after a day, and after the
          first warm day. **Remove:** take the plate off (below) and peel it away from the wall (slice any strings with a thin blade); roll the residue
          off the wall with a ball of butyl. Reseal with fresh.
       2. **Wet silicone.** Neutral-cure silicone, screwed down wet. **Apply:** a bead about the groove's section (Ø2.7 mm, 5.7 mm², the
-         groove being 5.6 mm²; a Ø3 mm bead is 7.1 mm² and squeezes out more) laid along the middle of the groove, not on its inner edge) all round; plate on its pins and the screws in,
+         groove being 5.6 mm²; a Ø3 mm bead is 7.1 mm² and squeezes out more) laid along the middle of the groove, not on its inner edge) all round; plate in its recess (or on its pins) and the screws in,
          middle first, within the silicone's skin time (a few minutes: read the tube). It cures already in the shape of the
          gap, so it isn't squeezed and pushes nothing back: the FEA doesn't apply. **Sandwiched between plate and wall it
          cures slowly**, from its edges only: give it 3–7 days before the box goes out, and don't move the plate meanwhile.
@@ -644,26 +673,29 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
       3. **Soft silicone tubing.** **Which:** 0.8 mm ID × 2.4 mm OD (1/32 × 3/32 in) soft silicone tubing, squeezed 0.8 mm
          (33 %) when the plate is flat; not 2 mm OD (only 0.4 mm of squeeze, 20 %, which a 0.3 mm bow uses up), and not
          3.2 mm OD (1.6 mm squeeze, 50 %, too much for six screws). **Apply:** lay it in the groove, round the screw bends,
-         ends butted at the bottom run; plate on its pins, screws in, middle first. **Remove:** the plate off (below); the
+         ends butted at the bottom run; plate in its recess (or on its pins), screws in, middle first. **Remove:** the plate off (below); the
          tubing lifts out and goes back in. **FEA:** keeps 43 % (front), 39 % (back) and only 16 % (AC front, **marginal**)
          of its squeeze.
       4. **The printed TPU 95A gasket** (`stl/gasket_*.stl`, in the projects `stl/gaskets.3mf` and `stl/gaskets_ac.3mf`): a
          ring that matches the groove, bends round the screws included, printed flat in TPU 95A (**Printing**). Its section:
          a 3.3 × 0.4 mm base strip in the groove and one thin lip (one 0.45 mm line a layer) leaning outward from the
-         base's inner edge to 2.4 mm tall (`[gasket]` in `design.toml`). Screwed flat, the wall bends the lip over by the
-         0.8 mm squeeze; its tip swings out about 0.5 mm, inside the groove (a rigid-swing estimate, which `print_params.py`
-         checks). Round the screws the lip runs on: there the plate is clamped, so that stretch of gasket only has to follow.
+         base's inner edge to 2.8 mm tall (`[gasket]` in `design.toml`; 2.4 until 2026-10-24). Screwed flat, the wall bends
+         the lip over by the 1.2 mm squeeze; its tip swings out about 0.9 mm, inside the groove (a rigid-swing estimate,
+         which `print_params.py` checks). Round the screws the lip runs on: there the plate is clamped, so that stretch of gasket only has to follow.
          A solid strip is far too stiff and a hollow hexagon softer but not enough (below). **Apply:** lay the plate face
          down, as it printed, and lay the gasket in its groove the way it printed (lip up); the base is 0.1 mm narrower than
          the groove each side, so lay the tub on its back and put the plate on from above, or hold the gasket in with a few
          small dabs of silicone on the groove's floor (on the plate only). A thin film of silicone grease on the lip's tip
-         lets it slide on the wall (the softer numbers below). Plate on its pins, screws in, middle first. **Remove:**
-         the plate off (below); the gasket lifts out and goes back in. **FEA:** it keeps 72 % (front), 69–70 % (back) and 48 %
-         (AC front) of its squeeze even with a stiff TPU whose tip sticks on the wall; 88–96 % if the tip slides.
+         lets it slide on the wall (the softer numbers below). Plate in its recess (or on its pins), screws in, middle first. **Remove:**
+         the plate off (below); the gasket lifts out and goes back in. **FEA (2.8 mm tall):** 87–95 % of its squeeze left if
+         the tip slides, 72–88 % with friction 0.5, but only 12–44 % on the standard plates and −6 to 14 % on the AC front if
+         a dry tip sticks on the wall: the taller lip squeezes more but is stiffer when stuck. Grease the tip (it then
+         slides), or use the foam; on the AC front the foam or wet silicone.
 
       **Taking a screwed plate off:** open the lid (in the AC case unplug the cord first, and take the cover off for the
       receptacle's three screws, which hold the AC front plate too), undo the DC jacks' nuts on the wall's inside face
-      (four on the front, PWR's on the back), then take the six screws out and lift the plate off its pins. The 3.5 mm
+      (four on the front, PWR's on the back), then take the six screws out and lift the plate out of its recess (or off its
+      pins). The 3.5 mm
       jacks' nuts are on the show face and come off with it.
 
       **Why the groove isn't thinner round the screws:** the plate lands on the wall, so the groove's depth sets the same
@@ -681,15 +713,15 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
       over the groove. It reports how far the plate lifts between the screws, here as the share of the gasket's squeeze that
       is left (100 % is the plate flat on it; 0 % or less opens the seal):
 
-      | Plate (six screws) | butyl tape, wet silicone | soft silicone tubing 2.4 OD, 0.8 mm squeeze | TPU 95A lip, 0.8 mm squeeze, E 9 / 25 MPa: sliding, friction 0.5, stuck (0.8) | (solid TPU strip 2 × 2.4) | (hollow TPU hexagon) |
-      |---|---|---|---|---|---|
-      | standard front | fills the gap, no lift | 43 % | sliding 96 / 91 %, friction 94 / 84 %, stuck 88 / 72 % | −25 / −52 % | 86 / 67 % |
-      | back (standard; AC back within 1 %) | fills the gap, no lift | 39 % | sliding 96 / 90 %, friction 93 / 82 %, stuck 87 / 70 % | −32 / −60 % | 84 / 64 % |
-      | AC front | fills the gap, no lift | 16 % | sliding 91 / 79 %, friction 85 / 66 %, stuck 74 / 48 % | −50 / −81 % | 70 / 41 % |
+      | Plate (six screws, inset) | butyl tape, wet silicone | EPDM foam, soft / medium / firm | soft silicone tubing 2.4 OD, 0.8 mm squeeze | TPU 95A lip 2.8 mm, 1.2 mm squeeze, E 9 / 25 MPa: sliding, friction 0.5, stuck (0.8) | (solid TPU strip 2 × 2.8) | (hollow TPU hexagon) |
+      |---|---|---|---|---|---|---|
+      | standard front | fills the gap, no lift | 91 / 82 / 73 % | 46 % | sliding 95 / 87 %, friction 88 / 72 %, stuck 44 / 14 % | −19 / −46 % | 88 / 72 % |
+      | back (standard; AC back within 1 %) | fills the gap, no lift | 90 / 82 / 72 % | 44 % | sliding 95 / 86 %, friction 88 / 70 %, stuck 42 / 12 % | −19 / −45 % | 88 / 70 % |
+      | AC front | fills the gap, no lift | 77 / 61 / 46 % | not run | sliding 87 / 69 %, friction 72 / 44 %, stuck 14 / −6 % | not run | not run |
 
       The gasket's push, in N per mm of its length: tubing about 0.5 at its 0.8 mm squeeze (0.6 N/mm per mm, the earlier
-      0.3 at 0.5 mm), the TPU lip 0.017–0.084 (E 9–25, sliding to friction 0.5) and 0.06–0.16 stuck, the hollow hexagon
-      0.07–0.21, the solid strip 8–22. The TPU sections' stiffness is a plane-strain FE of each profile (`plate_fea.py
+      0.3 at 0.5 mm), the TPU lip 0.04–0.28 (E 9–25, sliding to friction 0.5) and 0.8–2.1 stuck, the hollow hexagon
+      0.10–0.28, the solid strip 10–29 (at the 2.8 mm gasket's 1.2 mm squeeze). The TPU sections' stiffness is a plane-strain FE of each profile (`plate_fea.py
       --seals`, which also runs the fill check: `--fill`).
 
       **What the FEA leaves out**, each of which uses up squeeze, so leave margin rather than count on the numbers:
@@ -735,101 +767,83 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
 - **Seal (the lid).** A 3 × 2 mm groove runs round the rim, on a 7 mm land with a 45° underside; the lid's tongue (1.6 mm
   wide, 0.7 mm tall, 0.4 mm gap) presses into it. **The default (owner 2026-10-21): closed-cell EPDM foam tape, 1/8 in
   (3.2 mm) thick**, slit to 3 mm wide (search "closed-cell EPDM foam tape 1/8 inch", the adhesive-backed weatherstrip kind;
-  buy 1/4 in wide and slit it). It stands 1.2 mm proud of the groove, and the latched lid's tongue presses it 1.5 mm (47 %:
-  closed-cell foam seals well at 30–50 %, and takes a set past that).
+  buy 1/4 in wide and slit it). It stands 1.2 mm proud of the groove, and the screwed-down lid's tongue presses it 1.5 mm
+  (47 %: closed-cell foam seals well at 30–50 %, and takes a set past that).
   **Or the printed TPU 95A gasket** (`stl/gasket_lid.stl`, on the case projects' TPU plate): the screwed plates' gasket
-  section in this groove, a 2.8 mm base strip 0.4 mm thick and one 0.45 mm lip leaning out from its inner edge, 2.4 mm
-  tall in all. Lay it in the groove lip up, the way it printed (no adhesive; a few dots of silicone hold it if it lifts
-  with the lid). The latched lid's tongue stands 1.7 mm over the groove's floor and bends the lip over by 0.7 mm; its tip
-  swings out 0.57 mm, inside the groove (a rigid-swing estimate, asserted in `print_params.py`). The lip pushes back about
-  0.02–0.16 N per mm (the plate gasket's FE, the same section), no more than the foam, so the latches hold it; the lid's
-  measured lift between latches (0.10–0.36 mm) leaves 0.34 mm or more of the squeeze. Not yet printed or tried.
+  section in this groove, a 2.8 mm base strip 0.4 mm thick and one 0.45 mm lip leaning out from its inner edge, 2.8 mm
+  tall in all (2.4 until 2026-10-24). Lay it in the groove lip up, the way it printed (no adhesive; a few dots of silicone
+  hold it if it lifts with the lid). The screwed-down lid's tongue stands 1.7 mm over the groove's floor and bends the lip
+  over by 1.1 mm; its tip swings out 1.17 mm, inside the groove (a rigid-swing estimate, asserted in `print_params.py`).
+  Not yet printed or tried.
   1. Slit the tape lengthwise to 3 mm with a sharp blade against a straightedge (a fresh snap-off blade, one pass, the
      liner still on).
   2. Clean the groove with isopropyl alcohol, peel the liner and lay the strip in the groove's bottom, adhesive down, all
      round without stretching it; butt the ends tight at the middle of the back, cut square.
-  3. Close and latch the lid. **The lid FEA** (`tools/lid_fea.py`: 4 end latches, the front latch (since removed: rerun it) and the hinges at 1/3,
-     2/3; the foam at 30 / 60 / 100 kPa at 40–50 %, assumed for soft / medium / firm grades, 0.05–0.16 N per mm under the
-     tongue) lifts the lid 0.10 / 0.18 / 0.28 mm (standard) and 0.13 / 0.24 / 0.36 mm (AC) against the 1.5 mm compression:
-     76–94 % of it left. Replace the strip if it has taken a set (it no longer springs back proud).
+  3. Put the lid on and screw it down (**Lid screws**). **The lid FEA** (`tools/lid_fea.py`: held at its six screws; the
+     foam at 30 / 60 / 100 kPa at 40–50 %, assumed for soft / medium / firm grades, 0.05–0.16 N per mm under the tongue)
+     lifts the lid 0.37 / 0.62 / 0.85 mm (standard, at the middle of the back edge) and 0.71 / 1.03 / 1.25 mm (AC, at the
+     middle of the front edge) against the 1.5 mm compression: 75 / 59 / 43 % of it left on the standard case, 53 / 31 /
+     17 % on the AC case (the latched and hinged lid, as a comparison: 0.64 / 0.96 / 1.18 and 0.70 / 1.02 / 1.24). Replace
+     the strip if it has taken a set (it no longer springs back proud).
 
   **Fallback: a bead formed in place against the tongue:**
   1. Wrap the tongue in cling film (the release film), smooth, all round.
   2. Fill the groove flush with a bead of neutral-cure silicone.
-  3. Close the lid on the fresh bead and latch it; leave it closed 24–48 h (the silicone under the tongue cures slowly).
-  4. Open it and peel the film off the tongue. The bead has cured to the closed lid's shape, so it fills the gap the latched
+  3. Close the lid on the fresh bead and screw it down; leave it closed 24–48 h (the silicone under the tongue cures slowly).
+  4. Open it and peel the film off the tongue. The bead has cured to the closed lid's shape, so it fills the gap the closed
      lid leaves and pushes almost nothing back. (With the tongue now 0.7 mm tall it reaches only 0.3 mm into a flush bead:
      overfill the groove slightly.)
 
-  **Not a bead cured with the lid open** and then squeezed by the tongue: `tools/lid_fea.py` models the lid (2.4 mm with its
-  rib grid, the skirt as an edge beam) held only at its latches and its two hinges (now at 1/3 and 2/3 of the back edge),
-  with the cured bead (1–3 N/mm) pushing it up all round, against the tongue's 1.1 mm reach:
+  **Not a bead cured with the lid open** and then squeezed by the tongue: `tools/lid_fea.py --beads` models the lid (2.4 mm
+  with its rib grid, the skirt as an edge beam) held only at its screws, with the cured bead (1–3 N/mm) pushing it up all
+  round against the tongue's reach; the lid between its few hold points is far softer than the bead, so a cured bead
+  opens. The model leaves out the lid's warp as printed and its creep. The lid has a 4 mm drip skirt all round and a 5 mm
+  rib grid underneath.
+- **Lid screws (`lid_mount = "screws"`, owner 2026-10-24).** The lid comes straight off: six countersunk M3 × 12s, each
+  through a boss on the lid's edge and down into an ear on the tub's outside wall, outside the seal (a leak along a screw
+  stays outside the box). Where (`tools/lid_fea.py` picked it):
+  - one on each long wall near each end, past the faceplate: the front pair 14 mm from the straight wall's ends
+    (`lid_screw_front`), the back pair 4.5 mm (`lid_screw_back`), so the lid fits one way round only (`print_params.py`
+    checks that turned round its holes miss the ears);
+  - one in the middle of each end wall;
+  - the AC case's front plate fills its wall, so there the front pair moves onto the end walls, 30 mm from the front corners.
 
-  | Latches (hinges at 1/3, 2/3) | standard lid: worst lift | AC lid |
-  |---|---|---|
-  | four on the end walls, 30 mm from the corners (as built) | 1.28–1.57 mm, front middle | 1.32–1.58 mm, front middle |
-  | three: front centre + end-wall centres (owner 2026-10-21; `--latches three`) | 1.45–1.77 mm, front corners | 1.63–1.96 mm, front corners |
-  | two: end-wall centres only (`--latches two`) | 1.36–1.77 mm | 1.65–2.14 mm |
-
-  A cured bead opens in every layout: the lid between its few hold points is far softer than the bead (even soft tubing,
-  0.3 N/mm, lifts it by about its whole reach). The three-latch layout leaves the front corners free and lifts most. So the
-  bead formed in place stays the default: it pushes nothing back, so there is nothing for the latches to hold against. The model leaves out the lid's warp as printed and its creep, which the
-  formed-in-place bead takes up anyway. The lid has a 4 mm drip skirt on the front and both ends, and a 5 mm rib grid
-  underneath.
-- **Latches.** Four screwed cam latches, two on each end wall, 30 mm in from the corners. The lever turns on a screw
-  through two ears on the tub, 12 mm below the rim, and hooks a second screw, the keeper, across two lugs on the lid's
-  skirt; its hook draws the keeper down 0.4 mm (`latch_bite`) and closes past a small detent, so the seal can't push it
-  open. Pull the tab out to open it. Each latch's thin ear and lug (3.6 mm) face the wall's middle and its thick ones (6 mm)
-  the corner, on all four (owner 2026-10-21: the thin ones less exposed). The screws go in from the corner's side, clear
-  through the thick ear, and thread into the thin one's undersized 2.5 mm hole (2026-10-22: tapping the soft plastic holds
-  well enough): no nuts.
-  - **The front latch (2026-10-21) is removed** (owner 2026-10-22: a slightly worse seal is fine). It held the lid's front
-    edge with a sliding bolt; without it the cured-bead case is the table's first row (worst at the front middle).
-  - **Earlier: three latches (front centre and end-wall centres), not built.** A latch's tub ears sit on the wall's outside face from 25 mm to 8.4 mm under the rim (pivot 12 mm
-    under it, 7.9 mm out from the wall, its 45° underside down to the wall). On the front wall that is z 28.0–44.6 in the
-    standard case, where the front plate covers the wall up to z 46.3 (screwed; 39.9 glued) and OUT1 and the plate's
-    middle top screw sit at the centre; in the AC case z 45.0–61.6 against the plate's top at 60.8 (screwed; 53.0 glued)
-    and its middle top screw at the centre. A notch in the plate for the ears would reach the standard front's connector
-    row. The ways out, each changing something already fixed: the front latch off centre in a gap between jacks with a
-    local notch in the plate; a different front latch with its lever on the lid's skirt and a keeper that needs no wall
-    face under the plate (a new design); a taller case (about 17 mm on the standard case); or no front latch. And the
-    lid FEA below finds that the three-latch layout seals worse than the four end latches, not better: the owner's call.
-    The four end latches stay as built until then.
-  ![the back, the hinges at 1/3 and 2/3 of the back edge, and the four end latches](docs/lid-hinges-latches.png)
-- **Hinge.** Two printed three-knuckle hinges, at 1/3 and 2/3 of the back edge (owner 2026-10-21; `[hinge] hinge_at`),
-  each pinned with one M3 × 20 or #4 × ¾ in pan-head screw. The tub's two
-  outer knuckles each stand on a 45° gusset from the back wall, just above the back plate (its top edge is chamfered on
-  the back, and an assert in the model keeps 0.3 mm or more square to the gusset's face). The screw passes clear through
-  the first two knuckles and threads into a 2.5 mm pilot in the third. The lid's knuckle swings about 0.8 mm clear of the
-  rim's back edge; the knuckles have 0.6 mm all round. Checked earlier by sweeping the lid to 120° open with the lid grown
-  0.5 mm: nothing touches the knuckles or gussets. Print-in-place isn't possible: the lid is far taller than the tub.
-  - **Everbilt.** `hinge = "everbilt"` gives pads and pilot holes for two Everbilt 1 in narrow utility hinges: the wall
-    leaf goes on a pad flush with the back plate's show face, on its own 45° underside over the plate's chamfered top
-    edge; its screws go into bosses inside the wall. The lid leaf goes under a 14.7 mm back overhang. The screwed back
-    plate is notched under each pad, and comes off only after the wall leaves are unscrewed. The hinge's numbers are
-    placeholders until it is measured.
+  Each ear (7.5 mm across, `lid_screw_r`) stands 4.5 mm out from the wall (`lid_screw_d`) under the lid's skirt, its top
+  0.2 mm under the boss (`lid_screw_gap`) when the lid is down at the seal's design squeeze, 6 mm solid and then a 45°
+  underside down to the wall; its 2.5 mm pilot is blind, 6 mm deep, and the screw taps it. The boss reaches from the lid's
+  top down to the skirt's foot (6.4 mm). The long walls' middles aren't clamped: the faceplates leave no room for an ear
+  above them. Holding them too would cut the lid's lift to about 0.1–0.3 mm (the FEA), but needs about 12 mm more box
+  height over the plates.
+  ![the screwed lid: its six bosses over the ears](docs/lid-screws.png)
+- **Hinged lid (`lid_mount = "hinge"`, not built).** The model keeps the earlier lid: two printed three-knuckle hinges at
+  1/3 and 2/3 of the back edge (`[hinge]`, pinned with an M3 × 20 or #4 × ¾ in pan head each; or `hinge = "everbilt"`
+  for two Everbilt 1 in utility hinges) and four screwed cam latches on the end walls (`[latch]`), with the back plate
+  notched under the hinges. `tools/print_build.sh` builds the draw latch's fit coupon with it (`stl/coupon_latch.3mf`).
 - **Inside depth.** 38 mm in front of and behind the board (`clear_front`, `clear_back`), room for the jacks behind the
   plates and their wiring.
 - **Ribs.** Two vertical ribs inside each end wall, a 2 mm stepped fillet where the floor meets the walls; the faceplates
   stiffen the long walls once they're on.
+- **TRIG2 on the lid.** The push button sits behind the board's back right corner, over the floor, in the middle of a
+  cell of the lid's rib grid (owner 2026-10-24: it sat across two ribs, which were cut round it), so every rib runs full
+  length; `print_params.py` checks, for both cases, that its nut clears every rib and its body the back jacks and the
+  board.
 
 ## Assembly order
 
 1. Press the four heat-set inserts into the standoffs. For screwed plates, the screws tap their own thread in the wall and
    boss (run each in and out once before the plate goes on); for a stronger hold push a nut into each boss's pocket from
    inside (a dab of CA or a strip of tape holds it while the screw finds it).
-2. Try each plate on its pins, dry. Then:
-   - **screws:** the seal in the groove (**Sealing a screwed plate**), the plate on its pins, the six M3 × 12s into their nuts, middle ones
+2. **Inset:** snap out the opening's break-out ribs first. Try each plate in its recess (or on its pins), dry. Then:
+   - **inset or screws:** the seal in the groove (**Sealing a screwed plate**), the plate in its recess (or on its pins), the six M3 × 12s into their nuts, middle ones
      first;
    - **glue:** sand and clean both faces, the sealant bead in the groove and the CA dots outside it (or acetone), press
      the plate onto its pins and hold it; a fillet of sealant round the chamfer, 24 h to cure.
-3. Fit the jacks: each 3.5 mm jack through its wall window and the plate from inside, nut on the show face; each DC jack
-   through the plate from the front, nut inside. Wire them while there is room. Then the board onto the standoffs
+3. Fit the jacks: each 3.5 mm jack through the wall's opening (or window) and the plate from inside, nut on the show face;
+   each DC jack through the plate from the front, nut inside. Inline: straight through the wall's holes. Wire them while there is room. Then the board onto the standoffs
    (M3 × 6), and wire it.
-4. Fit the TRIG2 push button in the lid (its O-ring on top, nut underneath), then pin the lid on. Everbilt: screw the
-   leaves to their pads and the lid after the back plate is on.
-5. Fit the four latch levers: one screw through each pair of tub ears and the lever, one across each pair of lid lugs.
-6. Lay the EPDM foam strip (slit to 3 mm) in the rim groove (see **Seal (the lid)**), then close and latch the lid.
+4. Fit the TRIG2 push button in the lid (its O-ring on top, nut underneath).
+5. Lay the EPDM foam strip (slit to 3 mm) in the rim groove (see **Seal (the lid)**), put the lid on (it fits one way
+   round) and drive the six M3 × 12s into the ears, end walls first, until each boss meets its ear.
 
 ## Board revisions
 
@@ -841,6 +855,6 @@ placed from it.
 ## Not measured yet
 
 Listed as `assumed` in `design.toml`: the DC jack's nut across its corners (its window), the USB-C extension's nut, the
-push button's head and depth, the 3.5 mm jack's rating, every Everbilt hinge dimension, and the AC case's receptacle and
+push button's head and depth, the 3.5 mm jack's rating, every Everbilt hinge dimension (hinged lid only), and the AC case's receptacle and
 gland (above). Assumed in `tools/plate_fea.py`: the printed TPU 95A's stiffness (9–25 MPa) and its friction on the wall
 (0–0.8), which set how far the TPU gasket lets the plate lift: try a piece on the mount coupon.
