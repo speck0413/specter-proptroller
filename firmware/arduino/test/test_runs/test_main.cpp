@@ -323,6 +323,38 @@ void a_run_started_on_a_sample_just_before_stop_all_is_counted() {
   expectRuns(s, {"api"});
 }
 
+// ... and so does a script save or a backup restore, which load the runner again: the start is counted once
+static std::string porchBackup() {
+  PorchSim from;
+  Response b = from.request(R"({"op":"get_backup"})");
+  TEST_ASSERT_TRUE_MESSAGE(b.isOk(), b.json().c_str());
+  JsonDocument p;
+  p["op"] = "put_backup";
+  p["data"] = b.doc()["result"]["data"];
+  std::string body;
+  serializeJson(p, body);
+  return body;
+}
+static void runOnASampleThen(const std::string& body) {
+  PorchSim s;
+  while (s.uptime() % Sim::TICK_MS != 0) s.tick1();
+  s.webStart();
+  s.tick1();  // a sample, not a step: the effect starts
+  Response r = s.request(body);
+  TEST_ASSERT_TRUE_MESSAGE(r.isOk(), r.json().c_str());
+  s.step(1000);
+  expectRuns(s, {"api"});
+}
+void a_run_started_on_a_sample_just_before_set_script_is_counted() {
+  JsonDocument d;
+  d["op"] = "set_script";
+  d["text"] = "effect porch:\n  wait for trig1\n  out1 = on\n  sleep 0.5\n  out1 = off\n";
+  std::string body;
+  serializeJson(d, body);
+  runOnASampleThen(body);
+}
+void a_run_started_on_a_sample_just_before_put_backup_is_counted() { runOnASampleThen(porchBackup()); }
+
 // ---------------------------------------------------------------- persistence and the throttle
 
 void the_lifetime_count_survives_a_power_cycle_and_tonight_starts_at_0() {
@@ -566,6 +598,8 @@ int main(int, char**) {
   RUN_TEST(a_queued_start_that_stop_all_drops_is_not_a_run);
   RUN_TEST(a_queued_start_between_two_presses_is_an_api_run);
   RUN_TEST(a_run_started_on_a_sample_just_before_stop_all_is_counted);
+  RUN_TEST(a_run_started_on_a_sample_just_before_set_script_is_counted);
+  RUN_TEST(a_run_started_on_a_sample_just_before_put_backup_is_counted);
   RUN_TEST(the_lifetime_count_survives_a_power_cycle_and_tonight_starts_at_0);
   RUN_TEST(the_write_waits_for_the_period_or_ten_runs_and_a_quiet_board);
   RUN_TEST(nothing_is_written_while_a_show_runs);

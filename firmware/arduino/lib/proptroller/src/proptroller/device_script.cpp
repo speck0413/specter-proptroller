@@ -230,6 +230,7 @@ bool Controller::scriptWrite(const std::string& text, const SoundList& sounds, c
   why = scriptHeldText();
   if (!why.empty()) return false;  // the stored record stays as it is (callers refuse before this)
   for (int c = 0; c < CHANNEL_COUNT; c++) engine_.setScript(ALL_CHANNELS[c], false, 0);
+  scriptReportRuns(now_);  // a start taken on a 1 ms sample since the last step is still counted, once
   if (script_run_) script_run_->load(nullptr, now_);  // never left pointing at the table freed next
   script_prog_.reset();
   script_gen_++;
@@ -357,7 +358,8 @@ PT_STEP_CODE void Controller::scriptTick(Millis now) {
 }
 
 // An effect that left its first `wait for` started a run: each one a run event, once. A start can be taken on a
-// 1 ms sample, so the step reports it, and so does scriptReload before the runner's counts go back to 0.
+// 1 ms sample, so the step reports it, and so do scriptReload and scriptWrite before the runner's counts go back
+// to 0.
 PT_STEP_CODE void Controller::scriptReportRuns(Millis now) {
   if (!script_run_ || !script_prog_) return;  // no table: a new script is being written (scriptWrite)
   for (int e = 0; e < script_prog_->effects && e < SCRIPT_MAX_EFFECTS; e++)
