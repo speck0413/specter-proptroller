@@ -128,7 +128,8 @@ anywhere**), or if an assert in `tools/print_params.py` or the model finds two p
 
 `fusion/SpecterEnclosure/` is a Fusion script that builds the standard case as it was before 2026-10-24 (faceplates screwed
 on guide pins, the printed-pin hinge, cam latches: `mount = "screws"`, `lid_mount = "hinge"`) as a parametric Fusion design,
-from the same sizes as `proptroller-print.scad`; it doesn't model the inset or inline plates or the screwed lid yet. `tools/fusion_check/check.sh
+from the same sizes as `proptroller-print.scad`; it doesn't model the inset or inline plates or the screwed lid yet, so
+`tools/fusion_check` only compares like with like with `design.toml` set to `mount = "screws"` and `lid_mount = "hinge"`. `tools/fusion_check/check.sh
 cad` builds the same timeline in SolidCraft (`cad/specter-enclosure.solidcraft`) and a solid STEP assembly
 (`cad/specter-enclosure.step`), and compares every part with the OpenSCAD model. How to run it, what follows a
 parameter change and what was checked: `fusion/README.md`.
@@ -210,7 +211,7 @@ already on filament 2:
 | AC cover | `stl/cover_ac.3mf` | top face down | 102.6 × 88.5 mm, 44 mm tall with its chimney; `UNPLUG CORD BEFORE OPENING` inlaid on filament 2 |
 | TPU gaskets (screwed plates, optional) | `stl/gaskets.3mf`, `stl/gaskets_ac.3mf` (`stl/gasket_front.stl`, `gasket_back.stl`, `gasket_front_ac.stl`, `gasket_back_ac.stl`, `gasket_back_usb.stl`) | flat, lip up | TPU 95A on its own, from the external spool: 148.4 × 35.1 (front), 155.7 × 32.1 (back, the AC back's too; 155.7 × 34.9 with the USB port), 195.5 × 54.2 mm (AC front), 2.8 mm tall |
 | **First:** seal coupon | `stl/coupon_seal.stl`, in `stl/coupons.3mf` | as printed | 40 mm of the left wall's rim round its lid screw (land, groove, the ear) and that piece of the lid (tongue, skirt, the boss): try an M3 × 12 in the ear's pilot, the foam (or gasket) and the squeeze before the tub |
-| **First:** mount coupon | `stl/coupon_mount_inset.stl` (`coupon_mount_screws.stl`, `coupon_mount_glue.stl`), in `stl/coupons.3mf` | as printed | the front wall's right-hand end (inset: the recess, the opening's end with its last break-out rib, the nut bosses; screwed or glued: the OUT4 window and a guide-pin hole) and that end of the front plate: try the plate in its recess (`inset_clr`), snapping out the rib, the nuts in their pockets, turning a DC jack's nut inside the box, and your seal before the tub. The wall piece stands on a 2.4 mm edge: if it tips, add a brim to it in Studio |
+| **First:** mount coupon | `stl/coupon_mount_inset.stl` (`coupon_mount_screws.stl`, `coupon_mount_glue.stl`), in `stl/coupons.3mf` | as printed | the front wall's right-hand end (inset: the recess, the opening's end with its last break-out rib, the nut bosses; screwed or glued: the OUT4 window and a guide-pin hole) and that end of the front plate: try the plate in its recess (`inset_clr`), snapping out the rib, the nuts in their pockets, tightening a DC jack's nut (on its washer) over the opening and turning it inside the box, and your seal before the tub. The wall piece stands on a 2.4 mm edge: if it tips, add a brim to it in Studio |
 
 **No supports anywhere.** `tools/overhangs.py` slices every STL in its print pose every 0.2 mm, as the printer lays it,
 and checks that each layer stands on the one below: within 0.3 mm (a 45° wall moves 0.2 mm a layer) of material that is
@@ -249,6 +250,7 @@ after a fresh clone or after changing a number.
 | Inset or screwed plates: the seal | 0.72 m (AC case 0.83 m) of strip or tubing | one of, best first: **closed-cell EPDM foam tape 1/8 in (3.2 mm) thick, slit to 3.5 mm**; butyl tape 1/8 in thick cut into 2 mm strips (or Ø3 mm butyl rope); neutral-cure silicone, screwed down wet; 0.8 × 2.4 mm (1/32 × 3/32 in) soft silicone tubing; the printed TPU 95A gasket (`stl/gaskets.3mf`). In the 3.5 × 1.6 mm groove round each plate's back: **Sealing a screwed plate** |
 | Glued plates: adhesive | | gel CA for tack, a sealing adhesive for the groove, or acetone: **Glue** |
 | Panel-mount female DC barrel jack, 12 mm cutout, nut inside, **thread 8.5 mm or longer** | 5 | OUT1–4, PWR |
+| Inset plates: a thin M12 flat washer (about 1 mm, 20–24 mm across) | 5 | behind each DC jack's nut: in the inset tub the nut sits over the opening, which is only 13.2 mm tall there, so on its own it bears on two 0.9 mm strips of a 1.4 mm wall; the washer spreads it (plate 3 + wall 1.4 + washer 1 + nut 2.5 = 7.9 mm of the 9 mm thread) |
 | Panel-mount 3.5 mm **stereo (TRS)** jack, 7.8–8 mm cutout | 8 | TRIG1, RLY1, RLY2, LINE, SPK, CC1, CC2, TRIG2 (the AC case: 6, no RLY jacks). Three conductors: TRIG1/TRIG2 and the relays use all three. If yours is the switched 5-lug kind, wire only the T, R and S lugs |
 | Optional: panel-mount USB-C extension (nut, 12 mm thread) | 0–1 | only with `[connectors] USB` `enabled = true` |
 | Closed-cell EPDM foam tape, 1/8 in (3.2 mm) thick, 1/4 in wide, adhesive-backed | ~2 m (AC ~2.3 m) | the lid's seal (slit to 3 mm) and the screwed plates' (slit to 3.5 mm): search "closed-cell EPDM foam tape 1/8 inch" |
@@ -815,7 +817,8 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
   above them. Holding them too would cut the lid's lift to about 0.1–0.3 mm (the FEA), but needs about 12 mm more box
   height over the plates.
   ![the screwed lid: its six bosses over the ears](docs/lid-screws.png)
-- **Hinged lid (`lid_mount = "hinge"`, not built).** The model keeps the earlier lid: two printed three-knuckle hinges at
+- **Hinged lid (`lid_mount = "hinge"` in `design.toml`, not built).** The model keeps the earlier lid (smoke-tested
+  2026-10-24: with `mount = "screws"` its tub, lid and back plate render closed and manifold, with no islands): two printed three-knuckle hinges at
   1/3 and 2/3 of the back edge (`[hinge]`, pinned with an M3 × 20 or #4 × ¾ in pan head each; or `hinge = "everbilt"`
   for two Everbilt 1 in utility hinges) and four screwed cam latches on the end walls (`[latch]`), with the back plate
   notched under the hinges. `tools/print_build.sh` builds the draw latch's fit coupon with it (`stl/coupon_latch.3mf`).
@@ -839,7 +842,7 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
    - **glue:** sand and clean both faces, the sealant bead in the groove and the CA dots outside it (or acetone), press
      the plate onto its pins and hold it; a fillet of sealant round the chamfer, 24 h to cure.
 3. Fit the jacks: each 3.5 mm jack through the wall's opening (or window) and the plate from inside, nut on the show face;
-   each DC jack through the plate from the front, nut inside. Inline: straight through the wall's holes. Wire them while there is room. Then the board onto the standoffs
+   each DC jack through the plate from the front, nut inside (inset: over a thin M12 washer, **Hardware**). Inline: straight through the wall's holes. Wire them while there is room. Then the board onto the standoffs
    (M3 × 6), and wire it.
 4. Fit the TRIG2 push button in the lid (its O-ring on top, nut underneath).
 5. Lay the EPDM foam strip (slit to 3 mm) in the rim groove (see **Seal (the lid)**), put the lid on (it fits one way
