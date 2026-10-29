@@ -78,14 +78,17 @@ assert _sw <= P['gasket_tip'] + P['gasket_clr'] - 0.05, f"[gasket]: the lip's ti
 P['gasket_swing'] = round(_sw, 2)
 # the same section as the lid's TPU gasket in the rim's groove (groove_w x groove_d), pressed by the latched lid's tongue to
 # groove_d + seal_gap - tongue_h over the floor
-_gl = P['groove_d'] + P['seal_gap'] - P['tongue_h']; _lw = P['groove_w'] - 2 * P['gasket_clr']; _lrun = _lw - P['gasket_lip'] - P['gasket_tip']
+_gl = P['groove_d'] + P['seal_gap'] - P['tongue_h']; _lw = P['groove_w'] - 2 * P['gasket_clr']; _lrun = _lw - P['gasket_lip'] - P['gasket_tip_lid']
 assert _lrun > 0 and _lrun / (round(_rise / 0.2) - 1) <= 0.25 + 1e-9, '[gasket]: the lid gasket\'s lip leans too far to print (over 0.25 mm a layer)'
 assert P['gasket_h'] > _gl > P['gasket_base'], '[gasket]: gasket_h over the latched tongue\'s height in the groove (the lid gasket\'s squeeze)'
 assert _lw * P['gasket_base'] + P['gasket_lip'] * _rise <= 0.85 * P['groove_w'] * _gl, '[gasket]: too much TPU to fit the lid groove squeezed'
 _lsw = math.sqrt(_lrun ** 2 + _rise ** 2 - (_gl - P['gasket_base']) ** 2) - _lrun
-assert _lsw <= P['gasket_tip'] + P['gasket_clr'] - 0.05, f"[gasket]: the lid gasket's tip swings {_lsw:.2f} mm out, past the groove"
+assert _lsw <= P['gasket_tip_lid'] + P['gasket_clr'] - 0.05, f"[gasket]: the lid gasket's tip swings {_lsw:.2f} mm out, past the groove"
 P['gasket_lid_squeeze'] = round(P['gasket_h'] - _gl, 2); P['gasket_lid_swing'] = round(_lsw, 2)
 P['knuckle_l'] = round((P['pin_span'] - 2 * P['knuckle_gap']) / 3, 3)   # the hinge screw sets the hinge's length
+assert P['mount'] in ('inset', 'inline', 'screws', 'glue'), '[plates] mount: "inset", "inline", "screws" or "glue"'
+assert P['lid_mount'] in ('screws', 'hinge'), '[lid] lid_mount: "screws" or "hinge"'
+LID_SCREWS = P['lid_mount'] == 'screws'
 B_ = PARTS['button']
 C_LEFT, C_RIGHT = P.pop('clear_left'), P.pop('clear_right')
 C_FRONT, C_BACK = P.pop('clear_front'), P.pop('clear_back')
@@ -146,7 +149,7 @@ EXT = {'usb': [PT['usb']['window'] - 2 * P['win_m']] * 2, 'j35p': [PT['j35p']['b
 
 # per wall, in the plate's own frame as seen from outside: x to the right (front: x = X; back: x = -X), y up from the row
 OU = PARTS['outlet']
-def wins_for(c, x):   # the wall windows behind a connector: [x0, x1, y0, y1, shape], shape 0 a rounded window, 1 a teardrop hole
+def wins_for(c, x):   # the wall windows behind a connector: [x0, x1, y0, y1, shape], shape 0 a rounded window, 1 a teardrop hole, 2 a receptacle face's window
     y, m = c['y'], P['win_m']
     if c['kind'] != 'outlet':
         w, h = EXT[c['kind']]
@@ -154,7 +157,7 @@ def wins_for(c, x):   # the wall windows behind a connector: [x0, x1, y0, y1, sh
     # a duplex receptacle on its side: a window per face, and a hole for each of its three #6-32s (the strap's two mounting
     # slots, and the faceplate screw tapped into the strap between the faces)
     fw, fh, r = OU['face_h'] / 2 + m, OU['face_w'] / 2 + m, OU['screw_d'] / 2
-    out = [[x + s_ * OU['face_pitch'] / 2 - fw, x + s_ * OU['face_pitch'] / 2 + fw, y - fh, y + fh, 0] for s_ in (-1, 1)]
+    out = [[x + s_ * OU['face_pitch'] / 2 - fw, x + s_ * OU['face_pitch'] / 2 + fw, y - fh, y + fh, 2] for s_ in (-1, 1)]
     return out + [[x + d - r, x + d + r, y - r, y + r, 1] for d in (-OU['screw_pitch'] / 2, 0, OU['screw_pitch'] / 2)]
 def half_h(c): return (OU['face_w'] / 2 if c['kind'] == 'outlet' else EXT[c['kind']][1] / 2) + P['win_m']   # its windows' half height
 xw0, xw1 = ix0 - P['wall'] + P['corner_r'], ix1 + P['wall'] - P['corner_r']   # the outside walls' straight stretch
@@ -269,7 +272,7 @@ for face in ('front', 'back'):
     csr = P['screw_head'] / 2; ed = csr + 1.5
     hw = max(P['pin_span'] / 2, (PARTS['hinge']['leaf_l'] + 2) / 2) + 0.5   # the pin hinge's supports or the Everbilt pad, and 0.5
     hxs = P['hinge_xs']
-    notches = sorted([[round(-h - hw, 2), round(-h + hw, 2)] for h in hxs]) if face == 'back' else []
+    notches = sorted([[round(-h - hw, 2), round(-h + hw, 2)] for h in hxs]) if face == 'back' and not LID_SCREWS else []   # a screwed lid has no hinges over the plate
     def over_for(yt):   # the top row's bosses: their 45-degree wedge must not hang over a window it would reach (it would start on air)
         return [[w[0] - P['boss_w'] / 2 + csr + 1.4 - 0.5, w[1] + P['boss_w'] / 2 - csr - 1.4 + 0.5] for w in wins
                 if w[3] + 0.4 > yt - P['boss_h'] / 2 - P['boss_len']]
@@ -374,9 +377,94 @@ for face in ('front', 'back'):
             return min(dw, dp - ph) >= ph + 0.5
         return any(clear(x0 + x1 - q[0], 2 * cy - q[1]) for q in pins)
     assert blocked((f0 + f1) / 2) and blocked(sum(pf_s) / 2), f'{face}: the plate would also fit turned round'
-    walls[face] = {'moved': moved, 'x0': round(x0, 2), 'x1': round(x1, 2), 'pf': [f0, f1], 'pf_s': pf_s, 'notches': notches, 'ring': ring,
+    # mount = "inset": one opening through the wall behind the plate, the windows' box, at least ring_m (sg_m by a DC jack)
+    # inside the seal groove all round (it seals on the recess's floor round the opening); break-out ribs across it at most
+    # break_pitch apart, so the opening's top never bridges further (snapped out after printing)
+    # the opening: the windows joined into one, each gap between two windows as tall as the shorter of them (so the
+    # opening stays clear of the seal's bends round the screws), as rects [x0, x1, y0, y1] along the wall
+    ws_ = [w for w in wins if w[4] != 1]   # the receptacle's faces keep their own windows (the strap's screws go through the wall between them)
+    ops = []
+    for k_, w in enumerate(ws_):
+        ops.append([w[0], w[1], w[2], w[3]])
+        if k_ + 1 < len(ws_) and ws_[k_ + 1][0] > w[1] and w[4] == 0 and ws_[k_ + 1][4] == 0:
+            n_ = ws_[k_ + 1]; ops.append([w[1], n_[0], max(w[2], n_[2]), min(w[3], n_[3])])
+    def _inE(x, y, g):   # the seal region E, as seal_for tests it
+        r_ = seal['rect']
+        if not (r_[0] + g <= x <= r_[1] - g and r_[2] + g <= y <= r_[3] - g): return False
+        return not any(math.hypot(x - d[0], y - d[1]) < d[2] + g for d in seal['discs']) and not any(c[0] - g < x < c[1] + g and y > c[2] - g for c in seal['cuts'])
+    g_op = m + SW / 2 + 0.05
+    def _bad(o): return [q for q in [(o[0] + (o[1] - o[0]) * i_ / 40, y_) for i_ in range(41) for y_ in (o[2], o[3])] if not _inE(q[0], q[1], g_op)]
+    for k_, o in enumerate(ops):   # a gap that would reach a screw's bend is made shorter, from whichever edge is in the way
+        while _bad(o) and o[3] - o[2] > 3.0:
+            q = _bad(o)[0]
+            if q[1] < (o[2] + o[3]) / 2: o[2] = round(o[2] + 0.25, 2)
+            else: o[3] = round(o[3] - 0.25, 2)
+        assert not _bad(o), f'{face}: the inset plate\'s opening runs into the seal groove at {_bad(o)[0]}'
+    # break-out ribs: one wherever the opening's height steps (its top then always bridges between two supports), and more
+    # so that no stretch of the top is longer than break_pitch
+    breaks = []
+    for a_, b_ in zip(ops, ops[1:]):
+        if abs(a_[1] - b_[0]) < 1e-6 and (abs(a_[3] - b_[3]) > 1e-6 or abs(a_[2] - b_[2]) > 1e-6): breaks.append(a_[1])
+    runs, cur = [], [ops[0][0], ops[0][1]]   # each continuous stretch of the opening, split at the steps
+    for a_, b_ in zip(ops, ops[1:]):
+        if abs(a_[1] - b_[0]) < 1e-6: cur[1] = b_[1]
+        else: runs.append(cur); cur = [b_[0], b_[1]]
+    runs.append(cur)
+    edges = sorted({x_ for r_ in runs for x_ in r_} | set(breaks))
+    for a_, b_ in zip(edges, edges[1:]):
+        if not any(r_[0] - 1e-6 <= a_ and b_ <= r_[1] + 1e-6 for r_ in runs): continue   # solid wall between two openings
+        nb_ = max(0, math.ceil((b_ - a_ - 1e-6) / P['break_pitch']) - 1)
+        breaks += [a_ + (b_ - a_) * (i_ + 1) / (nb_ + 1) for i_ in range(nb_)]
+    breaks = sorted(round(x_, 2) for x_ in breaks)
+    walls[face] = {'opening': [[round(v, 2) for v in o] for o in ops], 'breaks': breaks, 'moved': moved, 'x0': round(x0, 2), 'x1': round(x1, 2), 'pf': [f0, f1], 'pf_s': pf_s, 'notches': notches, 'ring': ring,
                    'pins': pins, 'screws': screws, 'boss_lens': [P['boss_len']] * len(screws), 'nuts': [1] * len(screws), 'seal': seal, 'windows': [[round(v, 2) for v in w[:4]] + [w[4]] for w in wins],
                    'labels': labs, 'conns': [[c['id'], c['kind'], round(x, 2), c['y']] for c, x in zip(cs, xs)]}
+
+# the screwed lid (lid_mount = "screws"): an ear on the tub's outside wall under each screw, outside the seal: [wall, place
+# along it (front / back: x, left / right: y)]
+xcB, ycB = (ix0 + ix1) / 2, (iyf + iyb) / 2
+yw0, yw1 = iyf - P['wall'] + P['corner_r'], iyb + P['wall'] - P['corner_r']   # the end walls' straight stretch
+P['lid_ears'] = []
+if LID_SCREWS:
+    r_e, d_e = P['lid_screw_r'], P['lid_screw_d']
+    ears = [['left', ycB], ['right', ycB]]
+    for face, off in (('front', P['lid_screw_front']), ('back', P['lid_screw_back'])):
+        w = walls[face]
+        px0, px1 = (w['x0'], w['x1']) if face == 'front' else (-w['x1'], -w['x0'])   # the plate in world x
+        cl = P['inset_clr'] + 0.5
+        lo, hi = xw0 + off, xw1 - off
+        if lo + r_e <= px0 - cl and hi - r_e >= px1 + cl: ears += [[face, lo], [face, hi]]
+        else:   # no room past the plate (the AC front): one on each end wall near that corner
+            yy = iyf + P['latch_in'] if face == 'front' else iyb - P['latch_in']
+            ears += [['left', yy], ['right', yy]]
+    for f, s_ in ears:
+        a, b = (xw0, xw1) if f in ('front', 'back') else (yw0, yw1)
+        assert a + r_e + 0.3 <= s_ <= b - r_e - 0.3, f'a lid screw ear runs round the corner ({f}, {s_})'
+    def _ew(e):
+        f, s_ = e
+        return {'front': (s_, iyf - P['wall'] - d_e), 'back': (s_, iyb + P['wall'] + d_e), 'left': (ix0 - P['wall'] - d_e, s_), 'right': (ix1 + P['wall'] + d_e, s_)}[f]
+    pts = [_ew(e) for e in ears]
+    assert any(min(math.hypot(2 * xcB - x - a, 2 * ycB - y - b) for a, b in pts) > 2 * r_e for x, y in pts), 'the screwed lid would also go on turned round'
+    P['lid_ears'] = [[f, round(s_, 2)] for f, s_ in ears]
+    zs = P['z_top'] + P['seal_gap'] - P['drip'] - 0.5   # the skirt now runs round the back too: both plates under it
+    for face in ('front', 'back'):
+        assert P['z_row'] + walls[face]['pf_s'][1] <= zs and P['z_row'] + walls[face]['pf'][1] <= zs, f'{face}: the plate reaches up into the lid skirt'
+# TRIG2 on the lid: in a cell of the lid's rib grid (every rib full length), its nut under the lid clear of the ribs, its body
+# clear of the back jacks' bodies and of the board's parts
+_bx, _by = P['button_xy']; _pit = P['lid_rib_pitch']; _br = 14 / 2 + 0.8 + 0.5   # the 14 mm nut, the rib's half width, 0.5
+assert min(abs(_bx - (xcB + k * _pit)) for k in range(-2, 3)) >= _br and min(abs(_by - (ycB + k * _pit)) for k in range(-1, 2)) >= _br, \
+    f'TRIG2 at {P["button_xy"]} sits on a lid rib: move [parts.button] x / y into a rib cell'
+_ri = P['land_w'] + 1 - P['wall']   # the ribs stop this far inside the inner walls
+assert ix0 + _ri + _br <= _bx <= ix1 - _ri - _br and iyf + _ri + _br <= _by <= iyb - _ri - _br, 'TRIG2 is outside the lid\'s rib grid'
+_zb = P['z_top'] + P['seal_gap'] - B_['depth']; _rb = B_['body_d'] / 2   # the button body's bottom and radius
+for c in conns:
+    if c['face'] != 'back' or c['kind'] == 'outlet': continue
+    jw = PARTS['j35p']['behind_d'] + 2 if c['kind'] == 'j35p' else PARTS['dcp']['behind_d'] + 2 if c['kind'] == 'dcp' else 16
+    plan = abs(_bx - c['X']) < jw / 2 + _rb + 1 and _by + _rb + 1 > iyb + P['wall'] - 22
+    assert not plan or _zb >= P['z_row'] + jw / 2 + 1, f"TRIG2's body runs into {c['id']}'s body behind the back plate"
+for n, x0_, y0_, z0_, x1_, y1_, z1_, kind in json.load(open(os.path.join(ROOT, 'board-parts.json'))):
+    if x0_ - 1 < _bx + _rb and _bx - _rb < x1_ + 1 and -y1_ - 1 < _by + _rb and _by - _rb < -y0_ + 1:
+        assert _zb >= P['z_board'] + z1_ + 1, f"TRIG2's body runs into {n} on the board"
 
 # the AC case's barrier, from where the board's parts are (board-parts.json, rev B): world boxes [x0, y0, x1, y1, z0, z1].
 # The mains bay is the front left: in front of the board from the left wall to just right of J_R2, round a low-voltage pocket
@@ -385,7 +473,7 @@ for face in ('front', 'back'):
 # wall, between J_R2 and J_O1 (OUT1's terminal), closes its right side. Every barrier stops 1 mm under the lid's ribs; the
 # lid has a rib each side of each, overlapping it, so a wire can't cross over the top. A screwed cover closes the bay.
 P['ac_barrier'], P['ac_curtain'], P['ac_gland'] = [], [], []
-P.update({'ac_earth': [], 'ac_ties': [], 'ac_cover': [], 'ac_cover_bosses': [], 'ac_chimney': [], 'ac_seat': 0.0, 'ac_cover_z': 0.0, 'ac_ribs': [],
+P.update({'ac_earth': [], 'ac_ties': [], 'ac_cover': [], 'ac_cover_bosses': [], 'ac_chimney': [], 'ac_seat': 0.0, 'ac_seat_inset': 0.0, 'ac_cover_z': 0.0, 'ac_ribs': [],
           'ac_shelf': [], 'ac_lip': [], 'ac_stops': [], 'ac_niche_out': [], 'ac_earth2': []})
 # rubber feet: the screw's way into the boss is blind; the cap over the pilot must stay closed
 FCAP = P['z_floor'] + P['feet_boss_h'] - P['feet_depth']
@@ -451,6 +539,9 @@ if AC:
     for r_ in P['ribs']:
         assert abs((iyf + iyb) / 2 + r_ - gy) >= G['nut_d'] / 2 + 1.5, 'a wall rib is under the gland locknut: move it ([ac.box] ribs)'
     P['ac_gland'] = [gy, gz, G['hole_d'], G['nut_d'], G['cap_d']]
+    for f, s_ in P['lid_ears']:   # the gland's cap clear of the lid screws' ears on the left wall
+        _eb = P['z_top'] + P['seal_gap'] - P['drip'] - P['lid_screw_gap'] - P['lid_ear_h'] - (P['lid_screw_d'] + P['lid_screw_r'])
+        assert f != 'left' or abs(s_ - gy) >= G['cap_d'] / 2 + P['lid_screw_r'] + 0.5 or gz + G['cap_d'] / 2 <= _eb - 0.5, "the gland's cap runs into a lid screw's ear"
     # the earth wire's way to H3 (the board's plated earth point, tied to GND): a hole in the barrier's edge wall west of it
     ex, ey = ACP['earth_point'][0], -ACP['earth_point'][1]
     assert any(abs(h[0] - ex) < 0.5 and abs(h[1] - ey) < 0.5 for h in holes), 'earth_point is not one of the board\'s mounting holes'
@@ -488,6 +579,10 @@ if AC:
     seat = P['plate_t'] + P['wall'] + ACP['face_set'] - OU['face_proud']
     assert -6 <= seat <= P['wall'] - 1.0, f"the receptacle seat ({seat:.2f} mm) leaves under 1 mm of wall, or wants pads over 6 mm"
     P['ac_seat'] = round(seat, 2)
+    seat_i = seat - P['inset_d']   # mount = "inset": the plate sits inset_d deeper, so the strap does too
+    assert -6 <= seat_i <= P['wall'] - P['inset_d'] - 1.0, f"the inset receptacle seat ({seat_i:.2f} mm) leaves under 1 mm of wall, or wants pads over 6 mm"
+    P['ac_seat_inset'] = round(seat_i, 2)
+    if P['mount'] == 'inset': seat = seat_i   # the stops below follow design.toml's mount (another mount's strap sits within inset_d of them)
     # the receptacle's stops: a post from the floor behind each end of its strap, between the body and the slot's nut, 0.3 mm
     # off the strap's back, so a plug pushed in can't push the strap off the wall (its screws only hold it in tension)
     oc = [c for c in conns if c['kind'] == 'outlet'][0]; ox, oz = oc['X'], P['z_row'] + oc['y']

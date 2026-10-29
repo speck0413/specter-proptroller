@@ -1,8 +1,7 @@
 # The enclosure in Fusion (and SolidCraft, and STEP)
 
 `SpecterEnclosure/` is a Fusion script that builds the enclosure as a parametric design: user parameters, dimensioned
-sketches, extrudes, mirrors, patterns and holes in a grouped timeline. It is the standard case: screwed faceplates, the
-printed-pin hinge and cam latches. Run it once, save the design, and work in Fusion from then on.
+sketches, extrudes, mirrors, patterns and holes in a grouped timeline. It is the case with screwed faceplates and the hinged lid (not the default inset plates or screwed lid). Run it once, save the design, and work in Fusion from then on.
 
 The same model, built from the same script, also comes as:
 - `../cad/specter-enclosure.solidcraft`, a SolidCraft design with the same parameters, sketches and timeline
@@ -57,19 +56,18 @@ To move a jack by hand in Fusion: its dimension in the plate's **jack holes** sk
 `../design.toml` holds every size of the OpenSCAD model the enclosure is printed from. `../tools/fusion_layout.py`
 copies the sizes and the faceplate layout into the script (the block between the `layout` markers), so the script
 matches the OpenSCAD model. After changing `design.toml`: `../tools/print_build.sh`, then
-`python3 ../tools/fusion_layout.py`, then run the script (and `check.sh` for the SolidCraft and STEP files).
+`python3 ../tools/fusion_layout.py` (it needs `[plates] mount = "screws"` and `[lid] lid_mount = "hinge"` set first), then run the script (and `check.sh` for the SolidCraft and STEP files).
 
 ## How it was checked
 
-Fusion doesn't run on Linux, where this was made. `../tools/fusion_check/` holds a stand-in for the part of Fusion's
-API the script uses, which builds each feature in SolidCraft instead; that run is the SolidCraft design and the
+Fusion doesn't run on Linux; the script has been built only through the stand-in in `../tools/fusion_check/`. The stand-in builds each feature in SolidCraft instead; that run is the SolidCraft design and the
 STEP. Every part was then compared with the OpenSCAD model's, as assembled. The comparison ray-casts both on a 0.05-0.2 mm
 grid and measures the volume where they differ:
 
 | Part | Volume | Differs | Why |
 |---|---|---|---|
 | Tub | 184 680 mm³ | 0.39 % | the OpenSCAD model steps its 45° floor fillet and rim underside in 0.5 and 0.2 mm layers; here they are true 45° faces (630 mm³ of the 725) |
-| Lid | 97 519 mm³ | 0.18 % | the inlaid title's letter spacing |
+| Lid | 97 519 mm³ (not re-measured at this commit) | 0.18 % | the inlaid title's letter spacing |
 | Front plate | 14 640 mm³ | 0.5 % | the back edge's 45° chamfer, stepped in 0.2 mm layers there, true here; labels |
 | Back plate | 13 340 mm³ | 0.5 % | the same |
 | Latch | 1 027 mm³ | 0.09 % | the cam path, a fitted spline here |

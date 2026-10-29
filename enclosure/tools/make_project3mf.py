@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 """Bambu Studio project files, one per version of the case, each part on its build plate, all on ASA:
 
-  specter-case-screws.3mf / specter-case-glue.3mf                   the standard case, printed pin hinge; screwed or glued plates
-  specter-case-everbilt-screws.3mf / -everbilt-glue.3mf             the same with two Everbilt 1 in hinges
-  specter-case-ac-screws.3mf / -ac-glue.3mf (and -ac-everbilt-*)    the AC case (README "AC case (advanced)", rev B only)
+  specter-case-inset.3mf (the default) / -inline / -screws / -glue    the standard case: the faceplates' mount
+  specter-case-ac-inset.3mf / -ac-screws / -ac-glue                   the AC case (README "AC case (advanced)", rev B only)
 
-  standard case: two plates (the owner's arrangement, 2026-10-21: fewer plate changes)
-    plate 1  Tub + latches + back plate   (the 4 latches turned 90 degrees along the left edge;
-                                          the back plate's labels = filament 2)
-    plate 2  Lid + front plate            (the lid's title and the plate's labels = filament 2)
+  standard case: two plates (fewer plate changes)
+    plate 1  Tub + back plate   (the back plate's labels = filament 2; inline: the tub alone)
+    plate 2  Lid + front plate  (the lid's title and the plate's labels = filament 2; inline: the lid alone)
   AC case: four plates (its tub is too big to share one)
-    plate 1  Faceplates + 4 latches   (labels = filament 2)
+    plate 1  Faceplates     (labels = filament 2)
     plate 2  Tub
-    plate 3  Lid           (title text = filament 2)
+    plate 3  Lid            (title text = filament 2)
     plate 4  the mains-bay cover (its warning = filament 2)
 
 The layout and the process settings are the owner's, as saved from Bambu Studio on 2026-10-21 17:54 (bambu/project_settings.config:
@@ -41,18 +39,15 @@ BED, STRIDE = 256.0, 256.0 * 1.2       # Bambu Studio lays plates out on a grid 
 
 SETTINGS = os.path.join(ROOT, 'bambu', 'project_settings.config')
 # footprint centres on each plate, from the owner's saved arrangement (plate_1.json / plate_2.json of that save)
-LAYOUT = {'Tub + latches + back plate': [(103.4, 45.0), (20.8, 129.2, -90), (21.1, 147.6, -90), (20.5, 168.8, -90), (19.3, 188.1, -90),
-                                         (143.2, 154.4)],
-          'Lid + front plate': [(108.3, 42.8), (134.7, 159.7)],
-          'Lid + front plate everbilt': [(108.3, 40.5), (134.7, 157.6)],   # the Everbilt lid is 7.5 mm deeper (its hinge pads)
-          'Faceplates + latches': [(123.9, 57.9), (127.9, 114.4), (145.4, 172.3), (127.0, 172.6), (105.8, 172.0), (86.5, 170.8)],
-          'Faceplates + latches AC': [(128.0, 60.0), (128.0, 132.0), (161.0, 190.0), (139.0, 190.0), (117.0, 190.0), (95.0, 190.0)],
+LAYOUT = {'Tub + back plate': [(103.4, 26.0), (128.0, 150.0)],
+          'Lid + front plate': [(108.3, 26.0), (128.0, 150.0)],
+          'Faceplates AC': [(128.0, 60.0), (128.0, 132.0)],
           'Gaskets (TPU 95A)': [(128.0, 128.0), (128.0, 100.0), (128.0, 160.0)],
           'Gaskets (TPU 95A) AC': [(128.0, 128.0), (128.0, 95.0), (128.0, 165.0)],
           'Tub': [(135.2, 123.1)], 'Lid': [(128.0, 128.0)], 'Cover': [(128.0, 128.0)]}
 # the prime tower's corner (wipe_tower_x/y) per plate, as the owner placed it; TOWER_BOX: its footprint from that corner,
 # brim included, as Bambu Studio sliced it (plate_1.json of the save: 31 x 30.5 mm, starting 3.2 mm before the corner)
-TOWER = {'Tub + latches + back plate': (215.8, 36.8), 'Lid + front plate': (217.0, 28.1)}   # the Everbilt lid's plate: 1 mm forward, clear of its lid's front ear
+TOWER = {'Tub + back plate': (215.8, 18.0), 'Lid + front plate': (217.0, 18.0)}
 TOWER_BOX = (-3.2, -3.2, 27.8, 27.3)
 TEXT_COLOUR = '#FFFFFF'
 TPU_COLOUR = '#202020'
@@ -179,25 +174,26 @@ OBJ_META = {}
 BRIM = {}
 
 GASKET_BACK = {False: 'gasket_back', True: 'gasket_back_ac' if 'gasket_back_ac' in json.load(open(os.path.join(STL, 'gaskets.json'))) else 'gasket_back'}
-def variant(name):   # name: [ac-][everbilt-]screws|glue
-    ac, ev, m = name.startswith('ac'), 'everbilt' in name, name.split('-')[-1]
-    k, e = ('_ac' if ac else ''), ('_everbilt' if ev else '')
+def variant(name):   # name: [ac-]inset|inline|screws|glue
+    ac, m = name.startswith('ac'), name.split('-')[-1]
+    k = '_ac' if ac else ''
     # the TPU gaskets' plate (filament 3, TPU 95A): the lid's ring with the screwed plates' gaskets inside it
-    tpu = ('Gaskets (TPU 95A)' + (' AC' if ac else ''), [(f'gasket_lid{k}', [])] + ([(f'gasket_front{k}', []), (GASKET_BACK[ac], [])] if m == 'screws' else []))
+    tpu = ('Gaskets (TPU 95A)' + (' AC' if ac else ''), [(f'gasket_lid{k}', [])] + ([(f'gasket_front{k}', []), (GASKET_BACK[ac], [])] if m in ('screws', 'inset') else []))
+    if not ac and m == 'inline': return [('Tub', [(f'tub_{m}', [])]), ('Lid', [('lid', ['lid_text'])]), tpu]
     if not ac: return [
-        ('Tub + latches + back plate', [(f'plate_back_{m}', [f'plate_back_text_{m}'])] + [('latch', [])] * 4 + [(f'tub{e}_{m}', [])]),
-        ('Lid + front plate', [(f'plate_front_{m}', [f'plate_front_text_{m}']), (f'lid{e}', ['lid_text'])]),
+        ('Tub + back plate', [(f'plate_back_{m}', [f'plate_back_text_{m}']), (f'tub_{m}', [])]),
+        ('Lid + front plate', [(f'plate_front_{m}', [f'plate_front_text_{m}']), ('lid', ['lid_text'])]),
         tpu,
     ]
     out = [
-        ('Faceplates + latches', [(f'plate_front{k}_{m}', [f'plate_front_text{k}_{m}']), (f'plate_back{k}_{m}', [f'plate_back_text{k}_{m}'])] + [('latch', [])] * 4),
-        ('Tub', [(f'tub{k}{e}_{m}', [])]),
-        ('Lid', [(f'lid{k}{e}', [f'lid_text{k}'])]),
+        ('Faceplates', [(f'plate_front{k}_{m}', [f'plate_front_text{k}_{m}']), (f'plate_back{k}_{m}', [f'plate_back_text{k}_{m}'])]),
+        ('Tub', [(f'tub{k}_{m}', [])]),
+        ('Lid', [(f'lid{k}', [f'lid_text{k}'])]),
     ]
     if ac: out.append(('Cover', [('cover_ac', ['cover_text_ac'])]))
     out.append(tpu)
     return out
-VARIANTS = [f'{c}{h}{m}' for c in ('', 'ac-') for h in ('', 'everbilt-') for m in ('screws', 'glue')]
+VARIANTS = [f'{c}{m}' for c in ('', 'ac-') for m in ('inset', 'inline', 'screws', 'glue') if not (c and m == 'inline')]
 
 def footprint(T):   # x/y box of what touches the bed (the slicer's plate layout centres on this)
     z0 = min(v[2] for t in T for v in t)
@@ -333,14 +329,14 @@ def build(name, plates=None, layout=LAYOUT, out=None, settings=None):
 if __name__ == '__main__':
     # --usb _usb (or _nousb): also stl/plate_back_usb.3mf, the back plate with the USB panel port the other way round
     u = sys.argv[sys.argv.index('--usb') + 1] if '--usb' in sys.argv else None
-    for v in VARIANTS: build(v, layout=dict(LAYOUT, Tub=[(128.0, 141.5)], Lid=[(128.0, 141.9)], **{'Faceplates + latches': LAYOUT['Faceplates + latches AC']}) if v.startswith('ac') else dict(LAYOUT, **{'Lid + front plate': LAYOUT['Lid + front plate everbilt'], 'Lid + front plate tower': (217.0, 27.0)}) if 'everbilt' in v else LAYOUT)   # the AC tub (226 x 219 with its brim): its front-left corner clear of the exclusion zone
+    for v in VARIANTS: build(v, layout=dict(LAYOUT, Tub=[(128.0, 141.5)], Lid=[(128.0, 141.9)], Faceplates=LAYOUT['Faceplates AC']) if v.startswith('ac') else dict(LAYOUT, Tub=[(128.0, 128.0)], Lid=[(128.0, 128.0)]))   # the AC tub: its front-left corner clear of the exclusion zone
     # stl/<part>.3mf: each part with its text alone, as a project on the same settings (the text already on filament 2)
-    SINGLE = {f'plate_{f}{k}_{m}': [f'plate_{f}_text{k}_{m}'] for f in ('front', 'back') for k in ('', '_ac') for m in ('screws', 'glue')}
-    SINGLE.update({f'lid{k}{e}': [f'lid_text{k}'] for k in ('', '_ac') for e in ('', '_everbilt')})
+    SINGLE = {f'plate_{f}{k}_{m}': [f'plate_{f}_text{k}_{m}'] for f in ('front', 'back') for k in ('', '_ac') for m in ('inset', 'screws', 'glue')}
+    SINGLE.update({f'lid{k}': [f'lid_text{k}'] for k in ('', '_ac')})
     SINGLE['cover_ac'] = ['cover_text_ac']
     if u: SINGLE[f'plate_back{u}'] = [f'plate_back_text{u}']
     for main, extra in SINGLE.items():
-        build(main, [(main, [(main, extra)])], {main: [(BED / 2, 141.9 if main.startswith('lid_ac') else 130.0 if main == 'lid_everbilt' else BED / 2)]}, os.path.join(STL, main + '.3mf'))
+        build(main, [(main, [(main, extra)])], {main: [(BED / 2, 141.9 if main.startswith('lid_ac') else BED / 2)]}, os.path.join(STL, main + '.3mf'))
     # the screwed plates' printed gaskets, TPU 95A on their own (not in the ASA projects): stl/gaskets.3mf for the standard
     # case, stl/gaskets_ac.3mf for the AC case (the build lists in stl/gaskets.json which gaskets differ between cases)
     GK = json.load(open(os.path.join(STL, 'gaskets.json')))
@@ -350,8 +346,8 @@ if __name__ == '__main__':
     for g in GK:   # each gasket alone too
         build(g, [('Gasket (TPU 95A)', [(g, [])])], {'Gasket (TPU 95A)': [(BED / 2, BED / 2)]}, os.path.join(STL, g + '.3mf'), settings=tpu_only)
     # the fit coupons, on ASA: print them first
-    build('coupons', [('Coupons', [('coupon_seal', []), ('coupon_mount_screws', []), ('coupon_mount_glue', [])])],
-          {'Coupons': [(70.0, 80.0), (180.0, 80.0), (128.0, 180.0)]}, os.path.join(STL, 'coupons.3mf'))
+    build('coupons', [('Coupons', [('coupon_seal', []), ('coupon_mount_inset', []), ('coupon_mount_screws', []), ('coupon_mount_glue', [])])],
+          {'Coupons': [(70.0, 80.0), (180.0, 80.0), (70.0, 185.0), (180.0, 185.0)]}, os.path.join(STL, 'coupons.3mf'))
     # the draw latch's fit test (owner 2026-10-22): a piece of the left wall and that end of the lid, a lever, its two hook
     # plates and its two pins
     build('coupon_latch', [('Draw latch coupon', [('coupon_latch_wall', []), ('coupon_latch_lid', []), ('dl_lever', []), ('dl_hook', []), ('dl_hook', []), ('dl_pin1', []), ('dl_pin2', [])])],

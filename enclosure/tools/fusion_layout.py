@@ -4,7 +4,7 @@
     python3 tools/fusion_layout.py            # rewrite the block in place
     python3 tools/fusion_layout.py --check    # exit 1 if the block is out of date
 
-The Fusion script models the standard case (screwed faceplates, printed-pin hinge, cam latches). Its sizes and the
+The Fusion script models the case with screwed faceplates and the hinged lid (not the default inset plates or screwed lid). Its sizes and the
 faceplate layout come from the same params.json as the OpenSCAD model, moved to the Fusion design's origin: the centre
 of the box, on the underside of the floor. On a faceplate, u is mm to the right of the box's centreline seen from
 outside that face and v is mm above the jack row.
@@ -17,6 +17,7 @@ BEGIN, END = '# ---- layout: begin', '# ---- layout: end'
 
 D = json.load(open(os.path.join(ROOT, 'params.json')))
 P = D['P']
+assert P['mount'] == 'screws' and P.get('lid_mount') == 'hinge', 'set [plates] mount = "screws" and [lid] lid_mount = "hinge" first'
 XC, YC = (P['ix0'] + P['ix1']) / 2, (P['iyf'] + P['iyb']) / 2
 
 

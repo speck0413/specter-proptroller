@@ -134,7 +134,8 @@ def model(face, screws, groove_d, mount='screws'):
     lpn = ringlen / len(ring)                          # ring length per ring node
     scr = [n for n in used if any(math.hypot(XY[n][0] - s[0], XY[n][1] - s[1]) <= 2.5 for s in screws if len(s) == 2)
            or any(abs(XY[n][0] - s[0]) <= 0.51 * hx and abs(XY[n][1] - s[1]) <= 0.51 * hy for s in screws if len(s) == 3)]
-    wall = [n for n in used if not any(v[0] < XY[n][0] < v[1] and v[2] < XY[n][1] < v[3] for v in w['windows'])]
+    holes = w['opening'] if P.get('mount') == 'inset' else w['windows']   # inset: the wall behind is one opening (its break-out ribs gone)
+    wall = [n for n in used if not any(v[0] < XY[n][0] < v[1] and v[2] < XY[n][1] < v[3] for v in holes)]
     free = sorted(set(range(ndof)) - {3 * n + k for n in set(range((nx + 1) * (ny + 1))) - set(used) for k in range(3)})
     return dict(K=K, ndof=ndof, ring=ring, lpn=lpn, scr=scr, wall=wall, free=free, XY=XY)
 

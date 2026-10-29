@@ -1,27 +1,31 @@
 // Spectre Proptroller: 3D-printed enclosure (Bambu Lab X1C, ASA). OpenSCAD 2021.01.
 //
 // The wooden box's layout in one printed tub: the same board on 10 mm standoffs, the same connector rows, a flat floor on
-// the bed with a boss in each corner for a screw-on rubber foot. Each connector wall has one window per connector (a short
-// bridge to print) behind a separate faceplate printed face down: its holes come out round, its labels sit on the
-// bottom layers (AMS colour); the panel-mount jacks go through it. It goes straight onto the wall, located by two guide
-// pins printed on its back, and is screwed on (six M3s, the default) or glued on (mount, from design.toml [plates]). The lid seals on a bead of silicone in a groove round the rim,
-// pressed by a tongue, hinges on printed knuckles with a pin, and is drawn down by four screwed cam latches on the ends.
+// the bed with a boss in each corner for a screw-on rubber foot. Each connector wall carries a separate faceplate printed
+// face down: its holes come out round, its labels sit on the bottom layers (AMS colour); the panel-mount jacks go through
+// it. How it is held is `mount` (design.toml [plates]): "inset" (the default) in a recess in the wall's outside face over
+// one large opening (break-out ribs in it while it prints), six M3s; "screws" / "glue" flat on the wall over a window per
+// jack, located by guide pins; "inline" (a try-out) no plate: the jacks go through the wall itself. The lid seals on foam
+// tape (or the TPU gasket) in a groove round the rim, pressed by a tongue, and is screwed down through bosses on its edge
+// into ears on the tub's outside walls (lid_mount "screws", the default); lid_mount "hinge" keeps the printed hinge and four
+// cam latches (not built).
 //
 // Pick what to render with `part` (or -D part="tub" on the command line). Every part comes out in its print pose,
 // ready for the slicer: lowest z = 0, no supports.
 //   assembly        everything in place (preview only)
 //   tub             the box (floor down)
 //   lid             top face down          lid_text           its inlaid text, for a second AMS colour
-//   latch           one cam latch lever (print 4), lying on its side
+//   latch           one cam latch lever (print 4), lying on its side (lid_mount "hinge" only)
 //   zones_tub       the tub's screw zones (zones_lid the lid's): a slicer modifier round each insert and screw, not printed
 //   plate_front     front faceplate        plate_front_text   its labels
 //   plate_back      back faceplate         plate_back_text    its labels
 //   gasket_front    screwed plates: the printed TPU 95A gasket for the front plate's groove, lip up (gasket_back the back's)
 //   gasket_lid      the printed TPU 95A gasket for the rim's groove under the lid, lip up (the default seal is foam tape)
 //   cover           AC case: the mains-bay cover, top face down     cover_text   its inlaid warning
-//   coupon_seal     fit test: a piece of the rim with groove and latch ears, and of the lid with its keeper lugs
-//   coupon_mount    fit test: the front wall's right-hand end (pin hole, window, and for screws the inserts) and that
-//                   corner of the plate with its pin, to try the pins and the mount
+//   coupon_seal     fit test: a piece of the rim with its groove and the left wall's lid-screw ear, and that piece of the
+//                   lid with its boss (with the hinge: the latch ears and the lid's keeper lugs)
+//   coupon_mount    fit test: the front wall's right-hand end (inset: the recess, the opening's end and its last break-out
+//                   rib; screws / glue: a pin hole and window; the nut bosses) and that corner of the plate
 //
 // The AC case (design.toml [case] ac, or params from print_params.py --variant ac: README "AC case (advanced)", rev B
 // boards only) is the same model with `ac` true: a deeper, taller tub with a barrier round the mains bay and a gland hole
@@ -51,7 +55,12 @@ z_lu = z_top + seal_gap;                     // lid underside
 z_lt = z_lu + lid_t;                         // lid top
 y_ax = yo_b + knuckle_d / 2 + knuckle_off;   // hinge axis
 z_ax = z_lt - knuckle_d / 2;
-lid_back = hinge == "pin" ? yo_b - 0.5 : yo_b + hinge_leaf_w + 2;
+LS = lid_mount == "screws";                  // the screwed lid: no hinge, no latches
+lid_back = LS ? yo_b + 20 : hinge == "pin" ? yo_b - 0.5 : yo_b + hinge_leaf_w + 2;
+PLATE = mount != "inline";                   // a separate faceplate on each long wall
+SCREWED = mount == "screws" || mount == "inset";   // its six M3s into bosses behind the wall
+assert(!(ac && mount == "inline"), "the inline try-out is for the standard case only");
+acs = mount == "inset" ? ac_seat_inset : ac_seat;   // the receptacle's seat in the wall (the inset plate sits inset_d deeper)
 
 module rr(x0, y0, x1, y1, r) { translate([x0 + r, y0 + r]) offset(r = r) square([x1 - x0 - 2 * r, y1 - y0 - 2 * r]); }
 module outer2d() { rr(xo0, yo_f, xo1, yo_b, corner_r); }
@@ -75,9 +84,9 @@ module at_wall(face, s) {
 // 7 the screwed plate's, 8 seal ring [x0, x1, y0, y1], 9 guide pins, 10 notches in the screwed plate's top (back: hinges),
 // 11 the screwed plate's seal: [rect [x0, x1, y0, y1], discs [x, y, r] round the screws, cuts [x0, x1, y] under the notches],
 // 12 each screw's insert boss length
-function wl(face, k) = face == "front" ? [front_x0, front_x1, front_windows, front_labels, front_conns, front_screws, front_pf, front_pf_s, front_ring, front_pins, front_notches, front_seal, front_boss_lens, front_nuts][k]
-                                       : [back_x0, back_x1, back_windows, back_labels, back_conns, back_screws, back_pf, back_pf_s, back_ring, back_pins, back_notches, back_seal, back_boss_lens, back_nuts][k];
-function pfy(face) = mount == "screws" ? wl(face, 7) : wl(face, 6);   // the plate's bottom and top edges
+function wl(face, k) = face == "front" ? [front_x0, front_x1, front_windows, front_labels, front_conns, front_screws, front_pf, front_pf_s, front_ring, front_pins, front_notches, front_seal, front_boss_lens, front_nuts, front_opening, front_breaks][k]
+                                       : [back_x0, back_x1, back_windows, back_labels, back_conns, back_screws, back_pf, back_pf_s, back_ring, back_pins, back_notches, back_seal, back_boss_lens, back_nuts, back_opening, back_breaks][k];
+function pfy(face) = SCREWED ? wl(face, 7) : wl(face, 6);   // the plate's bottom and top edges
 pin_h = pin_d / 2 + pin_clr;                 // the pin holes' radius
 // a hole through a wall that prints upright: round, with a 45-degree roof cut off flat at the circle's top (a short bridge)
 module teardrop2d(r) { intersection() { union() { circle(r = r); polygon([[-r / sqrt(2), r / sqrt(2)], [r / sqrt(2), r / sqrt(2)], [0, r * sqrt(2)]]); }
@@ -96,36 +105,85 @@ module tub() {
       floor_fillet();
       wall_ribs();
       for (h = board_holes) translate([h[0], h[1], z_floor - e]) standoff();
-      if (mount == "screws") for (f = ["front", "back"]) for (i = [0 : len(wl(f, 5)) - 1]) let(sc = wl(f, 5)[i]) at_plate(f) translate([sc[0], sc[1], 0]) screw_boss(sc[1], wl(f, 12)[i]);
-      for (l = latches) if (latch_style == "draw") at_wall(l[0], l[1]) dl_ears(); else at_latch(l) latch_ears();
-      if (hinge == "pin") hinge_tub();
-      else everbilt_tub();
-      if (ac) { ac_barrier_tub(); ac_ties(); ac_cover_bosses(); ac_shelf(); ac_stops(); if (ac_seat < 0) at_plate("front") ac_pads(); }
+      if (SCREWED) for (f = ["front", "back"]) for (i = [0 : len(wl(f, 5)) - 1]) let(sc = wl(f, 5)[i]) at_plate(f) translate([sc[0], sc[1], 0]) screw_boss(sc[1], wl(f, 12)[i]);
+      if (LS) for (q = lid_ears) at_wall(q[0], q[1]) lid_ear();
+      else {
+        for (l = latches) if (latch_style == "draw") at_wall(l[0], l[1]) dl_ears(); else at_latch(l) latch_ears();
+        if (hinge == "pin") hinge_tub();
+        else everbilt_tub();
+      }
+      if (ac) { ac_barrier_tub(); ac_ties(); ac_cover_bosses(); ac_shelf(); ac_stops(); if (acs < 0) at_plate("front") ac_pads(); }
     }
     if (ac) {
       for (q = ac_cover_bosses) translate([each ac_cover_screw(q), ac_cover_z - insert_depth]) cylinder(d = insert_d, h = insert_depth + 1);   // the cover's inserts
       ac_tie_slots();
       translate([ac_earth[0], ac_earth[3] + 1, ac_earth[1]]) rotate([90, 0, 0]) linear_extrude(ac_barrier_t + 2) teardrop2d(ac_earth[2] / 2);   // the earth wire, to H3 (the board's plated earth point, on GND)
-      if (ac_seat > 0) at_plate("front") ac_recess();
+      if (acs > 0) at_plate("front") ac_recess();
       translate([ac_earth2[0], ac_earth2[1], ac_earth2[2]]) rotate([90, 0, 90]) linear_extrude(ac_barrier_t + 2) teardrop2d(ac_earth2[3] / 2);   // the second earth lead, to H2
     }
     translate([0, 0, z_top - groove_d]) linear_extrude(groove_d + 1) groove2d(groove_w);
     feet_pilots();
     for (f = ["front", "back"]) at_plate(f) {
-      for (w = wl(f, 2)) translate([0, 0, -wall - 1 - max(0, -ac_seat)]) linear_extrude(wall + 2 + max(0, -ac_seat))   // a window, or a teardrop hole for a screw (through any receptacle pads too)
+      if (mount == "inline") inline_cuts(f);
+      else for (w = wl(f, 2)) if (mount != "inset" || w[4] != 0) translate([0, 0, -wall - 1 - max(0, -acs)]) linear_extrude(wall + 2 + max(0, -acs))   // a window, or a teardrop hole for a screw (through any receptacle pads too)
         if (w[4] == 1) translate([(w[0] + w[1]) / 2, (w[2] + w[3]) / 2]) teardrop2d((w[1] - w[0]) / 2); else rr(w[0], w[2], w[1], w[3], 2);
-      for (p = wl(f, 9)) translate([p[0], p[1], -wall - 1]) linear_extrude(wall + 2) teardrop2d(pin_h);   // guide pin holes, inside the seal ring
-      if (mount == "screws") for (i = [0 : len(wl(f, 5)) - 1]) let(sc = wl(f, 5)[i], L = wl(f, 12)[i]) translate([sc[0], sc[1], 0])
+      if (mount == "inset") { inset_recess(f); for (o = wl(f, 14)) translate([0, 0, -wall - 1]) linear_extrude(wall + 2) square_at(o); }   // the recess, and the one opening behind it
+      if (mount == "screws" || mount == "glue") for (p = wl(f, 9)) translate([p[0], p[1], -wall - 1]) linear_extrude(wall + 2) teardrop2d(pin_h);   // guide pin holes, inside the seal ring
+      if (SCREWED) for (i = [0 : len(wl(f, 5)) - 1]) let(sc = wl(f, 5)[i], L = wl(f, 12)[i]) translate([sc[0], sc[1], 0])
         if (wl(f, 13)[i] == 1) { translate([0, 0, -wall - L - 1]) linear_extrude(wall + L + 2) teardrop2d(plate_pilot / 2);   // through the wall and the boss, undersized: the screw taps it, with or without the nut
           translate([0, 0, -wall - L - 1]) linear_extrude(nut_t + 0.4 + 1) circle(r = (nut_af + 2 * nut_clr) / sqrt(3), $fn = 6); }   // the nut's pocket, a flat up (a 3.4 mm bridge for its roof)
         else translate([0, 0, -insert_depth]) cylinder(d = insert_d, h = insert_depth + 1);   // a blind insert (the AC mains bay): the boss closes it behind
     }
     for (h = board_holes) translate([h[0], h[1], z_floor + standoff_h - standoff_depth]) cylinder(d = standoff_hole, h = standoff_depth + 1);
-    if (hinge == "pin") hinge_bore();
+    if (LS) for (q = lid_ears) at_wall(q[0], q[1]) translate([0, lid_screw_d, z_lu - drip - lid_screw_gap - lid_screw_depth]) cylinder(d = lid_screw_pilot, h = lid_screw_depth + 1);   // the lid screws' pilots, blind
+    else if (hinge == "pin") hinge_bore();
     else everbilt_tub_holes();
     if (ac) translate([xo0 - 1, ac_gland[0], ac_gland[1]]) rotate([90, 0, 90]) linear_extrude(wall + 2) teardrop2d(ac_gland[2] / 2);   // the cord's gland: a round hole would leave its last layers on air; the flat top's corners are 11.1 mm out (README: seal them)
   }
 }
+module square_at(o) { translate([o[0], o[2]]) square([o[1] - o[0], o[3] - o[2]]); }
+// mount = "inset": the recess the plate sits in, inset_d deep in the wall's outside face, inset_clr round the plate, its
+// top edge at 45 degrees (a ledge of inset_d would print on air otherwise). Plate frame: z out of the wall.
+module inset_recess(face) {
+  hull() {
+    translate([0, 0, -inset_d]) linear_extrude(e) offset(r = inset_clr) plate2d(face);
+    translate([0, inset_d, -e]) linear_extrude(1 + e) offset(r = inset_clr) plate2d(face);
+    translate([0, 0, -e]) linear_extrude(1 + e) offset(r = inset_clr) plate2d(face);
+  }
+}
+// the opening's break-out ribs (snap out after printing): break_t thick, one line (0.4) for break_neck where they meet the
+// wall above and below; in the wall behind the recess only
+module break_ribs(face) {
+  for (x = wl(face, 15)) let(os = [for (o = wl(face, 14)) if (o[0] - 0.01 <= x && x <= o[1] + 0.01) o], y0 = min([for (o = os) o[2]]), y1 = max([for (o = os) o[3]]))
+    translate([x, 0, -wall - e]) {
+      translate([-break_t / 2, y0 + break_neck, 0]) cube([break_t, y1 - y0 - 2 * break_neck, wall - inset_d + 2 * e]);
+      for (y = [y0 - e, y1 - break_neck]) translate([-0.2, y, 0]) cube([0.4, break_neck + e, wall - inset_d + 2 * e]);
+    }
+}
+// mount = "inline" (a try-out, no plate): the jacks straight through the wall, teardrop holes as it prints upright; each
+// 3.5 mm jack counterbored from inside, teardrop too, to leave j35_seat for its short thread; the labels sunk in the outside face
+module inline_cuts(face) {
+  for (c = wl(face, 4)) translate([c[2], c[3], -wall - 1]) {
+    linear_extrude(wall + 2) teardrop2d(hole_for(c) / 2);
+    if (c[1] == "j35p") linear_extrude(1 + wall - j35_seat) teardrop2d((j35p_behind_d + 2 * win_m) / 2);
+  }
+  translate([0, 0, -inlay]) linear_extrude(1) for (l = wl(face, 3)) label2d(l);
+}
+// the screwed lid: an ear on the tub's outside wall under each screw (wall frame: y out of the wall, z up), its top
+// lid_screw_gap under the lid's boss, lid_ear_h solid, then a 45-degree underside down to the wall
+module lid_ear() {
+  zt = z_lu - drip - lid_screw_gap;
+  hull() {
+    translate([0, lid_screw_d, zt - lid_ear_h]) cylinder(r = lid_screw_r, h = lid_ear_h);
+    translate([-lid_screw_r, -e, zt - lid_ear_h - (lid_screw_d + lid_screw_r)]) cube([2 * lid_screw_r, e, lid_ear_h + lid_screw_d + lid_screw_r]);
+  }
+}
+module lid_boss() { translate([0, lid_screw_d, z_lu - drip]) cylinder(r = lid_screw_r, h = drip + lid_t); }   // on the lid, over each ear
+module lid_boss_hole() {   // M3 clearance, countersunk in the lid's top for a flat head
+  translate([0, lid_screw_d, z_lu - drip - 1]) cylinder(d = screw_d, h = drip + lid_t + 2);
+  translate([0, lid_screw_d, z_lt - cs_h]) cylinder(d1 = screw_d, d2 = screw_head + 2 * e, h = cs_h + e);
+}
+
 // AC case: the barrier round the mains bay (boxes from params: the edge wall, the TRIG1 pocket, the sill, the right-hand
 // wall) and the curtain over the relay window, its underside rising at 45 degrees from each end to a short flat bridge
 module ac_barrier_tub() {
@@ -174,12 +232,12 @@ module ac_shelf() {
 module ac_recess() {
   o = [for (c = front_conns) if (c[1] == "outlet") c][0];
   hull() {
-    translate([o[2] - outlet_strap_l / 2 - 0.5, o[3] - outlet_strap_w / 2 - 0.5, -wall - e]) cube([outlet_strap_l + 1, outlet_strap_w + 1 + ac_seat, e]);
-    translate([o[2] - outlet_strap_l / 2 - 0.5, o[3] - outlet_strap_w / 2 - 0.5, -wall + ac_seat - e]) cube([outlet_strap_l + 1, outlet_strap_w + 1, e]);
+    translate([o[2] - outlet_strap_l / 2 - 0.5, o[3] - outlet_strap_w / 2 - 0.5, -wall - e]) cube([outlet_strap_l + 1, outlet_strap_w + 1 + acs, e]);
+    translate([o[2] - outlet_strap_l / 2 - 0.5, o[3] - outlet_strap_w / 2 - 0.5, -wall + acs - e]) cube([outlet_strap_l + 1, outlet_strap_w + 1, e]);
   }
 }
 module ac_pads() {
-  o = [for (c = front_conns) if (c[1] == "outlet") c][0]; h = -ac_seat;
+  o = [for (c = front_conns) if (c[1] == "outlet") c][0]; h = -acs;
   for (d = [-outlet_screw_pitch / 2, 0, outlet_screw_pitch / 2]) { w = d == 0 ? 7 : 10; hull() {
     translate([o[2] + d - w / 2, o[3] - 6, -wall - h]) cube([w, 12, h + e]);
     translate([o[2] + d - w / 2, o[3] - 6 - h, -wall]) cube([w, 12 + h, e]);
@@ -221,7 +279,7 @@ module ac_cover() {
     translate([0, 0, ac_cover_z + ac_cover_t - inlay]) linear_extrude(1) ac_cover_text2d();
   }
 }
-if (ac) {   // the gland's cap clears the latch ears on the left wall (they come down to latch_eb at the wall)
+if (ac && !LS) {   // the gland's cap clears the latch ears on the left wall (they come down to latch_eb at the wall)
   latch_eb = latch_pz - 3.6 - latch_ky - 1.5;
   for (l = latches) if (l[0] == "left") assert(abs(l[1] - ac_gland[0]) >= ac_gland[4] / 2 + pin_span / 2 + 0.5 || ac_gland[1] + ac_gland[4] / 2 <= latch_eb - 0.5,
     "the gland's cap runs into a latch's ears");
@@ -408,7 +466,7 @@ k_t = knuckle_d / 2 / sqrt(2) + 0.15;
 k_zw = (z_ax - k_t) - (y_ax + k_t - yo_b);
 k_ptop = z_row + back_pf[1];                 // the back plate's top edge under the hinges (the screwed plate is notched there)
 k_clr = (k_zw + plate_chamfer - k_ptop) / sqrt(2);   // square to the gusset's face, from the plate's chamfer
-assert(k_clr >= 0.3, str("the hinge gussets reach down onto the back plate (", k_clr, " mm): lower the labels or chamfer the plate more"));
+assert(LS || hinge != "pin" || k_clr >= 0.3, str("the hinge gussets reach down onto the back plate (", k_clr, " mm): lower the labels or chamfer the plate more"));
 // the lid's knuckle: everything below the lid's underside stays within knuckle_d / 2 + 0.6 of the axis, so it swings past
 // the rim's back edge (knuckle_off + knuckle_d / 2 from the axis) with room to spare; the web to the lid stays above
 // the underside. Flanks steeper than 45 down to the bed (the lid prints top down).
@@ -450,7 +508,7 @@ module everbilt_lid_holes() { for (hx = hinge_xs) for (dx = hinge_holes) transla
 // ---------------------------------------------------------------- lid
 module lid2d() {
   intersection() { offset(r = lid_gap + skirt_t) outer2d(); translate([xo0 - 10, yo_f - 10]) square([xo1 - xo0 + 20, lid_back - yo_f + 10]); }
-  if (hinge != "pin") translate([xo0 - lid_gap - skirt_t + corner_r, yo_b - 5]) square([xo1 - xo0 + 2 * (lid_gap + skirt_t) - 2 * corner_r, lid_back - yo_b + 5]);
+  if (!LS && hinge != "pin") translate([xo0 - lid_gap - skirt_t + corner_r, yo_b - 5]) square([xo1 - xo0 + 2 * (lid_gap + skirt_t) - 2 * corner_r, lid_back - yo_b + 5]);
 }
 module lid_text2d() {
   translate([xc, yc]) text(title, size = 7, font = font, halign = "center", valign = "center");
@@ -461,20 +519,24 @@ module lid() {
   difference() {
     union() {
       translate([0, 0, z_lu]) linear_extrude(lid_t) lid2d();
-      // drip skirt on the front and both ends
+      // drip skirt: all round for the screwed lid, on the front and both ends with the hinge
       intersection() {
         translate([0, 0, z_lu - drip]) linear_extrude(drip + e) ring2d(lid_gap + skirt_t, lid_gap);
-        translate([xo0 - 10, yo_f - 10, 0]) cube([xo1 - xo0 + 20, yo_b - yo_f + 10 - corner_r, 200]);
+        translate([xo0 - 10, yo_f - 10, 0]) cube([xo1 - xo0 + 20, yo_b - yo_f + 10 - (LS ? -20 : corner_r), 200]);
       }
       translate([0, 0, z_lu - tongue_h]) linear_extrude(tongue_h + e) groove2d(tongue_w);
       lid_ribs();
       if (ac) ac_lid_ribs();
-      if (hinge == "pin") hinge_lid(); else everbilt_lid();
-      if (latch_style == "cam") for (l = latches) at_latch(l) latch_lugs();
+      if (LS) for (q = lid_ears) at_wall(q[0], q[1]) lid_boss();
+      else {
+        if (hinge == "pin") hinge_lid(); else everbilt_lid();
+        if (latch_style == "cam") for (l = latches) at_latch(l) latch_lugs();
+      }
     }
     translate([button_xy[0], button_xy[1], z_lu - 10]) cylinder(d = hole_button, h = 20);
     translate([0, 0, z_lt - inlay]) linear_extrude(1) lid_text2d();
-    if (hinge == "pin") { hinge_bore(); knuckle_gap_cut([0, 2]); } else everbilt_lid_holes();
+    if (LS) for (q = lid_ears) at_wall(q[0], q[1]) lid_boss_hole();
+    else if (hinge == "pin") { hinge_bore(); knuckle_gap_cut([0, 2]); } else everbilt_lid_holes();
   }
 }
 module lid_ribs() {
@@ -486,8 +548,7 @@ module lid_ribs() {
         for (y = [yc - lid_rib_pitch : lid_rib_pitch : yc + lid_rib_pitch]) translate([xo0, y - 0.8, 0]) cube([xo1 - xo0, 1.6, 200]);
       }
     }
-    translate([button_xy[0], button_xy[1], 0]) cylinder(r = hole_button / 2 + 6, h = 200);
-    if (ac) ac_barrier_clear();
+    if (ac) ac_barrier_clear();   // TRIG2 sits in a rib cell (print_params.py asserts its nut clear of every rib)
   }
 }
 
@@ -515,7 +576,8 @@ module plate2d(face) {
   x0 = wl(face, 0); x1 = wl(face, 1); y = pfy(face);
   difference() {
     rr(x0, y[0], x1, y[1], plate_r);
-    if (mount == "screws") for (n = wl(face, 10)) translate([n[0], wl(face, 6)[1]]) offset(r = 1) offset(delta = -1) square([n[1] - n[0], 50]);
+    if (SCREWED) for (n = wl(face, 10)) translate([n[0], wl(face, 6)[1]]) offset(r = 1) offset(delta = -1) square([n[1] - n[0], 50]);
+    if (mount == "inset") translate([x1, y[1]]) polygon([[-inset_key, 1], [-inset_key - 1, 0], [0, -inset_key - 1], [1, -inset_key]]);   // the keyed corner (cut at 45 degrees)
   }
 }
 module plate_body(face) {   // flat, with a 45-degree chamfer round the back edge (in 0.2 mm steps: the top layers as printed)
@@ -531,13 +593,13 @@ module plate(face) {
     // the 3.5 mm jacks: a counterbore from the back, as wide as the wall's window, leaving j35_seat where the jack seats
     for (c = wl(face, 4)) if (c[1] == "j35p") translate([c[2], c[3], -1]) cylinder(d = j35p_behind_d + 2 * win_m, h = 1 + plate_t - j35_seat, $fn = 64);
     translate([0, 0, plate_t - inlay]) linear_extrude(1) for (l = wl(face, 3)) label2d(l);
-    if (mount == "screws") for (sc = wl(face, 5)) translate([sc[0], sc[1], 0]) screw_cut();
+    if (SCREWED) for (sc = wl(face, 5)) translate([sc[0], sc[1], 0]) screw_cut();
     // the seal groove round the back, round the windows and the pin holes: glued, the sealing adhesive's bead; screwed, the
     // wider loop along the screw rows and round each screw (seal_groove2d) for butyl, silicone, tubing or the TPU gasket
-    if (mount == "screws") translate([0, 0, -1]) linear_extrude(1 + sg_d) seal_groove2d(face);
+    if (SCREWED) translate([0, 0, -1]) linear_extrude(1 + sg_d) seal_groove2d(face);
     else translate([0, 0, -1]) linear_extrude(1 + pg_d) difference() { rr(g[0], g[2], g[1], g[3], 2); rr(g[0] + pg_w, g[2] + pg_w, g[1] - pg_w, g[3] - pg_w, 1); }
   }
-  for (p = wl(face, 9)) translate([p[0], p[1], 0]) mirror([0, 0, 1]) guide_pin();   // into the wall, pointing up as printed
+  if (mount == "screws" || mount == "glue") for (p = wl(face, 9)) translate([p[0], p[1], 0]) mirror([0, 0, 1]) guide_pin();   // into the wall, pointing up as printed
 }
 module guide_pin() { cylinder(d = pin_d, h = pin_l - 0.6 + e); translate([0, 0, pin_l - 0.6]) cylinder(d1 = pin_d, d2 = pin_d - 1.2, h = 0.6); }
 // M3 clearance through the plate, countersunk at the show face so a flat head sits flush (the cone is the bottom layers
@@ -568,7 +630,7 @@ module gasket_lid() {
   h = groove_w / 2 - gasket_clr; n = round((gasket_h - gasket_base) / 0.2);
   linear_extrude(gasket_base) rim_band(-h, h);
   for (i = [0 : n - 1]) {
-    a = -h + 0.02 + (2 * h - 0.02 - gasket_lip - gasket_tip) * i / (n - 1);
+    a = -h + 0.02 + (2 * h - 0.02 - gasket_lip - gasket_tip_lid) * i / (n - 1);
     translate([0, 0, gasket_base + i * 0.2 - e]) linear_extrude(0.2 + (i < n - 1 ? 2 : 1) * e)
       intersection() { rim_band(-h, h); rim_band(a, a + gasket_lip); }
   }
@@ -601,7 +663,7 @@ C_COVER = "#8d6e63"; C_BOARD = "#1b5e20"; C_PART = "#546e7a"; C_JACK = "#1e1e1e"
 module standins() {
   translate([0, -board_h, z_board]) color(C_BOARD) cube([board_w, board_h, board_t]);
   for (k = board_parts) color(C_PART) translate([k[0], k[1], z_board + k[2]]) cube([k[3] - k[0], k[4] - k[1], k[5] - k[2]]);
-  for (f = ["front", "back"]) at_plate(f) for (c = wl(f, 4)) translate([c[2], c[3], 0]) jack(c);
+  for (f = ["front", "back"]) at_plate(f) for (c = wl(f, 4)) translate([c[2], c[3], mount == "inset" ? -inset_d : mount == "inline" ? -plate_t : 0]) jack(c);
   if (ac) translate([xo0, ac_gland[0], ac_gland[1]]) rotate([0, 90, 0]) {   // the gland: cap outside, locknut inside
     color(C_BUTTON) translate([0, 0, -14]) cylinder(d = ac_gland[4], h = 14, $fn = 6);
     color(C_BUTTON) translate([0, 0, wall]) cylinder(d = ac_gland[3], h = 5, $fn = 6);
@@ -617,8 +679,8 @@ module jack(c) {   // in the plate frame: z out of the wall
   if (c[1] == "outlet") outlet_standin(); else jack_(c);
 }
 module outlet_standin() {   // the receptacle: faces through the wall, strap on its inside face, body behind
-  for (s = [-1, 1]) color("#f5f0e1") translate([s * outlet_face_pitch / 2 - outlet_face_h / 2, -outlet_face_w / 2, -wall - 1 + ac_seat]) cube([outlet_face_h, outlet_face_w, outlet_face_proud + 1]);
-  translate([0, 0, ac_seat]) {
+  for (s = [-1, 1]) color("#f5f0e1") translate([s * outlet_face_pitch / 2 - outlet_face_h / 2, -outlet_face_w / 2, -wall - 1 + acs]) cube([outlet_face_h, outlet_face_w, outlet_face_proud + 1]);
+  translate([0, 0, acs]) {
     color(C_METAL) translate([-outlet_strap_l / 2, -outlet_strap_w / 2, -wall - 1]) cube([outlet_strap_l, outlet_strap_w, 1]);
     color("#f5f0e1") translate([-outlet_body_l / 2, -outlet_body_w / 2, -wall - 1 - outlet_body_d]) cube([outlet_body_l, outlet_body_w, outlet_body_d]);
   }
@@ -632,22 +694,31 @@ module jack_(c) {
 
 // ---------------------------------------------------------------- output
 module lid_pose() { translate([0, 0, z_lt]) rotate([180, 0, 0]) children(); }
-module tub_done() { difference() { tub(); if (hinge == "pin") knuckle_gap_cut([1]); } }
+module tub_done() {
+  difference() { tub(); if (!LS && hinge == "pin") knuckle_gap_cut([1]); }
+  if (mount == "inset") for (f = ["front", "back"]) at_plate(f) break_ribs(f);
+}
 // screw zones: the volumes round every insert and screw, for a slicer modifier (more walls, solid infill) so the print can
 // keep few walls and little infill elsewhere. Overlapping solids, never printed: tools/make_project3mf.py adds them to the
 // tub and the lid as modifiers. In each part's print pose.
 module tub_zones() {
-  if (mount == "screws") for (f = ["front", "back"]) for (sc = wl(f, 5)) at_plate(f)
+  if (SCREWED) for (f = ["front", "back"]) for (sc = wl(f, 5)) at_plate(f)
     translate([sc[0], sc[1], -insert_depth - 0.9]) cylinder(d = boss_w - 1, h = insert_depth + 0.9 + e);   // the plate screws' nuts or inserts, through the wall into the boss
   for (h = board_holes) translate([h[0], h[1], z_floor - e]) cylinder(d = 9, h = standoff_h + e);   // the board standoffs' inserts
   for (p = feet_xy()) translate([p[0], p[1], 0]) cylinder(d = feet_boss_d, h = z_floor + feet_boss_h);   // the feet's screws
-  for (l = latches) if (latch_style == "draw") at_wall(l[0], l[1]) dl_ears(); else at_latch(l) latch_ears();   // the latch pivots
-  if (hinge == "pin") hinge_tub(); else everbilt_tub();
+  if (LS) for (q = lid_ears) at_wall(q[0], q[1]) lid_ear();   // the lid screws' ears
+  else {
+    for (l = latches) if (latch_style == "draw") at_wall(l[0], l[1]) dl_ears(); else at_latch(l) latch_ears();   // the latch pivots
+    if (hinge == "pin") hinge_tub(); else everbilt_tub();
+  }
   if (ac) ac_cover_bosses();
 }
 module lid_zones() {
-  if (hinge == "pin") hinge_lid(); else everbilt_lid();
-  if (latch_style == "cam") for (l = latches) at_latch(l) latch_lugs();   // the keepers
+  if (LS) for (q = lid_ears) at_wall(q[0], q[1]) lid_boss();   // the lid screws' bosses
+  else {
+    if (hinge == "pin") hinge_lid(); else everbilt_lid();
+    if (latch_style == "cam") for (l = latches) at_latch(l) latch_lugs();   // the keepers
+  }
 }
 
 // the assembled view's options: show_lid = false for a look inside; cut_x for a section (everything left of it cut away)
@@ -659,8 +730,8 @@ module cutaway() {   // colour it from outside (color() cutaway() ...): the cut 
 if (part == "assembly") {
   color(C_TUB) cutaway() tub_done();
   if (show_lid) color(C_TEXT) cutaway() translate([0, 0, z_lt - inlay]) linear_extrude(inlay) lid_text2d();
-  for (f = ["front", "back"]) { color(C_PLATE) cutaway() at_plate(f) plate(f); color(C_TEXT) cutaway() at_plate(f) plate_text(f); }
-  for (l = latches) color(C_LATCH) cutaway() at_wall(l[0], l[1]) if (latch_style == "draw") dl_parts_closed(); else rotate([90, 0, 90]) translate([0, 0, -latch_w / 2]) linear_extrude(latch_w) latch2d();
+  if (PLATE) for (f = ["front", "back"]) { color(C_PLATE) cutaway() at_plate(f) translate([0, 0, mount == "inset" ? -inset_d : 0]) plate(f); color(C_TEXT) cutaway() at_plate(f) translate([0, 0, mount == "inset" ? -inset_d : 0]) plate_text(f); }
+  if (!LS) for (l = latches) color(C_LATCH) cutaway() at_wall(l[0], l[1]) if (latch_style == "draw") dl_parts_closed(); else rotate([90, 0, 90]) translate([0, 0, -latch_w / 2]) linear_extrude(latch_w) latch2d();
   if (show_parts) cutaway() standins();
   if (ac && show_cover) { color(C_COVER) cutaway() ac_cover(); color(C_TEXT) cutaway() translate([0, 0, ac_cover_z + ac_cover_t - inlay]) linear_extrude(inlay) ac_cover_text2d(); }
   if (show_lid) color(C_LID, 0.45) cutaway() lid();   // see-through: drawn last, or OpenSCAD hides what's behind it
@@ -690,13 +761,13 @@ else if (part == "plate_back_text") print_pose(plate_t) plate_text("back");
 else if (part == "gasket_front") gasket("front");
 else if (part == "gasket_back") gasket("back");
 else if (part == "gasket_lid") gasket_lid();
-else if (part == "coupon_seal") {   // the first latch's piece of the left wall and rim, and that corner of the lid
-  l = latches[0]; bx = [xo0 - 18, l[1] - 20, z_top - 28]; bs = [land_w + 22, 40, 40];
+else if (part == "coupon_seal") {   // the left wall's middle lid screw (or the first latch): a piece of the wall and rim, and of the lid
+  l = LS ? [for (q = lid_ears) if (q[0] == "left") q][0] : latches[0]; bx = [xo0 - 18, l[1] - 20, z_top - 28]; bs = [land_w + 22, 40, 40];
   translate(-bx) intersection() { tub_done(); translate(bx) cube(bs); }
   translate([bs[0] + 8 - bx[0], 0, 0]) lid_pose() intersection() { lid(); translate([bx[0], bx[1], 0]) cube([bs[0], bs[1], 200]); }
 } else if (part == "coupon_mount") {   // the front wall's right-hand end, and that corner of the plate with its pin
   x1 = front_x1; y = pfy("front"); wn = front_windows[len(front_windows) - 1];
-  xa = front_windows[len(front_windows) - 2][1];   // from the rib before the last window (a cut through a window would leave its top on air)
+  xa = mount == "inset" ? front_breaks[len(front_breaks) - 1] : front_windows[len(front_windows) - 2][1];   // from the last break-out rib, or the rib before the last window (a cut through an opening would leave its top on air)
   bx = [xa, yo_f - 1, z_row + y[0] - 2]; bs = [x1 + 3 - xa, wall + boss_len + 1.5, y[1] - y[0] + 4];
   translate(-bx) intersection() { tub_done(); translate(bx) cube(bs); }
   translate([0, -12 - (y[1] - y[0]), 0]) translate([-xa, -y[0], 0]) print_pose(plate_t) intersection() { plate("front"); translate([xa, y[0] - 1, -pin_l - 1]) cube([x1 + 1 - xa, y[1] - y[0] + 2, pin_l + plate_t + 2]); }

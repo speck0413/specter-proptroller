@@ -12,7 +12,7 @@ for p in tub lid lid_text plate_front plate_front_text plate_back plate_back_tex
   openscad -q -o "$OUT/ref/$p.stl" -D "sel=\"$p\"" "$HERE/reference_parts.scad" &
 done
 wait
-python3 "$HERE/run_fusion_script.py" "$HERE/../../fusion/SpecterEnclosure/SpecterEnclosure.py" "$OUT"
+"$PY" "$HERE/run_fusion_script.py" "$HERE/../../fusion/SpecterEnclosure/SpecterEnclosure.py" "$OUT"
 # the Fusion design's origin is the box centre; the OpenSCAD model's is the board's corner
 SHIFT=$(python3 -c "import json; P=json.load(open('$HERE/../../params.json'))['P']; print((P['ix0']+P['ix1'])/2, (P['iyf']+P['iyb'])/2)")
 X=${SHIFT% *}; Y=${SHIFT#* }
@@ -24,6 +24,6 @@ for pair in "tub Tub 0.2" "lid Lid 0.2" "lid_text Lid_text 0.05" "plate_front Fr
   "$PY" "$HERE/meshcmp.py" "$OUT/ref/$1.stl" "$OUT/$2.stl" --h "$3" --shift "$X" "$Y" 0 --top 4 --ignore 2 >> "$OUT/compare.txt"
 done
 echo "=== latch (in its own frame)" >> "$OUT/compare.txt"
-python3 "$HERE/latch_local.py" "$OUT/Latch.stl" "$OUT/latch_local.stl"
+"$PY" "$HERE/latch_local.py" "$OUT/Latch.stl" "$OUT/latch_local.stl"
 "$PY" "$HERE/meshcmp.py" "$OUT/ref/latch.stl" "$OUT/latch_local.stl" --h 0.05 --axis x --top 4 --ignore 0.3 >> "$OUT/compare.txt"
 cat "$OUT/compare.txt"
