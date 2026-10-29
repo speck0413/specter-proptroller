@@ -5,8 +5,10 @@
 // window gives it back at once and waits (about 1 ms at a time) until the window ends, before it does anything.
 // So no task but the step ever sees the controller half way through a request, and nothing but the step runs
 // while a window reads the settings, the profile or the stored script. The step never waits (takeStep); the
-// controller refuses changes made from the step while a window is open (Controller::busy text), and stopping
-// from the step (the pause input, STOP from a task) only touches the show engine.
+// controller refuses changes made from the step while a window is open (Controller::busy text). Stopping from the
+// step (the pause input, STOP from a task) stops the show engine, ends the effect's cycle and the role pulses, and
+// reloads the show script's runner (Controller::stopOwned, scriptReload: the runs not yet reported are reported
+// and each script effect goes back to its first line); it writes no flash and opens no window.
 //
 // Raw is the platform's recursive mutex: take(), give(), releaseAll() (every level this task holds, 0 when it
 // holds none), mine() (this task holds it), self() (this task, as an Id), pause() (let other tasks run ~1 ms).
