@@ -461,7 +461,12 @@ void a_run_counted_while_the_count_is_written_is_written_later() {
   g_runs_sim = nullptr;
   TEST_ASSERT_EQUAL(1, s.runsFlash().saves);
   TEST_ASSERT_EQUAL(1, g_runs_windows);
-  TEST_ASSERT_EQUAL(2, lifetime(s));  // the record written holds 1
+  TEST_ASSERT_EQUAL(2, lifetime(s));
+  std::string rec;
+  uint64_t stored = 0;
+  TEST_ASSERT_TRUE(s.runsFlash().load(rec));
+  TEST_ASSERT_TRUE(RunCounter::parse(rec, stored));
+  TEST_ASSERT_EQUAL(1, (int)stored);  // the record written holds 1: the run counted during the write waits
   s.step(6000 + RUNS_SAVE_MIN_GAP_MS);  // quiet and past the minimum gap: the run waits for its own period
   TEST_ASSERT_EQUAL(1, s.runsFlash().saves);
   s.step(RUNS_SAVE_PERIOD_MS);
