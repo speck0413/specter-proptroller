@@ -324,23 +324,7 @@ PT_STEP_CODE void Controller::scriptTick(Millis now) {
   std::vector<SoundCommand> snd;
   if (!engine_.isPaused()) script_run_->tick(now, scriptInputs(), snd);  // nothing runs while paused
   if (script_run_->tellsWaiting()) link_work_.store(true, std::memory_order_relaxed);  // for the network loop (linkTake)
-  // an effect that left its first `wait for` started a run
-  for (int e = 0; e < script_prog_->effects && e < SCRIPT_MAX_EFFECTS; e++)
-    while (script_runs_seen_[e] < script_run_->runs(e)) {
-      script_runs_seen_[e]++;
-      std::string detail;
-      const ScriptEffect& fe = script_prog_->fx[e];
-      for (int i = 0; i < fe.count; i++) {
-        const ScriptStep& w = script_prog_->step[fe.first + i];
-        if (w.op != ScriptStep::Op::Wait) continue;
-        if (w.target < INPUT_COUNT) detail = name(ALL_INPUTS[w.target]);
-        break;
-      }
-      // a remote start (web, MQTT, serial, another board's tell) is an `api` run, as for a show (PROTOCOL.md)
-      const bool remote = script_remote_seen_[e] < script_run_->remoteRuns(e);
-      if (remote) script_remote_seen_[e]++;
-      countRun(now, remote ? "api" : "input", "script", std::string(script_prog_->fx[e].name), detail);
-    }
+  scriptReportRuns(now);
   for (int c = 0; c < CHANNEL_COUNT; c++)
     if (script_prog_->channels & (1u << c)) engine_.setScript(ALL_CHANNELS[c], true, script_run_->level(c));
   for (auto& c : snd) {
@@ -370,6 +354,36 @@ PT_STEP_CODE void Controller::scriptTick(Millis now) {
     dmx_->send(script_run_->dmx(), DMX_CHANNELS);
     dmx_frames++;
   }
+}
+
+// An effect that left its first `wait for` started a run: each one a run event, once. A start can be taken on a
+// 1 ms sample, so the step reports it, and so does scriptReload before the runner's counts go back to 0.
+PT_STEP_CODE void Controller::scriptReportRuns(Millis now) {
+  if (!script_run_ || !script_prog_) return;  // no table: a new script is being written (scriptWrite)
+  for (int e = 0; e < script_prog_->effects && e < SCRIPT_MAX_EFFECTS; e++)
+    while (script_runs_seen_[e] < script_run_->runs(e)) {
+      script_runs_seen_[e]++;
+      std::string detail;
+      const ScriptEffect& fe = script_prog_->fx[e];
+      for (int i = 0; i < fe.count; i++) {
+        const ScriptStep& w = script_prog_->step[fe.first + i];
+        if (w.op != ScriptStep::Op::Wait) continue;
+        if (w.target < INPUT_COUNT) detail = name(ALL_INPUTS[w.target]);
+        break;
+      }
+      // a remote start (web, MQTT, serial, another board's tell) is an `api` run, as for a show (PROTOCOL.md)
+      const bool remote = script_remote_seen_[e] < script_run_->remoteRuns(e);
+      if (remote) script_remote_seen_[e]++;
+      countRun(now, remote ? "api" : "input", "script", std::string(script_prog_->fx[e].name), detail);
+    }
+}
+
+void Controller::scriptReload(Millis now) {
+  if (!script_run_) return;
+  scriptReportRuns(now);
+  script_run_->load(script_prog_.get(), now);
+  for (auto& n : script_runs_seen_) n = 0;
+  for (auto& n : script_remote_seen_) n = 0;
 }
 
 bool Controller::isFactoryExample(const Show& s) {

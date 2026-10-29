@@ -623,6 +623,10 @@ class Controller : public Firmware {
   ScriptInputs scriptInputs() const;
   void scriptInstall(std::unique_ptr<ScriptProgram> prog);
   void scriptTick(Millis now);
+  void scriptReportRuns(Millis now);  // each effect's runs not yet reported: a run event each
+  // each effect back to its first line (STOP, pause, a changed input type): its runs so far reported first, as
+  // the runner starts its counts again at 0
+  void scriptReload(Millis now);
   bool scriptWaitsFor(int input) const { return script_prog_ && (script_prog_->inputs & (1u << input)); }
   // the show is the factory example exactly as earlier firmware stored it on a fresh board (FACTORY_EXAMPLE_SHOW)
   static bool isFactoryExample(const Show& s);

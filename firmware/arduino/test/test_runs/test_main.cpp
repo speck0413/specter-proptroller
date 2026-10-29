@@ -165,6 +165,148 @@ void a_show_script_effect_started_from_the_page_or_mqtt_is_an_api_run() {
   }
 }
 
+// STOP, pause and a changed input type put each script effect back to its first line (Controller::scriptReload):
+// every run is still counted once, with its own source, before and after it. A board with one script effect
+// (TRIG1: OUT1 for 0.5 s) that the web page may start, past its boot lockout.
+struct PorchSim : Sim {
+  PorchSim() : Sim("script") {
+    JsonDocument d;
+    d["op"] = "set_script";
+    d["text"] = "effect porch:\n  wait for trig1\n  out1 = on\n  sleep 0.5\n  out1 = off\n";
+    std::string body;
+    serializeJson(d, body);
+    Response r = request(body);
+    TEST_ASSERT_TRUE_MESSAGE(r.isOk(), r.json().c_str());
+    r = setp(*this, "remote_free_effects", "\"porch\"");
+    TEST_ASSERT_TRUE_MESSAGE(r.isOk(), r.json().c_str());
+    step(3000);
+  }
+  void stopAll() { TEST_ASSERT_TRUE(request(R"({"op":"stop_all"})").isOk()); }
+  void pause(bool on) { TEST_ASSERT_TRUE(request(on ? R"({"op":"pause","on":true})" : R"({"op":"pause","on":false})").isOk()); }
+  void webStart() {
+    Response r = act(*this, "porch", true);
+    TEST_ASSERT_TRUE_MESSAGE(r.isOk(), r.json().c_str());
+  }
+};
+// the run events' sources, in order, and the counters
+static void expectRuns(Sim& s, const std::vector<const char*>& sources) {
+  auto ev = runEvents(s);
+  std::string all;
+  for (auto& e : ev) all += e + "\n";
+  TEST_ASSERT_EQUAL_MESSAGE(sources.size(), ev.size(), all.c_str());
+  for (size_t i = 0; i < sources.size(); i++) {
+    std::string want = std::string("\"source\":\"") + sources[i] + "\"";
+    TEST_ASSERT_TRUE_MESSAGE(has(ev[i], want.c_str()) && has(ev[i], "\"name\":\"porch\""), ev[i].c_str());
+    std::string n = "\"runs_since_power_on\":" + std::to_string(i + 1);
+    TEST_ASSERT_TRUE_MESSAGE(has(ev[i], n.c_str()), ev[i].c_str());
+  }
+  TEST_ASSERT_EQUAL(sources.size(), tonight(s));
+  TEST_ASSERT_EQUAL(sources.size(), lifetime(s));
+}
+
+void a_script_effect_counts_its_runs_after_stop_all() {
+  PorchSim s;
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  s.stopAll();
+  s.step(100);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  expectRuns(s, {"input", "input", "input"});
+}
+
+void a_press_after_stop_all_is_an_input_run_and_a_web_start_an_api_run() {
+  PorchSim s;
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  s.stopAll();
+  s.step(100);
+  s.webStart();
+  s.step(1000);
+  s.webStart();
+  s.step(1000);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  expectRuns(s, {"input", "input", "api", "api", "input"});
+}
+
+void a_press_after_a_pause_is_an_input_run_and_a_web_start_an_api_run() {
+  PorchSim s;
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  s.pause(true);
+  s.step(100);
+  s.pause(false);
+  s.step(100);
+  s.webStart();
+  s.step(1000);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  expectRuns(s, {"input", "api", "input"});
+}
+
+void a_script_effect_counts_its_runs_after_an_input_type_change() {
+  PorchSim s;
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  TEST_ASSERT_TRUE(setp(s, "trig1_input", "\"sensor_high\"").isOk());  // each change: back to the first line
+  TEST_ASSERT_TRUE(setp(s, "trig1_input", "\"switch\"").isOk());
+  s.step(1000);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  expectRuns(s, {"input", "input"});
+}
+
+void a_cancelled_queued_start_is_not_a_run() {
+  PorchSim s;
+  s.press(Input::Trig1, 300);
+  s.step(100);  // the run is in its sleep: a web start waits for it
+  s.webStart();
+  TEST_ASSERT_TRUE(act(s, "cancel", true).isOk());
+  s.step(1500);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  expectRuns(s, {"input", "input"});
+}
+
+void a_queued_start_that_stop_all_drops_is_not_a_run() {
+  PorchSim s;
+  s.press(Input::Trig1, 300);
+  s.step(100);
+  s.webStart();
+  s.stopAll();
+  s.step(1500);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  expectRuns(s, {"input", "input"});
+}
+
+void a_queued_start_between_two_presses_is_an_api_run() {
+  PorchSim s;
+  s.press(Input::Trig1, 300);
+  s.step(100);
+  s.webStart();  // queued: it starts when the press's run ends
+  s.step(1500);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  expectRuns(s, {"input", "api", "input"});
+}
+
+// a start taken on a 1 ms sample is reported by the next 10 ms step: STOP before that step still counts it
+void a_run_started_on_a_sample_just_before_stop_all_is_counted() {
+  PorchSim s;
+  while (s.uptime() % Sim::TICK_MS != 0) s.tick1();
+  s.webStart();
+  s.tick1();  // a sample, not a step: the effect starts
+  s.stopAll();
+  s.step(1000);
+  expectRuns(s, {"api"});
+}
+
 // ---------------------------------------------------------------- persistence and the throttle
 
 void the_lifetime_count_survives_a_power_cycle_and_tonight_starts_at_0() {
@@ -400,6 +542,14 @@ int main(int, char**) {
   RUN_TEST(the_effect_counts_local_and_remote_runs_but_not_a_recover);
   RUN_TEST(a_show_script_effect_counts_each_start);
   RUN_TEST(a_show_script_effect_started_from_the_page_or_mqtt_is_an_api_run);
+  RUN_TEST(a_script_effect_counts_its_runs_after_stop_all);
+  RUN_TEST(a_press_after_stop_all_is_an_input_run_and_a_web_start_an_api_run);
+  RUN_TEST(a_press_after_a_pause_is_an_input_run_and_a_web_start_an_api_run);
+  RUN_TEST(a_script_effect_counts_its_runs_after_an_input_type_change);
+  RUN_TEST(a_cancelled_queued_start_is_not_a_run);
+  RUN_TEST(a_queued_start_that_stop_all_drops_is_not_a_run);
+  RUN_TEST(a_queued_start_between_two_presses_is_an_api_run);
+  RUN_TEST(a_run_started_on_a_sample_just_before_stop_all_is_counted);
   RUN_TEST(the_lifetime_count_survives_a_power_cycle_and_tonight_starts_at_0);
   RUN_TEST(the_write_waits_for_the_period_or_ten_runs_and_a_quiet_board);
   RUN_TEST(nothing_is_written_while_a_show_runs);

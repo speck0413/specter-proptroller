@@ -152,7 +152,7 @@ void Controller::applySettings() {
     has_opened_[k] = false;
     closed_since_[k] = now_;
     if (k == 0 && fx_) { fx_->released = false; fx_->confirming = false; }
-    if (script_run_) script_run_->load(script_prog_.get(), now_);  // each effect back to its first line
+    scriptReload(now_);  // each effect back to its first line
   }
   engine_.setConfig(s.engine());
   for (auto& t : trig_) t.setTimes(s.trig_debounce_ms, s.trig_release_ms);
@@ -181,7 +181,7 @@ void Controller::accepted(Millis now, const std::vector<uint16_t>& started) {
 // STOP and pause end every source the engine does not run itself: each script effect goes back to its first
 // wait for, the effect's cycle ends and the role pulses are cleared. Nothing comes back on by itself.
 void Controller::stopOwned(Millis now) {
-  if (script_run_) script_run_->load(script_prog_.get(), now);
+  scriptReload(now);
   if (fx_) fx_->stop();
   for (auto& r : role_on_) r = false;
 }

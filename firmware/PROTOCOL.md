@@ -295,8 +295,8 @@ The state is pushed when it changes (at most every 200 ms; `uptime_ms` alone is 
 `disabled`, `paused`, `unknown`, `held` = a condition in the firmware's own code), `watchdog`, `interlock`, `paused`. A gap in `seq` means events were
 dropped (the device keeps the last 64). Tell responses and events apart by `ok` vs `event`.
 `run` events: a run started (see [Run counters](#run-counters)). `source` is what started it (`input`,
-`release`, `timer`, `boot`, `cue`, `after` as for notices, `api` for the web page, MQTT, `POST /rpc` and the serial
-port); `kind` is `show` (with `show`, its id), `script` (a show script's effect; `detail` the input its first
+`release`, `timer`, `boot`, `cue`, `after` as for notices, `api` for the web page, MQTT, `POST /rpc`, the serial
+port and another board's tell); `kind` is `show` (with `show`, its id), `script` (a show script's effect; `detail` the input its first
 `wait for` waits for) or `effect` (the built-in pulse-and-recover effect, `name` `pulse_and_recover`); `name` the
 show's or effect's name, `detail` the input or cue; the counts after this run and `uptime_ms` when it started.
 `update` events: `writing` when the image starts (`done` 0) and at least every 128 KB (131072 B) after,
