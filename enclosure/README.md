@@ -110,6 +110,14 @@ anywhere**), or if an assert in `tools/print_params.py` or the model finds two p
 | the lid text | `[text] title` | every lid |
 | the AC case (advanced, rev B only) | `[ac]`, `[ac.*]`, `[parts.outlet]`, `[parts.gland]` | the AC parts (**AC case (advanced)**) |
 
+## In Fusion, SolidCraft or another CAD program
+
+`fusion/SpecterEnclosure/` is a Fusion script that builds the standard case (screwed faceplates, printed-pin hinge, cam
+latches) as a parametric Fusion design, from the same sizes as `proptroller-print.scad`. `tools/fusion_check/check.sh
+cad` builds the same timeline in SolidCraft (`cad/specter-enclosure.solidcraft`) and a solid STEP assembly
+(`cad/specter-enclosure.step`), and compares every part with the OpenSCAD model. How to run it, what follows a
+parameter change and what was checked: `fusion/README.md`.
+
 ## Printing
 
 **ASA, every part** (owner 2026-10-20), the standard case included. No carbon-filled filament for the AC case.
