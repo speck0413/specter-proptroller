@@ -1,0 +1,10 @@
+{
+	"autodeskProduct": "Fusion",
+	"type": "script",
+	"author": "",
+	"description": {
+		"": "Builds the Specter Proptroller enclosure as a parametric design: tub, lid, faceplates and latches."
+	},
+	"supportedOS": "windows|mac",
+	"editEnabled": true
+}
