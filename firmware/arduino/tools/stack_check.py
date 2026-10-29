@@ -3,7 +3,9 @@
 direct calls), checked against each task's stack with a margin. Run after `pio run` (the board environments keep
 the .ci / .su files next to the objects):
 
-    python3 tools/stack_check.py [--margin 50] [--report] [--env picow]
+    python3 tools/stack_check.py [--margin 50] [--report] [--env picow] [--build-dir DIR]
+
+The builds are read from --build-dir, else PLATFORMIO_BUILD_DIR (as `pio run` uses it), else .pio/build.
 
 Every board build runs it for itself (tools/stack_post.py, a PlatformIO post-build step) and fails when a path
 does not fit; the ESP32 figures need a Pico W build next to them (its call graph) and are checked with it.
@@ -32,7 +34,18 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BUILD = os.path.join(HERE, ".pio", "build")
+
+
+def build_root():
+    """The folder holding <env>/: --build-dir, else PLATFORMIO_BUILD_DIR (relative to the project), else .pio/build."""
+    if "--build-dir" in sys.argv:
+        d = sys.argv[sys.argv.index("--build-dir") + 1]
+    else:
+        d = os.environ.get("PLATFORMIO_BUILD_DIR") or os.path.join(".pio", "build")
+    return os.path.join(HERE, os.path.expanduser(d))
+
+
+BUILD = build_root()
 
 NODE = re.compile(r'node: \{ title: "([^"]+)" label: "([^"]*)"')
 EDGE = re.compile(r'edge: \{ sourcename: "([^"]+)" targetname: "([^"]+)"')

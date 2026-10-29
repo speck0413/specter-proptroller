@@ -9,7 +9,10 @@ Import("env")  # noqa: F821
 
 def check(target, source, env):  # noqa: ARG001
     proj = env.subst("$PROJECT_DIR")
-    r = subprocess.run([sys.executable, os.path.join(proj, "tools", "stack_check.py"), "--env", env.subst("$PIOENV")], cwd=proj)
+    # the build root (PLATFORMIO_BUILD_DIR or .pio/build): the ESP32's check reads the Pico W's call graph next to its own
+    cmd = [sys.executable, os.path.join(proj, "tools", "stack_check.py"), "--env", env.subst("$PIOENV"),
+           "--build-dir", env.subst("$PROJECT_BUILD_DIR")]
+    r = subprocess.run(cmd, cwd=proj)
     if r.returncode != 0:
         sys.stderr.write("stack check failed (tools/stack_check.py --report --env %s)\n" % env.subst("$PIOENV"))
         env.Exit(1)
