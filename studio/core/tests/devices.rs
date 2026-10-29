@@ -451,39 +451,52 @@ async fn sounds_are_numbers_and_no_list_goes_to_the_board() {
 async fn serial_session_comes_back_after_the_port_went_away() {
     use std::io::{BufRead, BufReader, Write};
     let s = Studio::new();
-    // a fake board answering "info" with its own name, for `answers` requests, then gone
-    fn fake(name: &'static str, answers: usize) -> studio_core::conn::Lines {
+    // A fake board answering "info" with its own name. It goes away (its end of the pty closes) only when the
+    // returned sender is used: never by counting requests, as the session asks again on its own while it is slow
+    // to hear an answer (a loaded machine), and a board that vanished mid-answer is not what this test is about.
+    fn fake(name: &'static str) -> (studio_core::conn::Lines, std::sync::mpsc::Sender<()>) {
         let (host, mut board) = serialport::TTYPort::pair().unwrap();
         serialport::SerialPort::set_timeout(&mut board, Duration::from_secs(60)).unwrap();
+        let (gone_tx, gone_rx) = std::sync::mpsc::channel::<()>();
         std::thread::spawn(move || {
             let mut out = board.try_clone_native().unwrap();
-            for line in BufReader::new(board).lines().take(answers) {
-                let Ok(line) = line else { break };
-                let v: Value = serde_json::from_str(&line).unwrap();
+            let (line_tx, line_rx) = std::sync::mpsc::channel::<String>();
+            std::thread::spawn(move || {
+                for line in BufReader::new(board).lines() {
+                    let Ok(line) = line else { break };
+                    if line_tx.send(line).is_err() { break }
+                }
+            });
+            // poll for requests until told to go; a blank line (the session's repeated ask starts with one) is skipped
+            while gone_rx.try_recv().is_err() {
+                let Ok(line) = line_rx.recv_timeout(Duration::from_millis(10)) else { continue };
+                let Ok(v) = serde_json::from_str::<Value>(&line) else { continue };
                 let _ = writeln!(out, "{}", json!({ "v": 1, "id": v["id"], "ok": true, "result": { "kind": "info", "name": name } }));
             }
         });
         let r = host.try_clone_native().unwrap();
-        (Box::new(r), Box::new(host))
+        ((Box::new(r), Box::new(host)), gone_tx)
     }
     let (tx, rx) = std::sync::mpsc::channel::<studio_core::conn::Lines>();
-    tx.send(fake("first", 2)).unwrap();
+    let (first, first_gone) = fake("first");
+    tx.send(first).unwrap();
     let c = studio_core::conn::open_lines("serial:test2", move || rx.try_recv().ok(), s.event_sender());
-    let ask = |c: std::sync::Arc<studio_core::conn::Conn>| async move {
-        for _ in 0..40 {
-            if let Ok(r) = c.rpc(json!({ "op": "info" })).await { return Some(r["result"]["name"].as_str().unwrap().to_string()); }
-            tokio::time::sleep(Duration::from_millis(250)).await;
+    // ask until the board answers, up to a deadline (the session needs a moment to come online, longer when loaded)
+    let ask = |c: std::sync::Arc<studio_core::conn::Conn>, want: &'static str| async move {
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
+        let mut got = None;
+        while tokio::time::Instant::now() < deadline {
+            if let Ok(r) = c.rpc(json!({ "op": "info" })).await { got = r["result"]["name"].as_str().map(String::from); }
+            if got.as_deref() == Some(want) { break; }
+            tokio::time::sleep(Duration::from_millis(100)).await;
         }
-        None
+        got
     };
-    assert_eq!(ask(c.clone()).await.as_deref(), Some("first"));
-    tx.send(fake("second", 100)).unwrap(); // the board comes back (the first one answered its last request)
-    let mut got = None;
-    for _ in 0..40 {
-        got = ask(c.clone()).await;
-        if got.as_deref() == Some("second") { break; }
-    }
-    assert_eq!(got.as_deref(), Some("second"));
+    assert_eq!(ask(c.clone(), "first").await.as_deref(), Some("first"));
+    let (second, _second_gone) = fake("second");
+    tx.send(second).unwrap(); // the board comes back ...
+    first_gone.send(()).unwrap(); // ... as the first one goes away
+    assert_eq!(ask(c.clone(), "second").await.as_deref(), Some("second"));
     c.close();
 }
 
