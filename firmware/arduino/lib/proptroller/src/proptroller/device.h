@@ -348,6 +348,7 @@ class Controller : public Firmware {
   Storage* run_store_ = nullptr;
   RunCounter runs_;
   uint32_t script_runs_seen_[SCRIPT_MAX_EFFECTS] = {0};
+  uint32_t script_remote_seen_[SCRIPT_MAX_EFFECTS] = {0};  // ... and of them the remote starts
   std::string resolveControl(const std::string& name) const;
   std::string resolveKey(const std::string& name) const;
   bool statusRead(const std::string& name, Value& out) const;

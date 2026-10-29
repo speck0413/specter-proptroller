@@ -103,6 +103,7 @@ void Controller::scriptInstall(std::unique_ptr<ScriptProgram> prog) {
   for (auto& c : sound_.scriptLoop(0, now_)) df_.command(c);  // a new table sets its own loop
   for (auto& c : sound_.setConfig(soundConfig(), now_)) df_.command(c);
   for (auto& n : script_runs_seen_) n = 0;  // a loaded table starts its effects' run counts at 0
+  for (auto& n : script_remote_seen_) n = 0;
 }
 
 void Controller::setScriptStore(Storage* store) {
@@ -335,7 +336,10 @@ PT_STEP_CODE void Controller::scriptTick(Millis now) {
         if (w.target < INPUT_COUNT) detail = name(ALL_INPUTS[w.target]);
         break;
       }
-      countRun(now, "input", "script", std::string(script_prog_->fx[e].name), detail);
+      // a remote start (web, MQTT, serial, another board's tell) is an `api` run, as for a show (PROTOCOL.md)
+      const bool remote = script_remote_seen_[e] < script_run_->remoteRuns(e);
+      if (remote) script_remote_seen_[e]++;
+      countRun(now, remote ? "api" : "input", "script", std::string(script_prog_->fx[e].name), detail);
     }
   for (int c = 0; c < CHANNEL_COUNT; c++)
     if (script_prog_->channels & (1u << c)) engine_.setScript(ALL_CHANNELS[c], true, script_run_->level(c));

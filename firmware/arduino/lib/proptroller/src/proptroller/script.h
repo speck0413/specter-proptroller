@@ -315,6 +315,8 @@ class ScriptRunner {
   uint32_t presses_lost = 0;
   uint16_t line(int effect) const;  // the line the effect is on
   uint32_t runs(int effect) const { return st_[effect].runs; }
+  // ... of them, the runs a remote start began (web, MQTT, serial, another board: the run event's source `api`)
+  uint32_t remoteRuns(int effect) const { return st_[effect].remote_runs; }
   // A run of an effect that turns OUT2 on (its recovery) is before that line: the status value `pulsing` (SS-R13)
   bool beforeRecovery(int effect) const {
     return st_[effect].running && recovery_[effect] && st_[effect].pc > top_[effect] && st_[effect].pc < recovery_[effect];
@@ -327,6 +329,7 @@ class ScriptRunner {
     Millis since = 0, until = 0, next_flicker = 0;
     Level from = 0, before = 0;
     uint32_t runs = 0;
+    uint32_t remote_runs = 0;
     Millis round = 0;     // an effect with no wait for: when it last began its first line
     bool rounded = false; // ... once it has
   };

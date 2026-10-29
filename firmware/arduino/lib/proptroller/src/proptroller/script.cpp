@@ -1496,8 +1496,9 @@ PT_STEP_CODE void ScriptRunner::start(int e, Millis now) {
   gate_[e].started(now, limitMs(e));
   local_go_[e] = false;
   pending_[e] = false;
-  queued_[e] = false;
   State& s = st_[e];
+  if (queued_[e]) s.remote_runs++;  // a queued remote start goes first (STATE-MACHINE.md §13)
+  queued_[e] = false;
   s.running = s.in_run = true;
   s.runs++;
   advance(e, now);

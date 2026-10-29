@@ -131,6 +131,40 @@ void a_show_script_effect_counts_each_start() {
   TEST_ASSERT_TRUE(has(ev[0], "\"kind\":\"script\"") && has(ev[0], "\"name\":\"porch light\"") && has(ev[0], "\"detail\":\"TRIG1\""));
 }
 
+// PROTOCOL.md "run" events: a start from the web page, MQTT, POST /rpc or the serial port is `api`, as for a show
+// and the pulse-and-recover effect; `detail` stays the input of the script effect's first `wait for`.
+void a_show_script_effect_started_from_the_page_or_mqtt_is_an_api_run() {
+  Sim s("script");
+  JsonDocument d;
+  d["op"] = "set_script";
+  d["text"] = "effect porch:\n  wait for trig1\n  out1 = on\n  sleep 0.5\n  out1 = off\n";
+  std::string body;
+  serializeJson(d, body);
+  Response r = s.request(body);
+  TEST_ASSERT_TRUE_MESSAGE(r.isOk(), r.json().c_str());
+  r = setp(s, "remote_free_effects", "\"porch\"");
+  TEST_ASSERT_TRUE_MESSAGE(r.isOk(), r.json().c_str());
+  s.step(3000);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  r = act(s, "porch", true);
+  TEST_ASSERT_TRUE_MESSAGE(r.isOk(), r.json().c_str());
+  s.step(1000);
+  (void)s.mqttSubscriptions();
+  (void)s.mqttOnMessage(s.ctl().mqttPrefix() + "/control/porch", "");
+  s.step(1000);
+  s.press(Input::Trig1, 300);
+  s.step(1000);
+  TEST_ASSERT_EQUAL(4, tonight(s));
+  auto ev = runEvents(s);
+  TEST_ASSERT_EQUAL(4, ev.size());
+  const char* want[] = {"\"source\":\"input\"", "\"source\":\"api\"", "\"source\":\"api\"", "\"source\":\"input\""};
+  for (int i = 0; i < 4; i++) {
+    TEST_ASSERT_TRUE_MESSAGE(has(ev[i], want[i]), ev[i].c_str());
+    TEST_ASSERT_TRUE_MESSAGE(has(ev[i], "\"kind\":\"script\"") && has(ev[i], "\"detail\":\"TRIG1\""), ev[i].c_str());
+  }
+}
+
 // ---------------------------------------------------------------- persistence and the throttle
 
 void the_lifetime_count_survives_a_power_cycle_and_tonight_starts_at_0() {
@@ -365,6 +399,7 @@ int main(int, char**) {
   RUN_TEST(an_ignored_trigger_a_restart_and_a_loop_are_not_runs);
   RUN_TEST(the_effect_counts_local_and_remote_runs_but_not_a_recover);
   RUN_TEST(a_show_script_effect_counts_each_start);
+  RUN_TEST(a_show_script_effect_started_from_the_page_or_mqtt_is_an_api_run);
   RUN_TEST(the_lifetime_count_survives_a_power_cycle_and_tonight_starts_at_0);
   RUN_TEST(the_write_waits_for_the_period_or_ten_runs_and_a_quiet_board);
   RUN_TEST(nothing_is_written_while_a_show_runs);
