@@ -952,21 +952,21 @@ def build_lid(comp):
     hx = -HINGE_X
     x0 = hx - kl / 2
     pl = offset_plane(comp, comp.yZConstructionPlane, 'x', f'-({mm(HINGE_X)} + 0.5 * knuckle_l)', 'Lid knuckle end')
+    s = Sketch(comp, pl, 'Lid knuckle web', yz_frame(x0))   # the web first: it joins the knuckle to the lid
+    s.rounded_rect(W - 6, z_lu, y_ax - 2, z_lt, 0)
+    sk = s.done()
+    web = extrude(comp, profiles(sk), 'knuckle_l', ops().JoinFeatureOperation, X, 'Lid knuckle web', sk)
     s = Sketch(comp, pl, 'Lid knuckle', yz_frame(x0))
     yw = y_ax - math.sqrt(r_web ** 2 - (z_lu - z_ax) ** 2)
     s.hull([(y_ax, z_ax, kd / 2)], [(yw, z_lu), (yw + 2, z_lu), (yw, z_lu + lt), (yw + 2, z_lu + lt), (y_ax - 2, z_lt), (y_ax + 2, z_lt)])
     sk = s.done()
     kn = extrude(comp, profiles(sk), 'knuckle_l', ops().JoinFeatureOperation, X, 'Lid knuckle', sk)
-    s = Sketch(comp, pl, 'Lid knuckle web', yz_frame(x0))
-    s.rounded_rect(W - 6, z_lu, y_ax - 2, z_lt, 0)
-    sk = s.done()
-    web = extrude(comp, profiles(sk), 'knuckle_l', ops().JoinFeatureOperation, X, 'Lid knuckle web', sk)
     pl = offset_plane(comp, comp.yZConstructionPlane, 'x', f'-({mm(HINGE_X)} + 1.5 * knuckle_l + knuckle_gap)', 'Hinge end')
     s = Sketch(comp, pl, 'Hinge screw', yz_frame(hx - 1.5 * kl - kg))
     s.circle((y_ax, z_ax), par('pin_d'))
     sk = s.done()
     bore = extrude(comp, profiles(sk), '2 * (knuckle_l + knuckle_gap)', ops().CutFeatureOperation, X, 'Hinge screw', sk)
-    h2 = mirror(comp, [kn, web, bore], comp.yZConstructionPlane, 'Second hinge')
+    h2 = mirror(comp, [web, kn, bore], comp.yZConstructionPlane, 'Second hinge')
     group('Hinge', h2)
 
     # cam latch keeper lugs
@@ -1375,7 +1375,8 @@ def latch_transform(side, y):
 
 
 def run(context):
-    global design
+    global design, _group_end
+    _group_end = None
     ui = app.userInterface
     try:
         doc = app.documents.add(adsk.core.DocumentTypes.FusionDesignDocumentType)

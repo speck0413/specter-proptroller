@@ -21,7 +21,7 @@ for pair in "tub Tub 0.2" "lid Lid 0.2" "lid_text Lid_text 0.05" "plate_front Fr
             "plate_back Back_plate 0.1" "plate_back_text Back_plate_text 0.05"; do
   set -- $pair
   echo "=== $1" >> "$OUT/compare.txt"
-  "$PY" "$HERE/meshcmp.py" "$OUT/ref/$1.stl" "$OUT/$2.stl" --h "$3" --shift "$X" "$(python3 -c "print(-($Y))")" 0 --top 4 --ignore 2 >> "$OUT/compare.txt"
+  "$PY" "$HERE/meshcmp.py" "$OUT/ref/$1.stl" "$OUT/$2.stl" --h "$3" --shift "$X" "$Y" 0 --top 4 --ignore 2 >> "$OUT/compare.txt"
 done
 echo "=== latch (in its own frame)" >> "$OUT/compare.txt"
 python3 "$HERE/latch_local.py" "$OUT/Latch.stl" "$OUT/latch_local.stl"

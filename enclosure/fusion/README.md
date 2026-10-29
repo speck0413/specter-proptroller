@@ -75,8 +75,23 @@ grid and measures the volume where they differ:
 | Latch | 1 027 mm³ | 0.09 % | the cam path, a fitted spline here |
 | Text bodies | same volume | | letters up to about 0.5 mm along their line from OpenSCAD's (different text layout engines) |
 
-In SolidCraft, changing `wall`, `inner_h`, `plate_t` and `corner_r` rebuilt with no failed feature or sketch. Changing
-`inner_l` did not, for the reason above.
+Parameter changes, each tried on the SolidCraft design and the parts measured afterwards:
+
+| Change | Result |
+|---|---|
+| `plate_t` 3 → 3.5 | both plates 0.5 mm thicker, holes, countersinks and labels through as before |
+| `hole_j35` 8 → 9 | every 3.5 mm jack hole larger (the counterbores as they were) |
+| `corner_r` 4 → 6 | box, rim groove, lid and tongue corners follow |
+| `groove_w` 3 → 3.4 | the rim groove 0.4 mm wider all round |
+| `sg_d` 1.6 → 2 | both faceplate seal grooves deeper |
+| `wall` 2.4 → 3 | rebuilds, but the hinge knuckles, latch ears and screw bosses stay on the old wall face: rerun the script |
+| `inner_h` 51 → 60 | the lid's knuckles and keeper lugs come away as separate bodies: rerun the script |
+| `inner_l` 195 → 210 | fails: the ribs and latch ears are left inside the box: rerun the script |
+
+Every part stayed one solid in the first five.
+
+The STEP opened back in SolidCraft has every part where the design has it, the same volumes (within 0.2 %), and its
+holes come in as cylinders. Its inlaid letters come in as one small body each.
 
 Not checked: the script has not run in Fusion itself. The calls it makes were checked against Autodesk's API reference,
 and it is written to come out the same whichever way Fusion orients a sketch on a plane; but the first run in Fusion is
