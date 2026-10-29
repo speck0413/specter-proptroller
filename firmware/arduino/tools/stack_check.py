@@ -3,9 +3,10 @@
 direct calls), checked against each task's stack with a margin. Run after `pio run` (the board environments keep
 the .ci / .su files next to the objects):
 
-    python3 tools/stack_check.py [--margin 50] [--report] [--env picow] [--build-dir DIR]
+    python3 tools/stack_check.py [--margin 50] [--report] [--env picow] [--build-root DIR]
 
-The builds are read from --build-dir, else PLATFORMIO_BUILD_DIR (as `pio run` uses it), else .pio/build.
+The builds are read from --build-root, else PLATFORMIO_BUILD_DIR (as `pio run` uses it), else .pio/build. A relative --build-root is relative to the working folder (as in tools/release.py); a relative
+PLATFORMIO_BUILD_DIR is relative to the project (as `pio run` reads it).
 
 Every board build runs it for itself (tools/stack_post.py, a PlatformIO post-build step) and fails when a path
 does not fit; the ESP32 figures need a Pico W build next to them (its call graph) and are checked with it.
@@ -37,11 +38,11 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def build_root():
-    """The folder holding <env>/: --build-dir, else PLATFORMIO_BUILD_DIR (relative to the project), else .pio/build."""
-    if "--build-dir" in sys.argv:
-        d = sys.argv[sys.argv.index("--build-dir") + 1]
-    else:
-        d = os.environ.get("PLATFORMIO_BUILD_DIR") or os.path.join(".pio", "build")
+    """The folder holding <env>/: --build-root (a relative one is relative to the working folder, as in tools/release.py),
+    else PLATFORMIO_BUILD_DIR (relative to the project, as `pio run` reads it), else .pio/build."""
+    if "--build-root" in sys.argv:
+        return os.path.abspath(os.path.expanduser(sys.argv[sys.argv.index("--build-root") + 1]))
+    d = os.environ.get("PLATFORMIO_BUILD_DIR") or os.path.join(".pio", "build")
     return os.path.join(HERE, os.path.expanduser(d))
 
 
