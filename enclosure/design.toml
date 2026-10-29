@@ -175,7 +175,7 @@ LINE = { face = "back", kind = "j35", x = 146.0, label = "LINE" }
 #             before fitting the plate
 #   "inline"  a try-out (owner 2026-10-24, standard case only): no plate at all, the jacks go straight through the wall
 #             (teardrop holes as printed upright), the labels sunk into the wall's outside face in one colour
-#   "screws"  the plate flat on the wall, located by guide pins through it, six M3s, one window per jack (until 2026-10-24)
+#   "screws"  the plate flat on the wall, located by guide pins through it, six M3s, one window per jack
 #   "glue"    the same plate bonded flat to the wall: CA for tack, a sealing adhesive in the groove round its back
 mount = "inset"
 inset_d = 1.0           # "inset": the recess's depth in the 2.4 mm wall (1.4 mm of wall left behind the plate); its top edge
@@ -235,7 +235,7 @@ notes = [ { face = "front", under = ["RLY1", "RLY2"], text = "T=NO R=NC S=COM", 
 [gasket]
 gasket_clr = 0.1        # the gasket's base this much narrower than the groove (sg_w) each side (TPU prints a little wide)
 gasket_base = 0.4       # the base strip's thickness (2 layers)
-gasket_h = 2.8          # base to lip tip (owner 2026-10-24: a little taller, 2.4 before): sg_d less than this is the squeeze
+gasket_h = 2.8          # base to lip tip (owner 2026-10-24): sg_d less than this is the squeeze
                         # when the plate is screwed flat (1.2 mm)
 gasket_lip = 0.45       # the lip's width in each layer (one line of a 0.4 nozzle)
 gasket_tip = 0.85       # the tip's outer edge this far in from the base's outer edge: room for it to swing out as it bends
@@ -258,7 +258,7 @@ seal_gap = 0.4
 [lid]
 lid_mount = "screws"    # "screws" (owner 2026-10-24): the lid comes straight off, held by countersunk M3 x 12s through bosses
                         # on its edge into ears on the tub's outside walls, outside the seal: no hinge, no latches. "hinge":
-                        # the hinge and latches below (until 2026-10-24; not built, the model still has it)
+                        # the hinge and latches below
 lid_screw_d = 4.5       # each screw's axis this far out from the wall's outside face
 lid_screw_r = 3.75      # the lid's boss and the tub's ear round it
 lid_screw_gap = 0.2     # the ear's top this far under the boss when the lid is screwed down to the seal's design squeeze

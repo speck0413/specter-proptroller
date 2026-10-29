@@ -126,10 +126,7 @@ anywhere**), or if an assert in `tools/print_params.py` or the model finds two p
 
 ## In Fusion, SolidCraft or another CAD program
 
-`fusion/SpecterEnclosure/` is a Fusion script that builds the standard case as it was before 2026-10-24 (faceplates screwed
-on guide pins, the printed-pin hinge, cam latches: `mount = "screws"`, `lid_mount = "hinge"`) as a parametric Fusion design,
-from the same sizes as `proptroller-print.scad`; it doesn't model the inset or inline plates or the screwed lid yet, so
-`tools/fusion_check` only compares like with like with `design.toml` set to `mount = "screws"` and `lid_mount = "hinge"`. `tools/fusion_check/check.sh
+`fusion/SpecterEnclosure/` models the standard case with screwed faceplates and the hinged lid (`mount = "screws"`, `lid_mount = "hinge"`); it doesn't model the inset or inline plates or the screwed lid. `tools/fusion_check/check.sh
 cad` builds the same timeline in SolidCraft (`cad/specter-enclosure.solidcraft`) and a solid STEP assembly
 (`cad/specter-enclosure.step`), and compares every part with the OpenSCAD model. How to run it, what follows a
 parameter change and what was checked: `fusion/README.md`.
@@ -681,7 +678,7 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
       4. **The printed TPU 95A gasket** (`stl/gasket_*.stl`, in the projects `stl/gaskets.3mf` and `stl/gaskets_ac.3mf`): a
          ring that matches the groove, bends round the screws included, printed flat in TPU 95A (**Printing**). Its section:
          a 3.3 × 0.4 mm base strip in the groove and one thin lip (one 0.45 mm line a layer) leaning outward from the
-         base's inner edge to 2.8 mm tall (`[gasket]` in `design.toml`; 2.4 until 2026-10-24). Screwed flat, the wall bends
+         base's inner edge to 2.8 mm tall (`[gasket]` in `design.toml`). Screwed flat, the wall bends
          the lip over by the 1.2 mm squeeze; its tip swings out about 0.9 mm, inside the groove (a rigid-swing estimate,
          which `print_params.py` checks). Round the screws the lip runs on: there the plate is clamped, so that stretch of gasket only has to follow.
          A solid strip is far too stiff and a hollow hexagon softer but not enough (below). **Apply:** lay the plate face
@@ -773,7 +770,7 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
   (47 %: closed-cell foam seals well at 30–50 %, and takes a set past that).
   **Or the printed TPU 95A gasket** (`stl/gasket_lid.stl`, on the case projects' TPU plate): the screwed plates' gasket
   section in this groove, a 2.8 mm base strip 0.4 mm thick and one 0.45 mm lip leaning out from its inner edge, 2.8 mm
-  tall in all (2.4 until 2026-10-24). Lay it in the groove lip up, the way it printed (no adhesive; a few dots of silicone
+  tall in all. Lay it in the groove lip up, the way it printed (no adhesive; a few dots of silicone
   hold it if it lifts with the lid). The screwed-down lid's tongue stands 1.7 mm over the groove's floor and bends the lip
   over by 1.1 mm; its tip swings out 1.17 mm, inside the groove (a rigid-swing estimate, asserted in `print_params.py`).
   Not yet printed or tried.
@@ -817,8 +814,7 @@ The receptacle's strap, body and face depth (`[parts.outlet]` `strap_l`, `strap_
   above them. Holding them too would cut the lid's lift to about 0.1–0.3 mm (the FEA), but needs about 12 mm more box
   height over the plates.
   ![the screwed lid: its six bosses over the ears](docs/lid-screws.png)
-- **Hinged lid (`lid_mount = "hinge"` in `design.toml`, not built).** The model keeps the earlier lid (smoke-tested
-  2026-10-24: with `mount = "screws"` its tub, lid and back plate render closed and manifold, with no islands): two printed three-knuckle hinges at
+- **Hinged lid (`lid_mount = "hinge"` in `design.toml`, not built).** With `mount = "screws"` its tub, lid and back plate render closed and manifold, with no islands (smoke-tested 2026-10-24): two printed three-knuckle hinges at
   1/3 and 2/3 of the back edge (`[hinge]`, pinned with an M3 × 20 or #4 × ¾ in pan head each; or `hinge = "everbilt"`
   for two Everbilt 1 in utility hinges) and four screwed cam latches on the end walls (`[latch]`), with the back plate
   notched under the hinges. `tools/print_build.sh` builds the draw latch's fit coupon with it (`stl/coupon_latch.3mf`).

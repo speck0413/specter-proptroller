@@ -18,8 +18,7 @@ is drawn from the parameter values when the script runs and does not follow late
 changing those, or edit the sketch.
 
 Sizes and the faceplate layout come from the OpenSCAD model's design.toml (through params.json); the block between
-the layout markers is written by tools/fusion_layout.py. Built as the standard case: screwed faceplates, printed-pin
-hinge, cam latches. Print every part in ASA; the inlays (bodies named "... text") are the second colour.
+the layout markers is written by tools/fusion_layout.py. Built as the case with screwed faceplates and the hinged lid (not the default inset plates or screwed lid). Print every part in ASA; the inlays (bodies named "... text") are the second colour.
 """
 import math
 import traceback
@@ -31,7 +30,7 @@ import adsk.fusion
 PCB = {'left': -66.5, 'back': 40.0, 'holes': [(-62.5, 36.0), (63.5, 36.0), (-62.5, -36.0), (63.5, -36.0)]}
 HINGE_X = 33.31   # each hinge's centre, either side of the centreline
 LATCH_Y = 48.0   # each latch's centre on the end walls, either side of the centreline
-BUTTON = (70.5, 34.0)
+BUTTON = (62.5, 50.0)
 TITLE = 'SPECTER PROPTROLLER'
 FRONT = {
     'plate': (-77.21, 77.21, -20.4, 20.7),
