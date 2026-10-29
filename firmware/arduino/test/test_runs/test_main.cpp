@@ -32,6 +32,14 @@ static std::string statusGet(Sim& s, const std::string& key) {
   return r.size() == 1 && r[0].topic == p + "/status/" + key ? r[0].payload : std::string();
 }
 static bool has(const std::string& s, const char* part) { return s.find(part) != std::string::npos; }
+// every event since the board started (the log lines among them)
+static std::string logs(Sim& s) {
+  std::vector<std::string> evs;
+  s.ctl().eventsSince(0, evs);
+  std::string all;
+  for (auto& e : evs) all += e + "\n";
+  return all;
+}
 
 // a board with the example show (TRIG1 pulses OUT1 for 2 s, then a 3 s cooldown), past its boot lockout
 struct ShowSim : Sim {
@@ -187,6 +195,14 @@ struct PorchSim : Sim {
     Response r = act(*this, "porch", true);
     TEST_ASSERT_TRUE_MESSAGE(r.isOk(), r.json().c_str());
   }
+  // a web start while the effect runs: taken, and queued (not started)
+  void webStartQueued() {
+    const char* queued = "remote start queued: effect \\\"porch\\\"";
+    TEST_ASSERT_FALSE(has(logs(*this), queued));
+    webStart();
+    std::string l = logs(*this);
+    TEST_ASSERT_TRUE_MESSAGE(has(l, queued), l.c_str());
+  }
 };
 // the run events' sources, in order, and the counters
 static void expectRuns(Sim& s, const std::vector<const char*>& sources) {
@@ -265,7 +281,7 @@ void a_cancelled_queued_start_is_not_a_run() {
   PorchSim s;
   s.press(Input::Trig1, 300);
   s.step(100);  // the run is in its sleep: a web start waits for it
-  s.webStart();
+  s.webStartQueued();
   TEST_ASSERT_TRUE(act(s, "cancel", true).isOk());
   s.step(1500);
   s.press(Input::Trig1, 300);
@@ -277,7 +293,7 @@ void a_queued_start_that_stop_all_drops_is_not_a_run() {
   PorchSim s;
   s.press(Input::Trig1, 300);
   s.step(100);
-  s.webStart();
+  s.webStartQueued();
   s.stopAll();
   s.step(1500);
   s.press(Input::Trig1, 300);
@@ -289,7 +305,7 @@ void a_queued_start_between_two_presses_is_an_api_run() {
   PorchSim s;
   s.press(Input::Trig1, 300);
   s.step(100);
-  s.webStart();  // queued: it starts when the press's run ends
+  s.webStartQueued();  // queued: it starts when the press's run ends
   s.step(1500);
   s.press(Input::Trig1, 300);
   s.step(1000);
